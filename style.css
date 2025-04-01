@@ -1,0 +1,113 @@
+/* Basic reset */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden; /* Prevent scrollbars */
+}
+
+#gameCanvas {
+    display: block; /* Remove extra space below canvas */
+    width: 100%;
+    height: 100%;
+}
+
+#scoreDisplay {
+    position: absolute; /* Position relative to the viewport */
+    top: 10px;          /* 10px from the top */
+    left: 10px;         /* 10px from the left */
+    padding: 8px 12px;
+    background-color: rgba(255, 255, 255, 0.7); /* Semi-transparent white background */
+    color: #333;        /* Dark text color */
+    font-family: Arial, sans-serif;
+    font-size: 16px;
+    border-radius: 4px;
+    z-index: 10;        /* Ensure it's above the canvas */
+}
+
+/* --- UI Overlays --- */
+.ui-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background-color: rgba(0, 0, 0, 0.7); /* Semi-transparent black background */
+    color: white;
+    font-family: 'Arial', sans-serif;
+    text-align: center;
+    z-index: 20; /* Higher than score display */
+    display: none; /* Hidden by default, controlled by JS */
+}
+
+#titleScreen h1 {
+    font-size: 3em;
+    margin-bottom: 20px;
+}
+
+#titleScreen button,
+#gameOverDisplay button { /* Style restart button if added later */
+    padding: 10px 20px;
+    font-size: 1.2em;
+    cursor: pointer;
+    background-color: #4CAF50; /* Green */
+    color: white;
+    border: none;
+    border-radius: 5px;
+    transition: background-color 0.3s ease;
+}
+
+#titleScreen button:hover,
+#gameOverDisplay button:hover {
+    background-color: #45a049; /* Darker green */
+}
+
+#gameOverDisplay {
+    /* Inherits base styles from .ui-overlay */
+    font-size: 2em;
+}
+
+#gameOverDisplay p { /* For potential multi-line messages */
+    margin-bottom: 15px;
+    line-height: 1.4;
+}
+
+/* --- Loading Screen Styles --- */
+#loadingScreen {
+    /* Uses .ui-overlay for base positioning and background */
+    /* Ensure it's displayed initially (overrides .ui-overlay display: none) */
+    display: flex;
+    z-index: 30; /* Highest z-index */
+}
+
+#progressBarContainer {
+    width: 60%; /* Adjust width as needed */
+    max-width: 400px;
+    height: 20px;
+    background-color: #555; /* Dark background for the container */
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    margin-bottom: 15px; /* Space between bar and text */
+    overflow: hidden; /* Ensure progress bar stays within bounds */
+}
+
+#progressBar {
+    width: 0%; /* Start at 0% */
+    height: 100%;
+    background-color: #4CAF50; /* Green progress color */
+    transition: width 0.1s linear; /* Smooth transition for width changes */
+}
+
+#progressText {
+    font-size: 1.1em;
+    color: #eee; /* Light text color */
+}

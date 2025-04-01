@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Open Runner - Terrain</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* Basic styles directly in HTML for initial setup */
+        body { margin: 0; overflow: hidden; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <div id="loadingScreen" class="ui-overlay">
+        <div id="progressBarContainer">
+            <div id="progressBar"></div>
+        </div>
+        <span id="progressText">Loading... 0%</span>
+    </div>
+    <div id="titleScreen" class="ui-overlay" style="display: none;"> <!-- Initially hidden -->
+        <h1>Open Runner</h1>
+        <button id="startButton">Start Game</button>
+    </div>
+    <canvas id="gameCanvas"></canvas>
+    <div id="scoreDisplay">Score: 0</div>
+    <div id="gameOverDisplay" class="ui-overlay">GAME OVER!</div> <!-- Added Game Over Display -->
+
+    <!-- Import Map for Three.js Modules -->
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.163.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.163.0/examples/jsm/",
+            "simplex-noise": "https://cdn.skypack.dev/simplex-noise@4.0.1",
+            "seedrandom": "https://cdn.jsdelivr.net/npm/esm-seedrandom/esm/index.min.js"
+        }
+    }
+    </script>
+
+    <!-- Main Game Logic -->
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>
