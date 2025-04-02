@@ -242,6 +242,9 @@ async function init() {
     camera = sceneComponents.camera;
     renderer = sceneComponents.renderer;
 
+    // For the main menu camera drift effect
+    initializeCameraDrift();
+    
     // Spatial Grid (Choose a cell size)
     const gridCellSize = 25; // Example cell size
     spatialGrid = new SpatialGrid(gridCellSize);
@@ -348,6 +351,11 @@ function animate() {
 
     // --- Game State Logic ---
     const currentState = getCurrentState();
+
+    if (currentState === GameStates.TITLE) {
+        updateTitleCamera(deltaTime);
+    }
+
     if (currentState === GameStates.PLAYING) {
         // --- Update Player ---
         if (player && player.model) { // Check for player.model now
@@ -634,6 +642,56 @@ const baseCameraOffset = new THREE.Vector3(
 const cameraLookAtOffset = new THREE.Vector3(0, GlobalConfig.CAMERA_LOOK_AT_OFFSET_Y, 0); // Use GlobalConfig
 const rotatedCameraOffset = new THREE.Vector3(); // To store the rotated offset
 
+let titleCameraDrift = null;
+
+function createCameraDrift(camera, options = {}) {
+  // Default configuration
+  const config = {
+      amplitude: options.amplitude || new THREE.Vector3(2, 1, 2), // How far to drift in each axis
+      period: options.period || new THREE.Vector3(10, 15, 8),     // Seconds to complete one cycle per axis
+      center: options.center || camera.position.clone(),          // Center position to drift around
+      smoothingFactor: options.smoothingFactor || 0.95            // Higher = smoother but slower response (0-1)
+  };
+  
+  // Store the original position as our center if not explicitly provided
+  const originalPosition = config.center.clone();
+  let elapsedTime = 0;
+  
+  // Target position for smooth interpolation
+  const targetPosition = new THREE.Vector3();
+  
+  return function updateCameraDrift(deltaTime) {
+    // Increment our elapsed time
+    elapsedTime += deltaTime;
+    
+    // Calculate the target position using sine waves for smooth oscillation
+    targetPosition.copy(originalPosition).add(
+        new THREE.Vector3(
+            Math.sin(elapsedTime * (Math.PI * 2) / config.period.x) * config.amplitude.x,
+            Math.sin(elapsedTime * (Math.PI * 2) / config.period.y) * config.amplitude.y,
+            Math.sin(elapsedTime * (Math.PI * 2) / config.period.z) * config.amplitude.z
+      )
+    );
+    
+    // Smoothly interpolate camera position
+    const smoothFactor = 1.0 - Math.pow(config.smoothingFactor, deltaTime);
+    camera.position.lerp(targetPosition, smoothFactor);
+  };
+}
+
+function initializeCameraDrift() {
+    titleCameraDrift = createCameraDrift(camera, {
+        amplitude: new THREE.Vector3(15, 7.5, 10),
+        period: new THREE.Vector3(45, 30, 60),
+        smoothingFactor: GlobalConfig.CAMERA_SMOOTHING_FACTOR
+    });
+}
+
+function updateTitleCamera(deltaTime) {
+    if (titleCameraDrift) {
+        titleCameraDrift(deltaTime);
+    }
+}
 
 // Update function now accepts the whole player object
 function updateCameraFollow(playerObj, deltaTime) {
