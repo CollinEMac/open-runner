@@ -81,7 +81,7 @@ export function checkCollisions(playerPosition) {
             const dx = playerPosition.x - mesh.position.x;
             const dz = playerPosition.z - mesh.position.z;
             const distanceSq = dx * dx + dz * dz;
-            const coinCollisionRadius = Config.COIN_RADIUS;
+            const coinCollisionRadius = mesh.geometry.parameters.radiusBottom;
             const collisionThresholdSq = (playerCollisionRadius + coinCollisionRadius) ** 2;
 
             if (distanceSq < collisionThresholdSq) {
