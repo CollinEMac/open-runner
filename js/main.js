@@ -668,8 +668,31 @@ async function startLevelTransition(nextLevelId) {
     chunkManager.clearAllChunks(); // Clears chunks, including enemy removal via EnemyManager
     // Note: EnemyManager itself doesn't need explicit clearing if enemies are tied to chunks
     // Remove atmospheric elements
-    atmosphericElements.forEach(element => scene.remove(element));
-    atmosphericElements = [];
+    atmosphericElements.forEach(element => {
+        if (element) {
+            scene.remove(element);
+            // Dispose resources (geometry, material)
+            if (element.traverse) { // Check if it's traversable (like a Group or Mesh)
+                element.traverse((child) => {
+                    if (child instanceof THREE.Mesh) {
+                        if (child.geometry) {
+                            child.geometry.dispose();
+                            // console.log(`[Transition] Disposed geometry for atmospheric element part: ${child.name}`);
+                        }
+                        if (child.material) {
+                            if (Array.isArray(child.material)) {
+                                child.material.forEach(material => material.dispose());
+                            } else {
+                                child.material.dispose();
+                            }
+                            // console.log(`[Transition] Disposed material for atmospheric element part: ${child.name}`);
+                        }
+                    }
+                });
+            }
+        }
+    });
+    atmosphericElements = []; // Clear the array after disposal
 
     // 3. Set Loading State
     setGameState(GameStates.LOADING_LEVEL);

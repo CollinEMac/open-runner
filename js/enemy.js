@@ -244,23 +244,9 @@ class Enemy {
     removeFromScene() {
         if (this.scene && this.mesh) {
             this.scene.remove(this.mesh);
-            // Dispose unique geometry and material for each part
-            this.mesh.traverse((child) => {
-                if (child instanceof THREE.Mesh) {
-                    if (child.geometry) {
-                        child.geometry.dispose();
-                    }
-                    if (child.material) {
-                        // Check if material is an array (though unlikely for these simple parts)
-                        if (Array.isArray(child.material)) {
-                            child.material.forEach(material => material.dispose());
-                        } else {
-                            child.material.dispose();
-                        }
-                    }
-                }
-            });
-            // console.log(`[Enemy] Removed ${this.type} mesh from scene and disposed resources.`);
+            // Resource disposal (geometry, material) is handled by AssetManager
+            // as enemy models are created via AssetManager and likely use shared assets.
+            // console.log(`[Enemy] Removed ${this.type} mesh from scene.`);
             this.mesh = null; // Clear reference
         }
     }
