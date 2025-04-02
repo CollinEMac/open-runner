@@ -71,8 +71,14 @@ function handleGlobalKeys(event) {
 // Handle restart key press
 function handleRestartKey(event) {
     if (event.key.toLowerCase() === 'r' && getCurrentState() === GameStates.GAME_OVER) {
-        console.log("Restarting game...");
-        startGame();
+        const currentLevel = LevelManager.getCurrentLevelId();
+        if (currentLevel) {
+            console.log(`Restarting current level: ${currentLevel}...`);
+            selectLevelAndStart(currentLevel);
+        } else {
+            console.error("Cannot restart: Current level ID not found.");
+            // Fallback or error display could be added here if needed
+        }
     } else if (getCurrentState() === GameStates.GAME_OVER) {
         window.addEventListener('keydown', handleRestartKey, { once: true });
     }
@@ -188,16 +194,13 @@ async function selectLevelAndStart(levelId) {
     console.log(`Level ${levelId} started successfully.`);
 }
 
-// Start Game Function
-function startGame() {
-    console.log("Start button clicked. Starting default level...");
-    selectLevelAndStart('level1');
-}
+// Start Game Function (Removed - logic moved to handlers)
 
 // Callback function for the start button click
 function handleStartButtonClick() {
     AudioManager.playButtonClickSound();
-    startGame();
+    console.log("Start button clicked. Starting default level...");
+    selectLevelAndStart('level1'); // Directly start level 1
 }
 
 // Handle Game Over state
@@ -271,7 +274,13 @@ function handleRestartButtonClick() {
     if (getCurrentState() === GameStates.PAUSED) {
         AudioManager.playButtonClickSound();
         UIManager.hidePauseMenu();
-        startGame(); // Reuse existing start game function
+        const currentLevel = LevelManager.getCurrentLevelId();
+        if (currentLevel) {
+            console.log(`Restarting current level from pause menu: ${currentLevel}...`);
+            selectLevelAndStart(currentLevel);
+        } else {
+            console.error("Cannot restart from pause: Current level ID not found.");
+        }
     }
 }
 
