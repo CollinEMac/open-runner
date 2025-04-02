@@ -1,5 +1,7 @@
 // js/controlsSetup.js
 // import { OrbitControls } from 'three/addons/controls/OrbitControls.js'; // Removed OrbitControls
+import { GameStates, getCurrentState, setGameState } from './gameStateManager.js';
+import * as UIManager from './uiManager.js';
 
 // --- State Variables ---
 // Variables to track keyboard steering keys
@@ -13,10 +15,33 @@ export let mouseRightPressed = false;
 // --- Reset Functions ---
 // Note: Key states are reset by keyup events, no explicit reset function needed here
 
+// Store event listener references
+let keydownListener = null;
+let keyupListener = null;
+let mousedownListener = null;
+let mouseupListener = null;
+let contextmenuListener = null;
+
 export function setupPlayerControls(canvasElement) {
+    // Clean up any existing event listeners to prevent duplicates
+    if (keydownListener) {
+        document.removeEventListener('keydown', keydownListener);
+    }
+    if (keyupListener) {
+        document.removeEventListener('keyup', keyupListener);
+    }
+    if (mousedownListener && canvasElement) {
+        canvasElement.removeEventListener('mousedown', mousedownListener);
+    }
+    if (mouseupListener && canvasElement) {
+        canvasElement.removeEventListener('mouseup', mouseupListener);
+    }
+    if (contextmenuListener && canvasElement) {
+        canvasElement.removeEventListener('contextmenu', contextmenuListener);
+    }
 
     // --- Keyboard Listeners for Steering ---
-    document.addEventListener('keydown', (event) => {
+    keydownListener = (event) => {
         switch (event.key.toLowerCase()) {
             case 'a':
             case 'arrowleft':
@@ -27,9 +52,11 @@ export function setupPlayerControls(canvasElement) {
                 keyRightPressed = true;
                 break;
         }
-    });
+    };
+    
+    document.addEventListener('keydown', keydownListener);
 
-    document.addEventListener('keyup', (event) => {
+    keyupListener = (event) => {
         switch (event.key.toLowerCase()) {
             case 'a':
             case 'arrowleft':
@@ -40,10 +67,12 @@ export function setupPlayerControls(canvasElement) {
                 keyRightPressed = false;
                 break;
         }
-    });
+    };
+    
+    document.addEventListener('keyup', keyupListener);
 
     // --- Mouse Listeners for Steering ---
-    canvasElement.addEventListener('mousedown', (event) => {
+    mousedownListener = (event) => {
         switch (event.button) {
             case 0: // Left Mouse Button
                 mouseLeftPressed = true;
@@ -53,9 +82,11 @@ export function setupPlayerControls(canvasElement) {
                 event.preventDefault(); // Prevent context menu
                 break;
         }
-    });
+    };
+    
+    canvasElement.addEventListener('mousedown', mousedownListener);
 
-    canvasElement.addEventListener('mouseup', (event) => {
+    mouseupListener = (event) => {
         switch (event.button) {
             case 0: // Left Mouse Button
                 mouseLeftPressed = false;
@@ -64,12 +95,16 @@ export function setupPlayerControls(canvasElement) {
                 mouseRightPressed = false;
                 break;
         }
-    });
+    };
+    
+    canvasElement.addEventListener('mouseup', mouseupListener);
 
     // Prevent context menu on the canvas (important for RMB steering)
-    canvasElement.addEventListener('contextmenu', (event) => {
+    contextmenuListener = (event) => {
         event.preventDefault();
-    });
+    };
+    
+    canvasElement.addEventListener('contextmenu', contextmenuListener);
 
 }
 

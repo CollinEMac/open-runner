@@ -34,6 +34,16 @@
     <canvas id="gameCanvas"></canvas>
     <div id="scoreDisplay">Score: 0</div>
     <div id="gameOverDisplay" class="ui-overlay">GAME OVER!</div> <!-- Added Game Over Display -->
+    
+    <!-- Pause Menu -->
+    <div id="pauseMenu" class="ui-overlay" style="display: none;">
+        <h2>Paused</h2>
+        <div class="menu-buttons">
+            <button id="resumeButton">Resume Game</button>
+            <button id="restartButton">Restart Level</button>
+            <button id="returnToTitleButton">Return to Title</button>
+        </div>
+    </div>
 
     <!-- Import Map for Three.js Modules -->
     <script type="importmap">

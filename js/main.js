@@ -16,7 +16,8 @@ import { GameStates, getCurrentState, setGameState } from './gameStateManager.js
 import { initPlayerController, updatePlayer as updatePlayerController } from './playerController.js'; // Renamed import
 import { initCollisionManager, checkCollisions as checkCollisionsController } from './collisionManager.js';
 import * as UIManager from './uiManager.js';
-import { showLevelSelectScreen, hideLevelSelectScreen, populateLevelSelect } from './uiManager.js'; // Add level select UI functions
+import { showLevelSelectScreen, hideLevelSelectScreen, populateLevelSelect,
+         showPauseMenu, hidePauseMenu, setupPauseMenuButtons } from './uiManager.js'; // Add UI functions
 import * as AssetManager from './assetManager.js'; // Import Asset Manager namespace
 // console.log('main.js loading'); // Removed log
 // --- Core Three.js Components ---
@@ -170,9 +171,15 @@ async function selectLevelAndStart(levelId) {
     setGameState(GameStates.PLAYING);
     isTransitioning = false;
 
+    // Setup player controls (clear old and setup new)
     setupPlayerControls(renderer.domElement);
+    
+    // We no longer need to manage the Escape key handler as it's handled at document level
     window.removeEventListener('keydown', handleRestartKey);
     AudioManager.initAudio();
+    
+    // Log that the level has started with controls setup
+    console.log(`Level ${levelId} started successfully.`);
 
     console.log(`Level ${levelId} started successfully.`);
 }
@@ -202,6 +209,83 @@ function handleGameOver(setGameStateFunc) {
     UIManager.showGameOverScreen(score);
 
     window.addEventListener('keydown', handleRestartKey, { once: true });
+}
+
+// Direct document-level keydown handler to ensure we catch Escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        console.log("DIRECT ESCAPE KEY HANDLER TRIGGERED");
+        
+        const currentState = getCurrentState();
+        console.log("Current game state:", currentState);
+        
+        if (currentState === GameStates.PLAYING) {
+            console.log("Pausing game");
+            setGameState(GameStates.PAUSED);
+            UIManager.showPauseMenu();
+        } else if (currentState === GameStates.PAUSED) {
+            console.log("Resuming game");
+            setGameState(GameStates.PLAYING);
+            UIManager.hidePauseMenu();
+            UIManager.showGameScreen();
+        }
+    }
+});
+
+/**
+ * Handles the Escape key press for opening/closing the pause menu.
+ * NOTE: This function is no longer used - kept for reference
+ */
+function handleEscapeKey(event) {
+    console.log("UNUSED Escape key handler called", event.key, "Current state:", getCurrentState());
+}
+
+/**
+ * Handles transitioning between the playing and paused states.
+ * NOTE: This function is no longer used - kept for reference
+ */
+function handlePauseState() {
+    console.log("UNUSED handlePauseState called");
+}
+
+/**
+ * Handles the resume button click in the pause menu.
+ */
+function handleResumeButtonClick() {
+    if (getCurrentState() === GameStates.PAUSED) {
+        AudioManager.playButtonClickSound();
+        setGameState(GameStates.PLAYING);
+        UIManager.hidePauseMenu();
+        UIManager.showGameScreen();
+    }
+}
+
+/**
+ * Handles the restart button click in the pause menu.
+ */
+function handleRestartButtonClick() {
+    if (getCurrentState() === GameStates.PAUSED) {
+        AudioManager.playButtonClickSound();
+        UIManager.hidePauseMenu();
+        startGame(); // Reuse existing start game function
+    }
+}
+
+/**
+ * Handles the return to title button click in the pause menu.
+ */
+function handleReturnToTitleButtonClick() {
+    if (getCurrentState() === GameStates.PAUSED) {
+        AudioManager.playButtonClickSound();
+        UIManager.hidePauseMenu();
+        UIManager.showTitleScreen();
+        setGameState(GameStates.TITLE);
+        
+        // Reset player position and other game state as needed
+        player.model.position.set(0, 10, 5);
+        score = 0;
+        UIManager.updateScore(score);
+    }
 }
 
 
@@ -324,10 +408,21 @@ async function init() {
     // Setup start button listener via UI Manager
 
     UIManager.setupStartButton(handleStartButtonClick); // Pass the named function
-
+    
+    // Setup pause menu button listeners
+    UIManager.setupPauseMenuButtons(
+        handleResumeButtonClick,
+        handleRestartButtonClick,
+        handleReturnToTitleButtonClick
+    );
+    
     // Event Listeners
     window.addEventListener('resize', onWindowResize, false);
     window.addEventListener('keydown', handleGlobalKeys); // Add listener for global keys like level select
+    
+    // Note: Escape key handling is now managed by the direct document-level listener
+    console.log("Escape key is handled by the document-level listener");
+    
 
     console.log('Initialization complete. Starting animation loop.'); // Keep this log
 
@@ -354,6 +449,12 @@ function animate() {
 
     if (currentState === GameStates.TITLE) {
         updateTitleCamera(deltaTime);
+    }
+    
+    // If game is paused, only render the scene without updating game logic
+    if (currentState === GameStates.PAUSED) {
+        renderer.render(scene, camera);
+        return;
     }
 
     if (currentState === GameStates.PLAYING) {

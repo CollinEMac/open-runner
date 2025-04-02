@@ -6,6 +6,7 @@ export const GameStates = Object.freeze({
     TITLE: 'title',                 // Title screen is visible
     LEVEL_SELECT: 'levelSelect',    // Level selection screen is visible
     PLAYING: 'playing',             // Game is active
+    PAUSED: 'paused',               // Game is paused with menu visible
     GAME_OVER: 'gameOver',          // Game over screen is visible
     LEVEL_TRANSITION: 'levelTransition', // Preparing to load next level (may show loading)
     LOADING_LEVEL: 'loadingLevel'   // Actively loading next level assets/chunks

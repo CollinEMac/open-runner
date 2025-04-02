@@ -10,6 +10,10 @@ let progressBarElement;
 let progressTextElement;
 let levelSelectScreenElement;
 let levelListElement;
+let pauseMenuElement;
+let resumeButtonElement;
+let restartButtonElement;
+let returnToTitleButtonElement;
 
 /**
  * Initializes the UI Manager by getting references to DOM elements.
@@ -26,11 +30,16 @@ export function initUIManager() {
     progressTextElement = document.getElementById('progressText');
     levelSelectScreenElement = document.getElementById('levelSelectScreen');
     levelListElement = document.getElementById('levelList');
+    pauseMenuElement = document.getElementById('pauseMenu');
+    resumeButtonElement = document.getElementById('resumeButton');
+    restartButtonElement = document.getElementById('restartButton');
+    returnToTitleButtonElement = document.getElementById('returnToTitleButton');
 
     // Basic check for essential elements
     if (!loadingScreenElement || !progressBarElement || !progressTextElement ||
         !scoreElement || !gameOverElement || !titleScreenElement || !startButtonElement ||
-        !levelSelectScreenElement || !levelListElement) {
+        !levelSelectScreenElement || !levelListElement || !pauseMenuElement ||
+        !resumeButtonElement || !restartButtonElement || !returnToTitleButtonElement) {
         console.error("One or more UI elements not found! Check HTML IDs.");
         return false;
     }
@@ -41,6 +50,7 @@ export function initUIManager() {
     if (titleScreenElement) titleScreenElement.style.display = 'none';
     if (loadingScreenElement) loadingScreenElement.style.display = 'flex'; // Show loading initially
     if (levelSelectScreenElement) levelSelectScreenElement.style.display = 'none';
+    if (pauseMenuElement) pauseMenuElement.style.display = 'none'; // Hide pause menu initially
     return true;
 }
 
@@ -173,6 +183,57 @@ export function populateLevelSelect(levels, selectLevelCallback) {
         listItem.appendChild(button);
         levelListElement.appendChild(listItem);
     });
+}
+
+/** Shows the pause menu overlay. */
+export function showPauseMenu() {
+    console.log("UI Manager: Showing pause menu");
+    if (pauseMenuElement) {
+        pauseMenuElement.style.display = 'flex';
+        console.log("Pause menu element display set to flex");
+    } else {
+        console.error("Pause menu element not found when trying to show it");
+    }
+    if (scoreElement) scoreElement.style.display = 'none'; // Hide score during pause
+}
+
+/** Hides the pause menu overlay. */
+export function hidePauseMenu() {
+    console.log("UI Manager: Hiding pause menu");
+    if (pauseMenuElement) {
+        pauseMenuElement.style.display = 'none';
+        console.log("Pause menu element display set to none");
+    } else {
+        console.error("Pause menu element not found when trying to hide it");
+    }
+    // We don't automatically show the score here as it depends on the state we're returning to
+}
+
+/**
+ * Sets up the pause menu button event handlers.
+ * @param {function} onResume - Function to call when Resume button is clicked.
+ * @param {function} onRestart - Function to call when Restart button is clicked.
+ * @param {function} onReturnToTitle - Function to call when Return to Title button is clicked.
+ */
+export function setupPauseMenuButtons(onResume, onRestart, onReturnToTitle) {
+    if (resumeButtonElement && onResume) {
+        // Clone and replace to avoid duplicate listeners
+        resumeButtonElement.replaceWith(resumeButtonElement.cloneNode(true));
+        resumeButtonElement = document.getElementById('resumeButton');
+        resumeButtonElement.addEventListener('click', onResume);
+    }
+    
+    if (restartButtonElement && onRestart) {
+        restartButtonElement.replaceWith(restartButtonElement.cloneNode(true));
+        restartButtonElement = document.getElementById('restartButton');
+        restartButtonElement.addEventListener('click', onRestart);
+    }
+    
+    if (returnToTitleButtonElement && onReturnToTitle) {
+        returnToTitleButtonElement.replaceWith(returnToTitleButtonElement.cloneNode(true));
+        returnToTitleButtonElement = document.getElementById('returnToTitleButton');
+        returnToTitleButtonElement.addEventListener('click', onReturnToTitle);
+    }
 }
 
 /**
