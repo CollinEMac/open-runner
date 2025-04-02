@@ -182,6 +182,7 @@ export function populateLevelSelect(levels, selectLevelCallback) {
         const button = document.createElement('button');
         button.textContent = level.name;
         button.onclick = () => selectLevelCallback(level.id);
+        button.classList.add('level-select-button'); // Add class for styling
         // Add styling class if needed: button.classList.add('level-select-button');
         listItem.appendChild(button);
         levelListElement.appendChild(listItem);

@@ -148,3 +148,45 @@ html, body {
     font-size: 1.1em;
     color: #eee; /* Light text color */
 }
+
+
+/* --- Level Select Screen Styles --- */
+#levelSelectScreen h2 {
+    font-size: 2.5em; /* Match pause menu heading */
+    margin-bottom: 30px;
+}
+
+#levelList {
+    list-style: none; /* Remove default bullet points */
+    padding: 0; /* Remove default padding */
+    display: flex;
+    flex-direction: column;
+    gap: 15px; /* Match pause menu button gap */
+    width: 250px; /* Match pause menu button container width */
+    align-items: center; /* Center buttons horizontally */
+}
+
+.level-select-button {
+    /* Copy styles from .menu-buttons button */
+    padding: 12px 20px;
+    font-size: 1.1em;
+    cursor: pointer;
+    background-color: #4CAF50; /* Green */
+    color: white;
+    border: none;
+    border-radius: 5px;
+    transition: background-color 0.2s, transform 0.1s;
+    width: 100%; /* Make buttons fill the container width */
+    text-align: center;
+}
+
+.level-select-button:hover {
+    /* Copy styles from .menu-buttons button:hover */
+    background-color: #45a049; /* Darker green */
+    transform: scale(1.05);
+}
+
+.level-select-button:active {
+    /* Copy styles from .menu-buttons button:active */
+    transform: scale(0.98);
+}
