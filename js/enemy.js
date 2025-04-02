@@ -2,6 +2,7 @@ import * as THREE from 'three';
 // import * as Config from './config.js'; // No longer needed for enemy properties
 import * as GlobalConfig from './config.js'; // Keep for global settings if any are used later
 import * as AssetManager from './assetManager.js'; // Import AssetManager
+import * as UIManager from './uiManager.js'; // Import UI Manager for error display
 
 // Model Creation Functions moved to assetManager.js
 
@@ -21,7 +22,8 @@ const downVector = new THREE.Vector3(0, -1, 0);
 class Enemy {
     constructor(initialData, properties, scene, chunkManager) { // Added properties parameter
         if (!chunkManager) {
-            console.error(`[Enemy ${initialData.type}] Constructor missing ChunkManager! Grounding will fail.`);
+            // Display error if ChunkManager is missing, as it's critical
+            UIManager.displayError(new Error(`[Enemy ${initialData.type}] Constructor missing ChunkManager! Grounding will fail.`));
         }
         this.scene = scene;
         this.chunkManager = chunkManager; // Store chunkManager
@@ -59,16 +61,19 @@ class Enemy {
                 this.scene.add(this.mesh);
                 // console.log(`[Enemy] Added ${this.type} mesh to scene at`, this.mesh.position);
             } else {
-                console.error("[Enemy] Scene not available for adding mesh!");
+                // Display error if scene is missing
+                UIManager.displayError(new Error(`[Enemy ${this.type}] Scene not available for adding mesh!`));
             }
         } else {
-            console.error(`[Enemy] Failed to create mesh for type ${this.type}`);
+            // Display error if mesh creation fails
+            UIManager.displayError(new Error(`[Enemy] Failed to create mesh for type ${this.type}`));
         }
     }
 
     // Placeholder - subclasses MUST override this
     createMesh() {
-        console.error(`[Enemy] createMesh() not implemented for subclass type ${this.type}!`);
+        // Display error if subclass doesn't implement createMesh
+        UIManager.displayError(new Error(`[Enemy] createMesh() not implemented for subclass type ${this.type}!`));
         return null; // Return null if not implemented
     }
 

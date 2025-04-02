@@ -1,5 +1,7 @@
 // js/chunkManager.js
-import * as THREE from 'three';
+import * as THREE from 'three'; // Keep existing import
+import * as UIManager from './uiManager.js'; // Import UI Manager for error display
+// Removed duplicate import of THREE
 import { createTerrainChunk } from './terrainGenerator.js';
 import { generateObjectsForChunk, createObjectVisual, disposeObjectVisual } from './objectGenerator.js'; // Import visual creator and disposer
 import { EnemyManager } from './enemyManager.js'; // Import EnemyManager
@@ -154,7 +156,8 @@ export class ChunkManager {
         }
         try {
             if (!this.levelConfig) {
-                console.error(`[ChunkManager] Cannot load chunk ${key}, levelConfig is not set!`);
+                // Display error if levelConfig is missing during chunk load
+                UIManager.displayError(new Error(`[ChunkManager] Cannot load chunk ${key}, levelConfig is not set!`));
                 return;
             }
             const terrainMesh = createTerrainChunk(chunkX, chunkZ, this.levelConfig); // Pass levelConfig
@@ -176,7 +179,8 @@ export class ChunkManager {
                         enemies.push(enemyInstance);
                         objectData.enemyInstance = enemyInstance; // Store instance ref in raw data
                     } else {
-                         console.error(`[ChunkManager] Failed to spawn enemy instance for type ${objectData.type}`);
+                         // Display error if enemy spawning fails
+                         UIManager.displayError(new Error(`[ChunkManager] Failed to spawn enemy instance for type ${objectData.type} in chunk ${key}`));
                     }
                 } else {
                     // For non-enemies, delegate visual creation to objectGenerator
@@ -215,7 +219,9 @@ export class ChunkManager {
             // console.log(`[DEBUG] Chunk ${key}: Added terrain, ${collectibleMeshes.length} collectibles, ${collidableMeshes.length} obstacles, ${enemies.length} enemies.`);
 
         } catch (error) {
-            console.error(`Error creating chunk or objects for ${key}:`, error); // Keep error log
+            // Display error for general chunk creation failures
+            UIManager.displayError(new Error(`Error creating chunk or objects for ${key}: ${error.message}`));
+            console.error(`Error creating chunk or objects for ${key}:`, error); // Keep console log for details
         }
     }
 
@@ -419,7 +425,9 @@ export class ChunkManager {
                     this.loadChunk(chunkCoords.x, chunkCoords.z);
                     // console.log(`[ChunkManager] Initial load successful for chunk ${key}`);
                 } catch (error) {
-                    console.error(`[ChunkManager] Error during initial load of chunk ${key}:`, error);
+                    // Display error for initial chunk load failures
+                    UIManager.displayError(new Error(`[ChunkManager] Error during initial load of chunk ${key}: ${error.message}`));
+                    console.error(`[ChunkManager] Error during initial load of chunk ${key}:`, error); // Keep console log for details
                     // Decide how to handle errors - continue loading others?
                 }
             } else {

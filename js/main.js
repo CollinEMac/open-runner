@@ -116,17 +116,19 @@ async function selectLevelAndStart(levelId) {
     UIManager.showLoadingScreen(`Loading ${levelId}...`);
     UIManager.hideLevelSelectScreen();
 
+    // LevelManager now handles asset disposal, chunk clearing, and enemy removal internally
     LevelManager.unloadCurrentLevel();
-    AssetManager.disposeLevelAssets();
-    chunkManager.clearAllChunks();
+    
+    // Still need to clear scene-specific elements not managed by LevelManager/ChunkManager
     atmosphericElements.forEach(element => scene.remove(element));
     atmosphericElements = [];
 
     const levelLoaded = await LevelManager.loadLevel(levelId);
     if (!levelLoaded) {
-        console.error(`Failed to load selected level ${levelId}. Returning to title.`);
+        // console.error(`Failed to load selected level ${levelId}. Returning to title.`); // Keep console log? Maybe not needed as UIManager displays it.
         UIManager.hideLoadingScreen();
-        UIManager.displayError(`Failed to load level: ${levelId}`);
+        // UIManager.displayError is already called by LevelManager on failure, no need to call again here.
+        // UIManager.displayError(new Error(`Failed to load level: ${levelId}`)); // Redundant call removed
         UIManager.showTitleScreen();
         setGameState(GameStates.TITLE);
         isTransitioning = false;
@@ -299,7 +301,8 @@ async function init() {
     // This gets element references and sets initial visibility
     const uiInitialized = UIManager.initUIManager();
     if (!uiInitialized) {
-        console.error("UI Manager failed to initialize. Stopping.");
+        // UIManager.initUIManager() already calls displayError on failure
+        // console.error("UI Manager failed to initialize. Stopping."); // Redundant log removed
         return; // Stop if essential UI elements are missing
     }
 
@@ -307,8 +310,9 @@ async function init() {
     const initialLevelId = 'level1'; // Start with Level 1 (using string ID)
     const levelLoaded = await LevelManager.loadLevel(initialLevelId);
     if (!levelLoaded) {
-        console.error(`Failed to load initial level '${initialLevelId}'. Stopping.`); // Log string ID
-        UIManager.displayError("Failed to load level data."); // Show error via UI
+        // console.error(`Failed to load initial level '${initialLevelId}'. Stopping.`); // Redundant log removed
+        // UIManager.displayError is already called by LevelManager on failure
+        // UIManager.displayError(new Error("Failed to load initial level data.")); // Redundant call removed
         return;
     }
     const levelConfig = LevelManager.getCurrentConfig();
@@ -320,7 +324,8 @@ async function init() {
     // --- Initialize Scene, Camera, Renderer, Lighting using Level Config ---
     const canvas = document.getElementById('gameCanvas');
     if (!canvas) {
-        console.error("Canvas element #gameCanvas not found!");
+        // Display error if canvas is missing
+        UIManager.displayError(new Error("Canvas element #gameCanvas not found!"));
         return;
     }
     // Pass levelConfig to initScene
@@ -342,6 +347,9 @@ async function init() {
     // Chunk Manager (Needs scene, enemyManager, and spatialGrid)
     // Pass initial levelConfig to ChunkManager constructor
     chunkManager = new ChunkManager(scene, enemyManager, spatialGrid, levelConfig);
+
+    // Provide LevelManager with references to other managers
+    LevelManager.setManagers(chunkManager, enemyManager);
 
     // Initial chunk loading will happen in the first animation frame update
 
@@ -670,8 +678,9 @@ async function startLevelTransition(nextLevelId) {
     console.log(`Loading level ${nextLevelId} config...`);
     const levelLoaded = await LevelManager.loadLevel(nextLevelId);
     if (!levelLoaded) {
-        console.error(`Failed to load level ${nextLevelId}. Transition aborted.`);
-        UIManager.displayError("Failed to load next level.");
+        // console.error(`Failed to load level ${nextLevelId}. Transition aborted.`); // Redundant log removed
+        // UIManager.displayError is already called by LevelManager on failure
+        // UIManager.displayError(new Error("Failed to load next level.")); // Redundant call removed
         // TODO: Potentially revert to a safe state (e.g., title screen or previous level?)
         setGameState(GameStates.TITLE); // Go to title for now
         isTransitioning = false;
@@ -835,8 +844,8 @@ try {
     // animate() is called inside init() after loading completes
     console.log('Application initialization sequence started.'); // Keep this log
 } catch (error) {
-    console.error("Error during initialization:", error); // Keep error log
+    console.error("Error during initialization:", error); // Keep console log for details
     // Display error via UI Manager
-    UIManager.displayError(error);
+    UIManager.displayError(new Error(`Initialization failed: ${error.message}`)); // Pass a new Error object
 }
 // console.log('main.js loaded'); // Removed log

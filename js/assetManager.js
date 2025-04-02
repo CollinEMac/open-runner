@@ -1,5 +1,7 @@
 // js/assetManager.js
-import * as THREE from 'three';
+import * as THREE from 'three'; // Keep existing import
+import * as UIManager from './uiManager.js'; // Import UI Manager for error display
+// Removed duplicate import of THREE
 import * as GlobalConfig from './config.js'; // Renamed import
 
 // --- Private Asset Storage ---
@@ -18,7 +20,8 @@ export function initLevelAssets(levelConfig) { // Renamed and added levelConfig
     levelAssets = {}; // Reset the storage
 
     if (!levelConfig) {
-        console.error("[AssetManager] Cannot initialize assets without levelConfig!");
+        // Display error if levelConfig is missing during asset initialization
+        UIManager.displayError(new Error("[AssetManager] Cannot initialize assets without levelConfig!"));
         return;
     }
 

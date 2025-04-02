@@ -40,7 +40,8 @@ export function initUIManager() {
         !scoreElement || !gameOverElement || !titleScreenElement || !startButtonElement ||
         !levelSelectScreenElement || !levelListElement || !pauseMenuElement ||
         !resumeButtonElement || !restartButtonElement || !returnToTitleButtonElement) {
-        console.error("One or more UI elements not found! Check HTML IDs.");
+        // Use displayError for critical UI init failures
+        displayError(new Error("One or more essential UI elements not found! Check HTML IDs."));
         return false;
     }
 
@@ -145,7 +146,8 @@ export function setupStartButton(startGameCallback) {
             startGameCallback();
         });
     } else {
-        console.error("Start button or callback missing for setup.");
+        // Use displayError for critical UI setup failures
+        displayError(new Error("Start button or callback missing for setup."));
     }
 }
 
@@ -167,7 +169,8 @@ export function hideLevelSelectScreen() {
  */
 export function populateLevelSelect(levels, selectLevelCallback) {
     if (!levelListElement || !selectLevelCallback) {
-        console.error("Level list element or select callback missing.");
+        // Use displayError for critical UI setup failures
+        displayError(new Error("Level list element or select callback missing."));
         return;
     }
 
@@ -192,7 +195,8 @@ export function showPauseMenu() {
         pauseMenuElement.style.display = 'flex';
         console.log("Pause menu element display set to flex");
     } else {
-        console.error("Pause menu element not found when trying to show it");
+        // Use displayError for critical UI state failures
+        displayError(new Error("Pause menu element not found when trying to show it."));
     }
     if (scoreElement) scoreElement.style.display = 'none'; // Hide score during pause
 }
@@ -204,7 +208,8 @@ export function hidePauseMenu() {
         pauseMenuElement.style.display = 'none';
         console.log("Pause menu element display set to none");
     } else {
-        console.error("Pause menu element not found when trying to hide it");
+        // Use displayError for critical UI state failures
+        displayError(new Error("Pause menu element not found when trying to hide it."));
     }
     // We don't automatically show the score here as it depends on the state we're returning to
 }

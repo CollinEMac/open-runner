@@ -1,4 +1,6 @@
 // js/levelManager.js
+import * as UIManager from './uiManager.js'; // Import UI Manager for error display
+import * as AssetManager from './assetManager.js'; // Import Asset Manager
 
 // Define available levels
 const AVAILABLE_LEVELS = [
@@ -9,7 +11,8 @@ const AVAILABLE_LEVELS = [
 
 let currentLevelId = null; // Will store the string ID (e.g., 'level1')
 let currentLevelConfig = null;
-
+let chunkManagerInstance = null; // Reference to ChunkManager
+let enemyManagerInstance = null; // Reference to EnemyManager
 /**
  * Loads the configuration for a specific level.
  * @param {string} levelId - The ID of the level to load (e.g., 'level1', 'level2').
@@ -37,21 +40,33 @@ export async function loadLevel(levelId) { // levelId is now a string
         }
 
         if (!currentLevelConfig) {
-             console.error(`[LevelManager] Failed to load config object for level ${levelId}`);
+             // Use UI Manager for critical config load failure
+             UIManager.displayError(new Error(`[LevelManager] Failed to load config object for level ${levelId}`));
              currentLevelId = null;
              return false;
         }
 
         currentLevelId = levelId;
         console.log(`[LevelManager] Successfully loaded configuration for level ${levelId}.`);
+// Asset initialization is now triggered after config is confirmed loaded
+if (currentLevelConfig) {
+     // Assuming AssetManager might become async later
+    await AssetManager.initLevelAssets(currentLevelConfig);
+    console.log("[LevelManager] Triggered AssetManager initialization.");
+} else {
+    console.error("[LevelManager] Cannot initialize assets, config is null.");
+    // Should we return false here? The config load itself succeeded earlier.
+    // For now, log error and continue. The lack of assets will likely cause issues later.
+}
 
-        // TODO: Trigger asset preloading/creation via AssetManager here
-        // TODO: Trigger scene setup/reset here
+// TODO: Trigger scene setup/reset here (e.g., camera position, lighting specific resets beyond AssetManager)
 
+return true;
         return true;
 
     } catch (error) {
-        console.error(`[LevelManager] Error loading level ${levelId}:`, error);
+        // Use UI Manager for critical level load failure
+        UIManager.displayError(new Error(`[LevelManager] Error loading level ${levelId}: ${error.message}`));
         currentLevelConfig = null;
         currentLevelId = null;
         return false;
@@ -78,18 +93,49 @@ export function getCurrentLevelId() {
 }
 
 /**
- * Placeholder function to handle unloading the current level's assets and state.
+ * Stores references to the core managers needed for level loading/unloading.
+ * @param {ChunkManager} chunkMgr
+ * @param {EnemyManager} enemyMgr
+ */
+export function setManagers(chunkMgr, enemyMgr) {
+    chunkManagerInstance = chunkMgr;
+    enemyManagerInstance = enemyMgr;
+    console.log("[LevelManager] ChunkManager and EnemyManager instances set.");
+}
+
+/**
+ * Handles unloading the current level's assets and state.
  */
 export function unloadCurrentLevel() {
     console.log(`[LevelManager] Unloading level ${currentLevelId}...`);
-    // TODO: Signal ChunkManager to clear chunks
-    // TODO: Signal EnemyManager to remove enemies
-    // TODO: Signal AssetManager to dispose level-specific assets
-    // TODO: Clear other level-specific states
+    if (!currentLevelId) {
+        console.log("[LevelManager] No level currently loaded to unload.");
+        return;
+    }
 
+    // Signal ChunkManager to clear chunks
+    if (chunkManagerInstance) {
+        chunkManagerInstance.clearAllChunks();
+    } else {
+        console.warn("[LevelManager] ChunkManager instance not set, cannot clear chunks.");
+    }
+
+    // Signal EnemyManager to remove enemies
+    if (enemyManagerInstance) {
+        enemyManagerInstance.removeAllEnemies();
+    } else {
+        console.warn("[LevelManager] EnemyManager instance not set, cannot remove enemies.");
+    }
+
+    // Signal AssetManager to dispose level-specific assets
+    AssetManager.disposeLevelAssets(); // Called directly via namespace
+
+    // TODO: Clear other level-specific states (e.g., UI elements specific to the level?)
+
+    const unloadedId = currentLevelId; // Store before nulling
     currentLevelId = null;
     currentLevelConfig = null;
-    console.log("[LevelManager] Current level unloaded.");
+    console.log(`[LevelManager] Level ${unloadedId} unloaded.`);
     }
     
     /**

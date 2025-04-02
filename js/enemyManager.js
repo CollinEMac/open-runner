@@ -1,4 +1,5 @@
-import * as THREE from 'three';
+import * as THREE from 'three'; // Keep existing import
+import * as UIManager from './uiManager.js'; // Import UI Manager for error display
 // Import the specific enemy classes
 import { Bear, Squirrel, Deer, Coyote, Rattlesnake, Scorpion } from './enemy.js'; // Added new enemy imports
 
@@ -24,7 +25,8 @@ export class EnemyManager {
      */
     spawnEnemy(enemyType, initialData, chunkManager, levelConfig) { // Added levelConfig
         if (!chunkManager || !levelConfig) {
-             console.error(`[EnemyManager] spawnEnemy called without valid ChunkManager or levelConfig! Cannot spawn ${enemyType}.`);
+             // Display error if dependencies are missing for spawning
+             UIManager.displayError(new Error(`[EnemyManager] spawnEnemy called without valid ChunkManager or levelConfig! Cannot spawn ${enemyType}.`));
              return null;
         }
         // Get properties for this enemy type from the level config
@@ -70,7 +72,8 @@ export class EnemyManager {
             // console.log(`[EnemyManager] Spawned ${enemyType} (ID: ${enemyInstance.mesh.id}). Total active: ${this.activeEnemies.size}`);
             return enemyInstance;
         } else {
-            console.error(`[EnemyManager] Failed to create mesh or instance for enemy type ${enemyType}`);
+            // Display error if mesh/instance creation fails
+            UIManager.displayError(new Error(`[EnemyManager] Failed to create mesh or instance for enemy type ${enemyType}`));
             return null;
         }
     }

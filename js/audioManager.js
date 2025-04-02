@@ -1,4 +1,5 @@
 // js/audioManager.js
+import * as UIManager from './uiManager.js'; // Import UI Manager for error display
 
 let audioContext = null;
 let masterGain = null; // Master gain node for overall volume control
@@ -24,7 +25,9 @@ export function initAudio() {
             audioContext.resume();
         }
     } catch (e) {
-        console.error('Web Audio API is not supported in this browser or initialization failed:', e);
+        // Display error to user if Web Audio fails
+        UIManager.displayError(new Error('Web Audio API is not supported or failed to initialize. Game audio will be disabled.'));
+        console.error('Web Audio API initialization failed:', e); // Keep console error for details
         audioContext = null; // Ensure it's null if failed
     }
 }
