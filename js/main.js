@@ -70,7 +70,7 @@ function handleGlobalKeys(event) {
 function handleRestartKey(event) {
     if (event.key.toLowerCase() === 'r' && getCurrentState() === GameStates.GAME_OVER) {
         console.log("Restarting game...");
-        window.location.reload();
+        startGame();
     } else if (getCurrentState() === GameStates.GAME_OVER) {
         window.addEventListener('keydown', handleRestartKey, { once: true });
     }
