@@ -30,6 +30,7 @@ let particleManager; // Add particle manager variable
 let player = {}; // Initialize as an object to hold model and state
 let score = 0;
 let currentLevelConfig = null; // Holds the config of the currently loaded level
+let playerAnimationTime = 0; // Tracks time only during PLAYING state for animation cycle
 
 // UI Element references are managed by uiManager.js
 let atmosphericElements = []; // For things like circling buzzards
@@ -167,6 +168,7 @@ async function selectLevelAndStart(levelId) {
     await chunkManager.loadInitialChunks(progressCallback);
 
     UIManager.hideLoadingScreen();
+    playerAnimationTime = 0; // Reset animation timer
     UIManager.showGameScreen();
     setGameState(GameStates.PLAYING);
     isTransitioning = false;
@@ -284,6 +286,7 @@ function handleReturnToTitleButtonClick() {
         // Reset player position and other game state as needed
         player.model.position.set(0, 10, 5);
         score = 0;
+        playerAnimationTime = 0; // Reset animation timer
         UIManager.updateScore(score);
     }
 }
@@ -460,10 +463,11 @@ function animate() {
     }
 
     if (currentState === GameStates.PLAYING) {
+        playerAnimationTime += deltaTime; // Increment animation timer only when playing
         // --- Update Player ---
         if (player && player.model) { // Check for player.model now
             // Call the imported player controller update function
-            updatePlayerController(player, deltaTime, elapsedTime, chunkManager, updateCameraFollow);
+            updatePlayerController(player, deltaTime, playerAnimationTime, chunkManager, updateCameraFollow);
         }
 
         // --- Update Chunk Manager ---
@@ -712,6 +716,7 @@ async function startLevelTransition(nextLevelId) {
     player.model.position.set(0, 10, 5); // Reset position
     player.model.rotation.set(0, 0, 0); // Reset rotation
     player.currentSpeed = GlobalConfig.PLAYER_SPEED; // Reset speed
+    playerAnimationTime = 0; // Reset animation timer
     // Reset score (or handle carry-over if needed later)
     score = 0; // Reset score for the new level
     UIManager.updateScore(score);

@@ -207,7 +207,7 @@ export function createPlayerCharacter() {
  * @param {number} time - Current time elapsed (e.g., from THREE.Clock.getElapsedTime()).
  * @param {number} runSpeed - The speed factor for the animation frequency.
  */
-export function animatePlayerCharacter(parts, time, runSpeed = 10) {
+export function animatePlayerCharacter(parts, animationTime, runSpeed = 10) {
     const {
         leftArmGroup, rightArmGroup, leftLegGroup, rightLegGroup,
         leftElbowGroup, rightElbowGroup, leftKneeGroup, rightKneeGroup
@@ -221,8 +221,8 @@ export function animatePlayerCharacter(parts, time, runSpeed = 10) {
     const kneeBendAmplitude = Config.PLAYER_KNEE_BEND_AMPLITUDE;
 
     // Calculate base swing angles
-    const armSwing = Math.sin(time * frequency) * armAmplitude;
-    const legSwing = Math.sin(time * frequency) * legAmplitude;
+    const armSwing = Math.sin(animationTime * frequency) * armAmplitude;
+    const legSwing = Math.sin(animationTime * frequency) * legAmplitude;
 
     // Apply overall limb swing rotations (at shoulder/hip)
     if (leftArmGroup) leftArmGroup.rotation.x = legSwing;
@@ -233,8 +233,8 @@ export function animatePlayerCharacter(parts, time, runSpeed = 10) {
     // Calculate joint bend angles
     // Knees bend when leg is forward, elbows bend when arm is back
     // Use cosine shifted, ensure bend is always positive (or zero)
-    const kneeBend = (Math.cos(time * frequency + Math.PI) + 1) / 2 * kneeBendAmplitude; // Bend amount for right leg (forward)
-    const elbowBend = (Math.cos(time * frequency) + 1) / 2 * elbowBendAmplitude; // Bend amount for right arm (backward)
+    const kneeBend = (Math.cos(animationTime * frequency + Math.PI) + 1) / 2 * kneeBendAmplitude; // Bend amount for right leg (forward)
+    const elbowBend = (Math.cos(animationTime * frequency) + 1) / 2 * elbowBendAmplitude; // Bend amount for right arm (backward)
 
     // Apply joint bend rotations (at elbow/knee)
     // Note: Rotation is applied to the group containing the lower limb segment

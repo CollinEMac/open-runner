@@ -30,7 +30,7 @@ export function initPlayerController(raycasterInstance) {
  * @param {ChunkManager} chunkManager - For terrain height checks.
  * @param {function} updateCameraFollowFunc - Function to update camera position based on player.
  */
-export function updatePlayer(playerObj, deltaTime, elapsedTime, chunkManager, updateCameraFollowFunc) {
+export function updatePlayer(playerObj, deltaTime, animationTime, chunkManager, updateCameraFollowFunc) {
     if (!playerObj || !playerObj.model || !_raycaster) {
         console.warn("Player object or raycaster not properly initialized for updatePlayer.");
         return;
@@ -79,7 +79,7 @@ export function updatePlayer(playerObj, deltaTime, elapsedTime, chunkManager, up
     const speedRatio = playerObj.currentSpeed / Config.PLAYER_SPEED;
     const cappedSpeedFactor = Math.min(speedRatio, Config.PLAYER_MAX_ANIMATION_SPEED_FACTOR);
     const dynamicAnimSpeed = Config.PLAYER_ANIMATION_BASE_SPEED * cappedSpeedFactor;
-    animatePlayerCharacter(playerParts, elapsedTime, dynamicAnimSpeed);
+    animatePlayerCharacter(playerParts, animationTime, dynamicAnimSpeed);
 
     // 4. Move Forward (in the direction the player is facing)
     const moveDistance = playerObj.currentSpeed * deltaTime;
