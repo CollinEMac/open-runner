@@ -1,50 +1,29 @@
 // js/chunkManager.js
 import * as THREE from 'three';
 import { createTerrainChunk } from './terrainGenerator.js';
-import { generateObjectsForChunk } from './objectGenerator.js'; // Import unified object generator
+import { generateObjectsForChunk, createObjectVisual, disposeObjectVisual } from './objectGenerator.js'; // Import visual creator and disposer
 import { EnemyManager } from './enemyManager.js'; // Import EnemyManager
+import * as AudioManager from './audioManager.js';
+import * as AssetManager from './assetManager.js'; // Import AssetManager
 import {
     CHUNK_SIZE,
-    RENDER_DISTANCE_CHUNKS, // Already imported, but ensure it's here
-    // Import constants needed for creating object meshes
-    COIN_RADIUS,
-    COIN_HEIGHT,
-    COIN_COLOR,
-    // OBJECT_TYPES // Might not be needed directly here if objectGenerator handles it all
-} from './config.js';
+    RENDER_DISTANCE_CHUNKS
+    // Global config constants
+} from './config.js'; // Renamed to GlobalConfig implicitly by usage below
 
-console.log('chunkManager.js loading'); // Keep this log for now
-
-// --- Shared Object Resources (Example for Coins) ---
-// We'll create geometries/materials more dynamically later, but keep coin ones for now
-const coinGeometry = new THREE.CylinderGeometry(COIN_RADIUS, COIN_RADIUS, COIN_HEIGHT, 16);
-const coinMaterial = new THREE.MeshStandardMaterial({ color: COIN_COLOR, metalness: 0.3, roughness: 0.4 });
-coinGeometry.rotateX(Math.PI / 2); // Orient coin flat
-
-// Placeholder geometries/materials for obstacles (replace with actual models later)
-const rockSmallGeo = new THREE.SphereGeometry(1, 8, 6);
-const rockLargeGeo = new THREE.SphereGeometry(2.5, 10, 8);
-// Removed treePineGeo definition from here, will create dynamically
-const logFallenGeo = new THREE.CylinderGeometry(0.5, 0.5, 5, 8); // Radius top/bottom, height, segments
-const cabinGeo = new THREE.BoxGeometry(8, 6, 10); // Width, height, depth
-
-const rockMaterial = new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.8 });
-// Reusable materials for the new tree model
-const treeFoliageMaterial = new THREE.MeshStandardMaterial({ color: 0x228B22, roughness: 0.7 }); // Forest green
-const treeTrunkMaterial = new THREE.MeshStandardMaterial({ color: 0x8B4513, roughness: 0.9 }); // Saddle brown
-const logMaterial = new THREE.MeshStandardMaterial({ color: 0x8B4513, roughness: 0.9 }); // Saddle brown (same as trunk)
-const cabinMaterial = new THREE.MeshStandardMaterial({ color: 0xDEB887, roughness: 0.8 }); // Burlywood
+// --- Shared Object Resources moved to assetManager.js ---
 
 export class ChunkManager {
-    constructor(scene, enemyManager, spatialGrid) { // Accept enemyManager and spatialGrid
+    constructor(scene, enemyManager, spatialGrid, initialLevelConfig = null) { // Added initialLevelConfig
         if (!scene || !enemyManager || !spatialGrid) {
             throw new Error("ChunkManager requires scene, EnemyManager, and SpatialGrid instances!");
         }
+        this.levelConfig = initialLevelConfig; // Store level config
         this.scene = scene;
         this.enemyManager = enemyManager; // Store enemyManager
         this.spatialGrid = spatialGrid; // Store spatialGrid
-        this.chunkSize = CHUNK_SIZE;
-        this.renderDistance = RENDER_DISTANCE_CHUNKS;
+        this.chunkSize = CHUNK_SIZE; // Use imported constant
+        this.renderDistance = RENDER_DISTANCE_CHUNKS; // Use imported constant
         // Stores loaded chunks, key: "x,z", value: {
         //   terrainMesh: Mesh,
         //   objects: Array<ObjectData>, // Raw data from generator
@@ -60,7 +39,15 @@ export class ChunkManager {
         this.chunksToLoadQueue = new Set(); // Set of chunk keys "x,z" to load
         this.chunksToUnloadQueue = new Set(); // Set of chunk keys "x,z" to unload
         this.processingQueues = false; // Flag to prevent concurrent processing runs
-        // console.log(`[DEBUG] ChunkManager initialized. ChunkSize: ${this.chunkSize}, RenderDistance: ${this.renderDistance}`); // Removed log
+    }
+
+    /**
+     * Sets the level configuration to be used for generating new chunks.
+     * @param {object} config - The level configuration object.
+     */
+    setLevelConfig(config) {
+        console.log("[ChunkManager] Setting level config.");
+        this.levelConfig = config;
     }
 
     // Calculates the chunk coordinates a position (camera or player) is currently in
@@ -76,7 +63,6 @@ export class ChunkManager {
 
         // Only update chunks if the target position has moved to a new chunk OR it's the first update
         if (currentChunkX !== this.lastCameraChunkX || currentChunkZ !== this.lastCameraChunkZ || this.lastCameraChunkX === null) {
-            // console.log(`[DEBUG] Target moved to chunk [${currentChunkX}, ${currentChunkZ}] (or first update). Updating loaded chunks...`); // Removed log
             this.lastCameraChunkX = currentChunkX;
             this.lastCameraChunkZ = currentChunkZ;
 
@@ -91,7 +77,7 @@ export class ChunkManager {
 
                     // If chunk is not already loaded AND not already queued for loading, queue it
                     if (!this.loadedChunks.has(key) && !this.chunksToLoadQueue.has(key)) {
-                        // console.log(`[DEBUG] Queuing chunk ${key} for loading.`); // Optional log
+                        // // console.log(`[DEBUG] Queuing chunk ${key} for loading.`); // Optional log
                         this.chunksToLoadQueue.add(key);
                         // If it was previously queued for unload, remove it from that queue
                         this.chunksToUnloadQueue.delete(key);
@@ -103,14 +89,13 @@ export class ChunkManager {
             for (const loadedKey of currentlyLoadedKeys) {
                 // If a loaded chunk is no longer needed AND not already queued for unload, queue it
                 if (!chunksToLoad.has(loadedKey) && !this.chunksToUnloadQueue.has(loadedKey)) {
-                    // console.log(`[DEBUG] Queuing chunk ${loadedKey} for unloading.`); // Optional log
+                    // // console.log(`[DEBUG] Queuing chunk ${loadedKey} for unloading.`); // Optional log
                     this.chunksToUnloadQueue.add(loadedKey);
                     // If it was previously queued for load, remove it from that queue
                     this.chunksToLoadQueue.delete(loadedKey);
                 }
             }
 
-            // Start processing the queues if not already doing so
             // Start processing the queues if not already doing so
             this.scheduleQueueProcessing();
         }
@@ -134,14 +119,14 @@ export class ChunkManager {
         if (this.chunksToUnloadQueue.size > 0) {
             const keyToUnload = this.chunksToUnloadQueue.values().next().value; // Get first key
             this.chunksToUnloadQueue.delete(keyToUnload);
-            // console.log(`[DEBUG ASYNC] Processing UNLOAD for ${keyToUnload}`);
+            // // console.log(`[DEBUG ASYNC] Processing UNLOAD for ${keyToUnload}`);
             this.unloadChunk(keyToUnload); // Call the original synchronous unload
         }
         // Then handle loading
         else if (this.chunksToLoadQueue.size > 0) {
             const keyToLoad = this.chunksToLoadQueue.values().next().value; // Get first key
             this.chunksToLoadQueue.delete(keyToLoad);
-            // console.log(`[DEBUG ASYNC] Processing LOAD for ${keyToLoad}`);
+            // // console.log(`[DEBUG ASYNC] Processing LOAD for ${keyToLoad}`);
             const [chunkX, chunkZ] = keyToLoad.split(',').map(Number);
             this.loadChunk(chunkX, chunkZ); // Call the original synchronous load
         }
@@ -152,7 +137,7 @@ export class ChunkManager {
              setTimeout(() => this.processNextChunkInQueue(), 0);
         } else {
             // No more chunks to process, reset the flag
-            // console.log("[DEBUG ASYNC] Chunk queues empty. Stopping processing.");
+            // // console.log("[DEBUG ASYNC] Chunk queues empty. Stopping processing.");
             this.processingQueues = false;
         }
     }
@@ -167,158 +152,55 @@ export class ChunkManager {
             // console.warn(`Attempted to load chunk ${key} which is already loaded.`); // Keep warning
             return;
         }
-
-        // console.log(`[DEBUG] Loading chunk ${key}...`); // Removed log
         try {
-            const terrainMesh = createTerrainChunk(chunkX, chunkZ);
+            if (!this.levelConfig) {
+                console.error(`[ChunkManager] Cannot load chunk ${key}, levelConfig is not set!`);
+                return;
+            }
+            const terrainMesh = createTerrainChunk(chunkX, chunkZ, this.levelConfig); // Pass levelConfig
             this.scene.add(terrainMesh);
 
             // Generate data for all objects in this chunk
-            const objectDataArray = generateObjectsForChunk(chunkX, chunkZ);
+            const objectDataArray = generateObjectsForChunk(chunkX, chunkZ, this.levelConfig); // Pass levelConfig
             const collectibleMeshes = [];
             const collidableMeshes = []; // Only non-enemy collidables
             const enemies = []; // Store enemy instances for this chunk
 
             // Create meshes/instances for all generated objects
             objectDataArray.forEach((objectData, index) => {
-                let mesh = null; // Initialize mesh as null for each object
-                let geometry = null; // Initialize geometry
-                let material = null; // Initialize material
-                let isEnemy = false; // Flag to check if it's an enemy
-
-                // Select geometry/material or handle enemy spawning
-                switch (objectData.type) {
-                    // --- Enemies ---
-                    case 'bear':
-                    case 'squirrel':
-                    case 'deer':
-                        isEnemy = true;
-                        // Pass `this` (the chunkManager instance) to spawnEnemy
-                        const enemyInstance = this.enemyManager.spawnEnemy(objectData.type, objectData, this);
-                        if (enemyInstance) {
-                            enemies.push(enemyInstance);
-                            objectData.enemyInstance = enemyInstance; // Store instance ref in raw data
-                        } else {
-                             console.error(`[ChunkManager] Failed to spawn enemy instance for type ${objectData.type}`);
-                        }
-                        break; // Skip mesh creation below for enemies
-
-                    // --- Collectibles ---
-                    case 'coin':
-                        if (!objectData.collected) { // Only create mesh if not collected
-                            geometry = coinGeometry;
-                            material = coinMaterial;
-                        }
-                        break;
-                    case 'rock_small':
-                        geometry = rockSmallGeo;
-                        material = rockMaterial;
-                        break;
-                    case 'rock_large':
-                        geometry = rockLargeGeo;
-                        material = rockMaterial;
-                        break;
-                    case 'tree_pine':
-                        // Create a group for the tree parts
-                        mesh = new THREE.Group(); // Assign group to mesh directly
-
-                        // Define tree dimensions (can be adjusted)
-                        const trunkHeight = 4; // Adjusted: Shorter trunk
-                        const trunkRadius = 0.5;
-                        const foliageHeight = 12; // Adjusted: Taller foliage to maintain overall height
-                        const foliageRadius = 3.5; // Adjusted: Wider foliage
-
-                        // Create trunk geometry and mesh
-                        const trunkGeometry = new THREE.CylinderGeometry(trunkRadius, trunkRadius, trunkHeight, 8);
-                        const trunkMesh = new THREE.Mesh(trunkGeometry, treeTrunkMaterial);
-                        trunkMesh.position.y = trunkHeight / 2; // Position trunk base at group origin
-                        trunkMesh.castShadow = true; // Optional: enable shadows
-                        trunkMesh.receiveShadow = true;
-                        mesh.add(trunkMesh); // Add trunk to the group
-
-                        // Create foliage geometry and mesh
-                        const foliageGeometry = new THREE.ConeGeometry(foliageRadius, foliageHeight, 8);
-                        const foliageMesh = new THREE.Mesh(foliageGeometry, treeFoliageMaterial);
-                        foliageMesh.position.y = trunkHeight + foliageHeight / 2; // Position foliage on top of trunk
-                        foliageMesh.castShadow = true;
-                        foliageMesh.receiveShadow = true;
-                        mesh.add(foliageMesh); // Add foliage to the group
-
-                        // No need for geometry/material variables here as mesh is the group
-                        geometry = null; // Explicitly nullify to avoid accidental use below
-                        material = null;
-
-                        // The group's origin is at the base of the trunk, so no manual y-adjustment needed
-                        // objectData.position.y += objectData.scale.y * 4; // REMOVED
-
-                        // The rest of the code will apply position, scale, rotation to the group (mesh)
-                        break;
-                    case 'log_fallen':
-                        geometry = logFallenGeo;
-                        material = logMaterial;
-                        // Rotation applied to mesh instance below, not shared geometry
-                        break;
-                    case 'cabin_simple':
-                        geometry = cabinGeo;
-                        material = cabinMaterial;
-                        // Adjust cabin position slightly so base is on ground
-                        objectData.position.y += objectData.scale.y * 3; // Half of box height * scale
-                        break;
-                    default:
-                        console.warn(`[WARN] Unknown object type "${objectData.type}" in chunk ${key}`);
-                        console.warn(`[WARN] Unknown object type "${objectData.type}" in chunk ${key}`);
-                        return; // Skip unknown types
-                }
-
-                // After the switch, create the mesh if needed (and not an enemy)
-                if (!isEnemy) {
-                    // If mesh is still null BUT we have geometry and material, it's a standard object (rock, coin, etc.)
-                    if (mesh === null && geometry && material) {
-                        mesh = new THREE.Mesh(geometry, material);
+                // Handle enemy spawning first
+                if (objectData.type === 'bear' || objectData.type === 'squirrel' || objectData.type === 'deer') {
+                    // Pass levelConfig to spawnEnemy
+                    const enemyInstance = this.enemyManager.spawnEnemy(objectData.type, objectData, this, this.levelConfig);
+                    if (enemyInstance) {
+                        enemies.push(enemyInstance);
+                        objectData.enemyInstance = enemyInstance; // Store instance ref in raw data
+                    } else {
+                         console.error(`[ChunkManager] Failed to spawn enemy instance for type ${objectData.type}`);
                     }
-                    // Else if mesh is already assigned (it must be the tree Group), we don't need to do anything here.
+                } else {
+                    // For non-enemies, delegate visual creation to objectGenerator
+                    // Pass levelConfig to createObjectVisual
+                    const mesh = createObjectVisual(objectData, this.levelConfig);
 
-                    // Now, if we have a valid mesh (either newly created standard mesh or the tree group)...
                     if (mesh) {
-                        // Apply position, scale, rotation to the mesh/group
-                        mesh.position.copy(objectData.position);
-                        mesh.scale.copy(objectData.scale);
+                         // Add chunk-specific info to userData
+                         mesh.userData.chunkKey = key;
+                         mesh.userData.objectIndex = index;
+                         mesh.name = `${objectData.type}_${key}_${index}`; // More specific name
 
-                        // Apply initial rotations BEFORE random Y rotation
-                        if (objectData.type === 'log_fallen') {
-                            mesh.rotation.x = Math.PI / 2; // Lay log flat
-                            console.log(`[DEBUG] Applied X rotation (${mesh.rotation.x.toFixed(2)}) to log mesh: ${mesh.name}`);
-                        }
-                        // Apply random Y rotation (from generator)
-                        mesh.rotation.y = objectData.rotationY;
-                        // --- Missing closing brace was here ---
+                         this.scene.add(mesh);
+                         objectData.mesh = mesh; // Store mesh reference back in the raw data
 
-                        mesh.name = `${objectData.type}_${key}_${index}`; // Unique name
-
-                        // Store reference for interaction lookup
-                        mesh.userData = {
-                        chunkKey: key,
-                        objectIndex: index,
-                        objectType: objectData.type,
-                        collidable: objectData.collidable,
-                            scoreValue: objectData.scoreValue
-                        };
-
-                        this.scene.add(mesh);
-                        objectData.mesh = mesh; // Store mesh reference in data for obstacles/coins
-
-                        // Add mesh to appropriate list for quick access (only non-enemies)
-                        if (objectData.collidable) { // This will now only be non-enemy obstacles
-                            collidableMeshes.push(mesh);
-                            this.spatialGrid.add(mesh); // Add obstacle to spatial grid
-                        } else if (objectData.type === 'coin') {
-                            collectibleMeshes.push(mesh);
-                            this.spatialGrid.add(mesh); // Add collectible to spatial grid
-                        }
-                    } // <-- Added missing closing brace for 'if (mesh)' here
-                } else if (!isEnemy && (!geometry || !material)) {
-                     // Log if a non-enemy object failed mesh creation (e.g., collected coin)
-                     // console.log(`[DEBUG] No mesh created for non-enemy object type ${objectData.type} (likely collected coin)`);
+                         // Add mesh to appropriate list and spatial grid
+                         if (objectData.collidable) {
+                             collidableMeshes.push(mesh);
+                             this.spatialGrid.add(mesh);
+                         } else if (objectData.type === 'coin') {
+                             collectibleMeshes.push(mesh);
+                             this.spatialGrid.add(mesh);
+                         }
+                    }
                 }
             });
 
@@ -330,7 +212,7 @@ export class ChunkManager {
                 collidables: collidableMeshes,   // Store active non-enemy collidable meshes
                 enemies: enemies                 // Store active enemy instances
             });
-            console.log(`[DEBUG] Chunk ${key}: Added terrain, ${collectibleMeshes.length} collectibles, ${collidableMeshes.length} obstacles, ${enemies.length} enemies.`);
+            // console.log(`[DEBUG] Chunk ${key}: Added terrain, ${collectibleMeshes.length} collectibles, ${collidableMeshes.length} obstacles, ${enemies.length} enemies.`);
 
         } catch (error) {
             console.error(`Error creating chunk or objects for ${key}:`, error); // Keep error log
@@ -341,7 +223,6 @@ export class ChunkManager {
     unloadChunk(key) {
         const chunkData = this.loadedChunks.get(key);
         if (chunkData) {
-            // console.log(`[DEBUG] Unloading chunk ${key}...`); // Removed log
 
             // Unload Terrain Mesh
             if (chunkData.terrainMesh) {
@@ -356,23 +237,25 @@ export class ChunkManager {
                         chunkData.terrainMesh.material.dispose();
                      }
                 }
-                // console.log(`Disposed terrain resources for chunk ${key}`);
-                // console.log(`Disposed terrain resources for chunk ${key}`);
+                // console.log(`Disposed terrain resources for chunk ${key}`); // Removed duplicate log
             }
 
-            // Unload All Object Meshes (Collectibles and non-enemy Collidables)
-            let unloadedObjectMeshes = 0;
+            // Unload All Non-Enemy Object Visuals using objectGenerator
+            let disposedVisuals = 0;
             if (chunkData.objects) {
                 chunkData.objects.forEach(objectData => {
-                    // Only remove meshes for non-enemy objects here
-                    if (objectData.mesh && !objectData.enemyInstance) {
-                        this.spatialGrid.remove(objectData.mesh); // Remove from spatial grid first
-                        this.scene.remove(objectData.mesh);
-                        objectData.mesh = null;
-                        unloadedObjectMeshes++;
+                    // disposeObjectVisual handles checks for enemyInstance and null mesh
+                    // Pass levelConfig to disposeObjectVisual
+                    disposeObjectVisual(objectData, this.scene, this.spatialGrid, this.levelConfig);
+                    // We only count if a mesh *was* present before disposal attempt
+                    if (!objectData.enemyInstance && objectData.mesh === null) { // Check if mesh is now null
+                       // This check might be slightly inaccurate if mesh was already null,
+                       // but good enough for a debug count. A better way would be for
+                       // disposeObjectVisual to return true/false if it did something.
+                       disposedVisuals++;
                     }
                 });
-                 console.log(`[DEBUG] Removed ${unloadedObjectMeshes} obstacle/collectible meshes for chunk ${key} (and from spatial grid).`);
+                 // console.log(`[DEBUG] Disposed visuals for ${disposedVisuals} non-enemy objects in chunk ${key}.`);
             }
 
             // Unload Enemies using EnemyManager
@@ -382,12 +265,12 @@ export class ChunkManager {
                     this.enemyManager.removeEnemy(enemyInstance); // Manager handles scene removal
                     unloadedEnemies++;
                 });
-                console.log(`[DEBUG] Removed ${unloadedEnemies} enemies for chunk ${key}`);
+                // console.log(`[DEBUG] Removed ${unloadedEnemies} enemies for chunk ${key}`);
             }
 
             // Clear local references (collectibles/collidables/enemies arrays are part of chunkData)
             this.loadedChunks.delete(key);
-            console.log(`[DEBUG] Chunk ${key} unloaded and data removed.`);
+            // console.log(`[DEBUG] Chunk ${key} unloaded and data removed.`);
         } else {
              console.warn(`Attempted to unload chunk ${key} which was not found in loaded chunks.`); // Keep warning
         }
@@ -414,7 +297,7 @@ export class ChunkManager {
                 }
             }
         }
-        // console.log(`Found ${nearbyMeshes.length} nearby meshes for position ${position.x.toFixed(1)}, ${position.z.toFixed(1)}`);
+        // // console.log(`Found ${nearbyMeshes.length} nearby meshes for position ${position.x.toFixed(1)}, ${position.z.toFixed(1)}`);
         return nearbyMeshes;
     }
 
@@ -430,7 +313,7 @@ export class ChunkManager {
                 activeMeshes.push(...chunkData.collectibles);
             }
         }
-        // console.log(`[DEBUG] Found ${activeMeshes.length} active collectible meshes.`);
+        // // console.log(`[DEBUG] Found ${activeMeshes.length} active collectible meshes.`);
         return activeMeshes;
     }
 
@@ -446,7 +329,7 @@ export class ChunkManager {
                 activeMeshes.push(...chunkData.collidables);
             }
         }
-        // console.log(`[DEBUG] Found ${activeMeshes.length} active collidable meshes.`);
+        // // console.log(`[DEBUG] Found ${activeMeshes.length} active collidable meshes.`);
         return activeMeshes;
     }
 
@@ -466,7 +349,7 @@ export class ChunkManager {
 
             // Check if it's a collectible (not collidable), has a mesh, and isn't already collected
             if (object && !object.collidable && object.mesh && !object.collected) {
-                console.log(`Collecting ${object.type} ${objectIndex} in chunk ${chunkKey}`);
+                // console.log(`Collecting ${object.type} ${objectIndex} in chunk ${chunkKey}`);
 
                 // Remove from spatial grid
                 this.spatialGrid.remove(object.mesh);
@@ -485,6 +368,10 @@ export class ChunkManager {
                 // Mark as collected in raw data and remove mesh reference
                 object.mesh = null;
                 object.collected = true;
+
+                // Play sound
+                AudioManager.playCoinSound();
+
                 return true;
             } else {
                  console.warn(`[WARN] Attempted to collect invalid, collidable, or already collected object: chunk ${chunkKey}, index ${objectIndex}`);
@@ -502,12 +389,11 @@ export class ChunkManager {
      * @returns {Promise<void>} A promise that resolves when initial loading is complete.
      */
     async loadInitialChunks(progressCallback) {
-        console.log("[ChunkManager] Starting initial chunk load...");
         const startChunkX = 0; // Assuming player starts near 0,0
         const startChunkZ = 0;
         // Use the configured render distance for the initial load radius
         const initialLoadRadius = RENDER_DISTANCE_CHUNKS;
-        console.log(`[ChunkManager] Initial load radius set to: ${initialLoadRadius} (from config)`);
+        // console.log(`[ChunkManager] Initial load radius set to: ${initialLoadRadius} (from config)`);
 
         const chunksToLoadInitially = [];
         for (let x = startChunkX - initialLoadRadius; x <= startChunkX + initialLoadRadius; x++) {
@@ -518,8 +404,6 @@ export class ChunkManager {
 
         const totalChunks = chunksToLoadInitially.length;
         let loadedCount = 0;
-
-        console.log(`[ChunkManager] Determined ${totalChunks} initial chunks to load.`);
 
         // Report initial progress (0%)
         if (progressCallback) {
@@ -533,13 +417,13 @@ export class ChunkManager {
                 try {
                     // Use the existing synchronous loadChunk method within this async flow
                     this.loadChunk(chunkCoords.x, chunkCoords.z);
-                    console.log(`[ChunkManager] Initial load successful for chunk ${key}`);
+                    // console.log(`[ChunkManager] Initial load successful for chunk ${key}`);
                 } catch (error) {
                     console.error(`[ChunkManager] Error during initial load of chunk ${key}:`, error);
                     // Decide how to handle errors - continue loading others?
                 }
             } else {
-                console.log(`[ChunkManager] Chunk ${key} was already loaded (unexpected during initial load).`);
+                // console.log(`[ChunkManager] Chunk ${key} was already loaded (unexpected during initial load).`);
             }
 
             loadedCount++;
@@ -551,13 +435,38 @@ export class ChunkManager {
             // Optional: Add a small delay to allow the main thread to update the UI
             // await new Promise(resolve => setTimeout(resolve, 10)); // e.g., 10ms delay
         }
-
-        console.log("[ChunkManager] Initial chunk loading complete.");
-        // Set the last camera chunk coords based on the initial load center
+// Set the last camera chunk coords based on the initial load center
         // to prevent immediate unloading/reloading in the first update frame.
         this.lastCameraChunkX = startChunkX;
         this.lastCameraChunkZ = startChunkZ;
     }
+
+    /**
+     * Clears all currently loaded chunks from the scene and internal state.
+     * Used during level transitions.
+     */
+    clearAllChunks() {
+        console.log(`[ChunkManager] Clearing all ${this.loadedChunks.size} loaded chunks...`);
+        // Cancel any pending load/unload operations
+        this.chunksToLoadQueue.clear();
+        this.chunksToUnloadQueue.clear();
+        this.processingQueues = false; // Stop queue processing
+
+        // Unload all currently loaded chunks
+        const keysToUnload = [...this.loadedChunks.keys()];
+        keysToUnload.forEach(key => {
+            this.unloadChunk(key); // Use existing synchronous unload logic
+        });
+
+        // Reset state
+        this.lastCameraChunkX = null;
+        this.lastCameraChunkZ = null;
+
+        if (this.loadedChunks.size > 0) {
+            console.warn(`[ChunkManager] loadedChunks map not empty after clearAllChunks. Size: ${this.loadedChunks.size}`);
+            this.loadedChunks.clear(); // Force clear if needed
+        }
+        console.log("[ChunkManager] All chunks cleared.");
+    }
 }
 
-// console.log('chunkManager.js loaded'); // Removed log

@@ -5,12 +5,9 @@ import {
     WORLD_SEED,
     CHUNK_SIZE, // Use CHUNK_SIZE instead of TERRAIN_WIDTH/HEIGHT
     TERRAIN_SEGMENTS_X,
-    TERRAIN_SEGMENTS_Y,
-    NOISE_FREQUENCY,
-    NOISE_AMPLITUDE
+    TERRAIN_SEGMENTS_Y
+    // NOISE_FREQUENCY, NOISE_AMPLITUDE removed, will come from levelConfig
 } from './config.js';
-
-console.log('terrainGenerator.js loading');
 
 // Initialize the noise function with the seed
 const noise2D = createNoise2D(() => {
@@ -21,7 +18,6 @@ const noise2D = createNoise2D(() => {
         h = (h << 5) - h + WORLD_SEED.charCodeAt(i);
         h |= 0; // Convert to 32bit integer
     }
-    console.log(`Using world seed: "${WORLD_SEED}" (Hashed: ${h})`);
     return h / 0x80000000; // Normalize to range expected by simplex-noise if needed
 });
 
@@ -29,8 +25,7 @@ const noise2D = createNoise2D(() => {
 export { noise2D };
 
 // Renamed function to generate a single chunk at specific coordinates
-export function createTerrainChunk(chunkX, chunkZ) {
-    console.log(`Creating terrain chunk at [${chunkX}, ${chunkZ}]...`);
+export function createTerrainChunk(chunkX, chunkZ, levelConfig) { // Added levelConfig parameter
 
     // Calculate world offset for this chunk
     const offsetX = chunkX * CHUNK_SIZE;
@@ -48,44 +43,33 @@ export function createTerrainChunk(chunkX, chunkZ) {
 
     const positions = geometry.attributes.position;
     const vertex = new THREE.Vector3();
-
-    console.log(`Generating terrain heights using noise (Freq: ${NOISE_FREQUENCY}, Amp: ${NOISE_AMPLITUDE})...`);
-    for (let i = 0; i < positions.count; i++) {
+for (let i = 0; i < positions.count; i++) {
         vertex.fromBufferAttribute(positions, i);
 
         // Calculate noise based on vertex's WORLD X and Z coordinates for seamless chunks
         const worldX = vertex.x + offsetX;
         const worldZ = vertex.z + offsetZ;
-        const noiseVal = noise2D(worldX * NOISE_FREQUENCY, worldZ * NOISE_FREQUENCY);
+        const noiseVal = noise2D(worldX * levelConfig.NOISE_FREQUENCY, worldZ * levelConfig.NOISE_FREQUENCY);
 
         // Apply noise to the Y coordinate (height)
-        positions.setY(i, noiseVal * NOISE_AMPLITUDE);
-    }
+        positions.setY(i, noiseVal * levelConfig.NOISE_AMPLITUDE);
+    } // Added closing brace for the loop started on line 47
 
     // Important: Notify Three.js that the positions have changed
     positions.needsUpdate = true;
 
     // Calculate normals for proper lighting
-    console.log('Computing vertex normals...');
     geometry.computeVertexNormals();
-
-    console.log('Creating terrain material...');
-    // Basic green material
+// Basic green material
     const material = new THREE.MeshStandardMaterial({
-        color: 0x55aa55, // Greenish color
+        color: levelConfig.TERRAIN_COLOR, // Use color from level config
         wireframe: false, // Set to true to see the geometry structure
         side: THREE.DoubleSide // Render both sides, useful for debugging camera position
     });
-
-    console.log('Creating terrain chunk mesh...');
-    const terrainMesh = new THREE.Mesh(geometry, material);
+const terrainMesh = new THREE.Mesh(geometry, material);
     terrainMesh.name = `TerrainChunk_${chunkX}_${chunkZ}`; // Assign a unique name
 
     // Position the chunk correctly in the world
     terrainMesh.position.set(offsetX, 0, offsetZ);
-
-    console.log(`Terrain chunk [${chunkX}, ${chunkZ}] generation complete.`);
-    return terrainMesh;
+return terrainMesh;
 }
-
-console.log('terrainGenerator.js loaded');

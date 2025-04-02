@@ -65,9 +65,7 @@ export class ParticleManager {
         this.scene.add(this.particleSystem);
 
         this.activeParticleCount = 0;
-
-        console.log("ParticleManager initialized.");
-    }
+}
 
     emitParticle(originPosition) {
         if (this.activeParticleCount >= MAX_PARTICLES) {
@@ -101,7 +99,7 @@ export class ParticleManager {
         this.opacities[index] = 1.0; // Start fully opaque
 
         this.activeParticleCount++;
-        // console.log(`Emitted particle ${index + 1}/${this.activeParticleCount}`);
+        // // console.log(`Emitted particle ${index + 1}/${this.activeParticleCount}`);
     }
 
     update(deltaTime, playerPosition) {
@@ -139,7 +137,7 @@ export class ParticleManager {
                 }
                 this.activeParticleCount--; // Reduce active count
                 i--; // Re-process the swapped particle in the next iteration
-                // console.log(`Particle died. Active: ${this.activeParticleCount}`);
+                // // console.log(`Particle died. Active: ${this.activeParticleCount}`);
                 continue; // Skip further processing for this (now dead or replaced) particle
             }
 
@@ -176,7 +174,6 @@ export class ParticleManager {
         this.particleGeometry.setDrawRange(0, this.activeParticleCount);
         this.particleGeometry.attributes.position.needsUpdate = true;
         this.particleGeometry.attributes.opacity.needsUpdate = true; // Update opacity attribute
-
-        // console.log(`Particles updated. Active: ${this.activeParticleCount}`);
-    }
+// // console.log(`Particles updated. Active: ${this.activeParticleCount}`);
+}
 }

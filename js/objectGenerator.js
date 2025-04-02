@@ -2,13 +2,8 @@
 import * as THREE from 'three';
 import { prng_alea } from 'seedrandom';
 import { noise2D } from './terrainGenerator.js';
-import * as Config from './config.js'; // Import entire config module
-
-    // Note: We still need THREE and prng_alea
-    // import * as THREE from 'three'; // Remove duplicate import
-    // import { prng_alea } from 'seedrandom'; // Remove duplicate import
-
-    console.log('objectGenerator.js loading');
+import * as GlobalConfig from './config.js'; // Renamed import to avoid confusion
+import * as AssetManager from './assetManager.js'; // Import AssetManager
 
 /**
  * Generates data for all placeable objects (coins, obstacles) for a specific chunk.
@@ -17,20 +12,19 @@ import * as Config from './config.js'; // Import entire config module
  * @returns {Array<Object>} An array of object data objects.
  * Each object contains: { position, type, scale, rotationY, collected, collidable, scoreValue, mesh }
  */
-export function generateObjectsForChunk(chunkX, chunkZ) {
-    console.log(`Generating objects for chunk [${chunkX}, ${chunkZ}]...`);
+export function generateObjectsForChunk(chunkX, chunkZ, levelConfig) { // Added levelConfig
 
-    const chunkSeed = `${Config.WORLD_SEED}_objects_chunk_${chunkX}_${chunkZ}`; // Use Config prefix
+    const chunkSeed = `${GlobalConfig.WORLD_SEED}_objects_chunk_${chunkX}_${chunkZ}`; // Use GlobalConfig
     const rng = prng_alea(chunkSeed);
     const chunkObjectsData = [];
-    const chunkOffsetX = chunkX * Config.CHUNK_SIZE; // Use Config prefix
-    const chunkOffsetZ = chunkZ * Config.CHUNK_SIZE; // Use Config prefix
-    const chunkArea = Config.CHUNK_SIZE * Config.CHUNK_SIZE; // Use Config prefix
+    const chunkOffsetX = chunkX * GlobalConfig.CHUNK_SIZE; // Use GlobalConfig
+    const chunkOffsetZ = chunkZ * GlobalConfig.CHUNK_SIZE; // Use GlobalConfig
+    const chunkArea = GlobalConfig.CHUNK_SIZE * GlobalConfig.CHUNK_SIZE; // Use GlobalConfig
 
     // --- Generate Non-Enemy Objects ---
-    console.log(`Generating non-enemy objects for chunk [${chunkX}, ${chunkZ}]...`);
     // Iterate through each defined NON-ENEMY object type
-    for (const objectType of Config.OBJECT_TYPES) { // Use Config prefix
+    // Iterate through object types defined in the level configuration
+    for (const objectType of levelConfig.OBJECT_TYPES) { // Use levelConfig
         const type = objectType.type;
         const density = objectType.density; // Density specific to this non-enemy type
         const minDistance = objectType.minDistance;
@@ -48,15 +42,13 @@ export function generateObjectsForChunk(chunkX, chunkZ) {
         const numObjects = Math.floor(averageObjects * (0.8 + rng() * 0.4));
         let placedCount = 0;
 
-        // console.log(`[DEBUG] Chunk [${chunkX}, ${chunkZ}] - Target ${type}: ${numObjects} (Avg: ${averageObjects.toFixed(2)})`);
-
         // Generate positions for this object type
         for (let i = 0; i < numObjects; i++) {
             let placed = false;
             for (let attempt = 0; attempt < maxPlacementAttempts; attempt++) {
                 // Generate random relative X/Z within the chunk boundaries
-                const relativeX = (rng() - 0.5) * Config.CHUNK_SIZE; // Use Config prefix
-                const relativeZ = (rng() - 0.5) * Config.CHUNK_SIZE; // Use Config prefix
+                const relativeX = (rng() - 0.5) * GlobalConfig.CHUNK_SIZE; // Use GlobalConfig
+                const relativeZ = (rng() - 0.5) * GlobalConfig.CHUNK_SIZE; // Use GlobalConfig
 
                 // Calculate world coordinates
                 const worldX = relativeX + chunkOffsetX;
@@ -76,12 +68,13 @@ export function generateObjectsForChunk(chunkX, chunkZ) {
                 }
 
                 if (tooClose) {
-                    // console.log(`[DEBUG] ${type} placement attempt ${attempt + 1} too close at [${worldX.toFixed(1)}, ${worldZ.toFixed(1)}]. Retrying...`);
+                    // // console.log(`[DEBUG] ${type} placement attempt ${attempt + 1} too close at [${worldX.toFixed(1)}, ${worldZ.toFixed(1)}]. Retrying...`);
                     continue; // Try a new random position
                 }
 
                 // If placement is valid, calculate height, scale, rotation and add
-                const terrainY = noise2D(worldX * Config.NOISE_FREQUENCY, worldZ * Config.NOISE_FREQUENCY) * Config.NOISE_AMPLITUDE; // Use Config prefix
+                // Use noise parameters from levelConfig
+                const terrainY = noise2D(worldX * levelConfig.NOISE_FREQUENCY, worldZ * levelConfig.NOISE_FREQUENCY) * levelConfig.NOISE_AMPLITUDE;
                 const objectPos = new THREE.Vector3(
                     worldX,
                     terrainY + verticalOffset,
@@ -106,7 +99,7 @@ export function generateObjectsForChunk(chunkX, chunkZ) {
                     minDistance: minDistance, // Store minDistance for later checks
                     mesh: null // Mesh will be created by chunkManager
                 });
-                // console.log(`[DEBUG] Placed ${type} ${placedCount + 1}/${numObjects} at [${objectPos.x.toFixed(1)}, ${objectPos.y.toFixed(1)}, ${objectPos.z.toFixed(1)}]`);
+                // // console.log(`[DEBUG] Placed ${type} ${placedCount + 1}/${numObjects} at [${objectPos.x.toFixed(1)}, ${objectPos.y.toFixed(1)}, ${objectPos.z.toFixed(1)}]`);
                 placed = true;
                 placedCount++;
                 break; // Exit attempt loop, move to next object of this type
@@ -115,27 +108,25 @@ export function generateObjectsForChunk(chunkX, chunkZ) {
                  console.warn(`[WARN] Could not place ${type} ${i + 1}/${numObjects} in chunk [${chunkX}, ${chunkZ}] after ${maxPlacementAttempts} attempts.`);
             }
         }
-        // console.log(`[DEBUG] Placed ${placedCount} ${type} objects in chunk [${chunkX}, ${chunkZ}].`);
+        // // console.log(`[DEBUG] Placed ${placedCount} ${type} objects in chunk [${chunkX}, ${chunkZ}].`);
     }
-    console.log(`Generated ${chunkObjectsData.length} non-enemy objects.`);
 
     // --- Generate Enemies ---
-    console.log(`Generating enemies for chunk [${chunkX}, ${chunkZ}]...`);
-    const enemyTypes = ['bear', 'squirrel', 'deer'];
-    const enemyProperties = { // Store minDistance and verticalOffset (use Config prefix)
-        'bear': { minDistance: Config.ENEMY_BEAR_MIN_DISTANCE, verticalOffset: 0.1, maxPlacementAttempts: 15 },
-        'squirrel': { minDistance: Config.ENEMY_SQUIRREL_MIN_DISTANCE, verticalOffset: 0.1, maxPlacementAttempts: 10 },
-        'deer': { minDistance: Config.ENEMY_DEER_MIN_DISTANCE, verticalOffset: 0.1, maxPlacementAttempts: 12 }
-    };
-    // Use the largest enemy min distance for initial broad checks (use Config prefix)
-    const maxEnemyMinDistance = Math.max(Config.ENEMY_BEAR_MIN_DISTANCE, Config.ENEMY_SQUIRREL_MIN_DISTANCE, Config.ENEMY_DEER_MIN_DISTANCE);
+    // Get enemy types and properties from levelConfig
+    const enemyTypes = levelConfig.ENEMY_TYPES || [];
+    const enemyProperties = levelConfig.ENEMY_PROPERTIES || {};
+
+    // Calculate max enemy min distance for broad checks, handle case with no enemies
+    let maxEnemyMinDistance = 0;
+    if (enemyTypes.length > 0) {
+        maxEnemyMinDistance = Math.max(...enemyTypes.map(type => enemyProperties[type]?.minDistance || 0));
+    }
     const maxEnemyMinDistanceSq = maxEnemyMinDistance * maxEnemyMinDistance;
 
-    const averageEnemies = chunkArea * Config.ENEMY_SPAWN_DENSITY; // Use Config prefix
+    // Use enemy spawn density from levelConfig
+    const averageEnemies = chunkArea * (levelConfig.ENEMY_SPAWN_DENSITY || 0);
     const numEnemiesToAttempt = Math.floor(averageEnemies * (0.8 + rng() * 0.4));
     let enemiesPlaced = 0;
-
-    console.log(`Attempting to place ${numEnemiesToAttempt} enemies (Avg: ${averageEnemies.toFixed(2)})...`);
 
     for (let i = 0; i < numEnemiesToAttempt; i++) {
         let placed = false;
@@ -143,8 +134,8 @@ export function generateObjectsForChunk(chunkX, chunkZ) {
         const maxTotalAttempts = 20;
         for (let attempt = 0; attempt < maxTotalAttempts; attempt++) {
             // Generate random relative X/Z within the chunk boundaries
-            const relativeX = (rng() - 0.5) * Config.CHUNK_SIZE; // Use Config prefix
-            const relativeZ = (rng() - 0.5) * Config.CHUNK_SIZE; // Use Config prefix
+            const relativeX = (rng() - 0.5) * GlobalConfig.CHUNK_SIZE; // Use GlobalConfig
+            const relativeZ = (rng() - 0.5) * GlobalConfig.CHUNK_SIZE; // Use GlobalConfig
             const worldX = relativeX + chunkOffsetX;
             const worldZ = relativeZ + chunkOffsetZ;
 
@@ -165,18 +156,25 @@ export function generateObjectsForChunk(chunkX, chunkZ) {
             }
 
             if (tooClose) {
-                // console.log(`[DEBUG] Enemy placement attempt ${attempt + 1} too close at [${worldX.toFixed(1)}, ${worldZ.toFixed(1)}]. Retrying...`);
+                // // console.log(`[DEBUG] Enemy placement attempt ${attempt + 1} too close at [${worldX.toFixed(1)}, ${worldZ.toFixed(1)}]. Retrying...`);
                 continue; // Try a new random position
             }
 
             // --- Position is valid for *an* enemy ---
             // Randomly select enemy type
+            // Randomly select enemy type if any exist for this level
+            if (enemyTypes.length === 0) continue; // Skip if no enemy types defined
             const chosenTypeIndex = Math.floor(rng() * enemyTypes.length);
             const chosenType = enemyTypes[chosenTypeIndex];
             const properties = enemyProperties[chosenType];
+            if (!properties) {
+                 console.warn(`[ObjectGenerator] Missing properties for enemy type: ${chosenType}`);
+                 continue; // Skip if properties are missing
+            }
 
             // Calculate final position and data
-            const terrainY = noise2D(worldX * Config.NOISE_FREQUENCY, worldZ * Config.NOISE_FREQUENCY) * Config.NOISE_AMPLITUDE; // Use Config prefix
+            // Use noise parameters from levelConfig
+            const terrainY = noise2D(worldX * levelConfig.NOISE_FREQUENCY, worldZ * levelConfig.NOISE_FREQUENCY) * levelConfig.NOISE_AMPLITUDE;
             const objectPos = new THREE.Vector3(
                 worldX,
                 terrainY + properties.verticalOffset, // Use the specific type's offset (though grounding handles final Y)
@@ -197,7 +195,7 @@ export function generateObjectsForChunk(chunkX, chunkZ) {
                 mesh: null, // Mesh/Instance created by chunkManager/enemyManager
                 enemyInstance: null // Will be populated by chunkManager
             });
-            // console.log(`[DEBUG] Placed enemy ${enemiesPlaced + 1}/${numEnemiesToAttempt} (Type: ${chosenType}) at [${objectPos.x.toFixed(1)}, ${objectPos.y.toFixed(1)}, ${objectPos.z.toFixed(1)}]`);
+            // // console.log(`[DEBUG] Placed enemy ${enemiesPlaced + 1}/${numEnemiesToAttempt} (Type: ${chosenType}) at [${objectPos.x.toFixed(1)}, ${objectPos.y.toFixed(1)}, ${objectPos.z.toFixed(1)}]`);
             placed = true;
             enemiesPlaced++;
             break; // Exit attempt loop, move to next enemy slot
@@ -206,10 +204,255 @@ export function generateObjectsForChunk(chunkX, chunkZ) {
              // console.warn(`[WARN] Could not place enemy ${i + 1}/${numEnemiesToAttempt} in chunk [${chunkX}, ${chunkZ}] after ${maxTotalAttempts} attempts.`);
          }
     }
-    console.log(`Placed ${enemiesPlaced} enemies.`);
 
-    console.log(`Generated ${chunkObjectsData.length} total objects (including enemies) for chunk [${chunkX}, ${chunkZ}].`);
     return chunkObjectsData;
 }
 
-console.log('objectGenerator.js loaded');
+
+/**
+ * Creates the visual representation (THREE.Mesh or THREE.Group) for a given object data.
+ * Uses the AssetManager to retrieve shared resources or create complex objects.
+ * @param {object} objectData - The data object generated by generateObjectsForChunk.
+ * @returns {THREE.Mesh | THREE.Group | null} The created visual object, or null if no mesh is needed (e.g., enemy, collected coin).
+ */
+export function createObjectVisual(objectData, levelConfig) { // Added levelConfig (consistency)
+    let mesh = null;
+    let geometry = null;
+    let material = null;
+
+    // Don't create visuals for enemies (handled by EnemyManager) or collected items
+    // Don't create visuals for enemies (handled by EnemyManager) or collected items
+    // Check against the enemy types defined in the current level config
+    const enemyTypesForLevel = levelConfig?.ENEMY_TYPES || [];
+    if (enemyTypesForLevel.includes(objectData.type) || objectData.collected) {
+        return null;
+    }
+
+    switch (objectData.type) {
+        case 'coin':
+            geometry = AssetManager.getAsset('coinGeometry');
+            material = AssetManager.getAsset('coinMaterial');
+            break;
+        case 'rock_small':
+            geometry = AssetManager.getAsset('rockSmallGeo');
+            material = AssetManager.getAsset('rockMaterial');
+            break;
+        case 'rock_large':
+            geometry = AssetManager.getAsset('rockLargeGeo');
+            material = AssetManager.getAsset('rockMaterial');
+            break;
+        case 'tree_pine':
+            // Use the factory function from AssetManager
+            // Pass levelConfig for consistency, though not strictly needed if materials preloaded
+            mesh = AssetManager.createTreeMesh(levelConfig);
+            geometry = null;
+            material = null;
+            break;
+        case 'log_fallen':
+            geometry = AssetManager.getAsset('logFallenGeo');
+            material = AssetManager.getAsset('logMaterial');
+            break;
+        case 'cabin_simple':
+            geometry = AssetManager.getAsset('cabinGeo');
+            material = AssetManager.getAsset('cabinMaterial');
+            break;
+        // Add case for the placeholder desert rock (and future desert objects)
+        case 'rock_desert':
+             geometry = AssetManager.getAsset('rockDesertGeo'); // Assumes this will be added to AssetManager
+             material = AssetManager.getAsset('rockMaterial'); // Reuse rock material for now
+             break;
+        // --- Add Desert Object Cases ---
+        case 'cactus_saguaro':
+            mesh = AssetManager.createCactusSaguaroModel(objectData); // Pass objectData if needed by factory
+            geometry = null; material = null;
+            break;
+        case 'cactus_barrel':
+            geometry = AssetManager.getAsset('cactusBarrelGeo');
+            material = AssetManager.getAsset('cactusMaterial');
+            break;
+        case 'saloon':
+            mesh = AssetManager.createSaloonModel(objectData);
+            geometry = null; material = null;
+            break;
+        case 'railroad_sign':
+            mesh = AssetManager.createRailroadSignModel(objectData);
+            geometry = null; material = null;
+            break;
+        case 'skull':
+            geometry = AssetManager.getAsset('skullGeo');
+            // Create material instance or get shared one if defined
+            material = new THREE.MeshStandardMaterial({ color: 0xFFFACD, roughness: 0.6 });
+            break;
+        case 'dried_bush':
+            geometry = AssetManager.getAsset('driedBushGeo');
+            material = new THREE.MeshStandardMaterial({ color: 0xBC8F8F, roughness: 0.9 });
+            break;
+        case 'wagon_wheel':
+            geometry = AssetManager.getAsset('wagonWheelGeo');
+            material = AssetManager.getAsset('logMaterial'); // Reuse wood
+            break;
+        case 'mine_entrance':
+            mesh = AssetManager.createMineEntranceModel(objectData);
+            geometry = null; material = null;
+            break;
+        case 'water_tower':
+            mesh = AssetManager.createWaterTowerModel(objectData);
+            geometry = null; material = null;
+            break;
+        case 'tumbleweed':
+            geometry = AssetManager.getAsset('tumbleweedGeo');
+            material = new THREE.MeshStandardMaterial({ color: 0xAD8B60, roughness: 0.8 });
+            break;
+        // --- End Desert Object Cases ---
+        default:
+            console.warn(`[createObjectVisual] Unknown or unhandled object type for visual creation: ${objectData.type}`);
+            return null;
+    }
+
+    // If mesh wasn't created directly (like the tree), create it now
+    if (mesh === null && geometry && material) {
+        mesh = new THREE.Mesh(geometry, material);
+    }
+
+    // Apply transformations and set user data if a mesh was created
+    if (mesh) {
+        mesh.position.copy(objectData.position);
+        mesh.scale.copy(objectData.scale);
+        mesh.rotation.y = objectData.rotationY; // Apply random Y rotation
+
+        // Apply specific initial rotations
+        if (objectData.type === 'log_fallen') {
+            mesh.rotation.x = Math.PI / 2; // Lay log flat
+        } else if (objectData.type === 'wagon_wheel') {
+             // Wagon wheel geometry is created flat, but we might want it upright
+             // objectGenerator places based on terrain, so maybe rotate here or in factory
+             // mesh.rotation.z = Math.PI / 2; // Example: Stand it upright
+        }
+
+        // Assign name and userData (simplified here, chunkManager might add chunkKey/index later if needed)
+        mesh.name = `${objectData.type}_visual`; // Generic name
+        mesh.userData = {
+            objectType: objectData.type,
+            collidable: objectData.collidable,
+            scoreValue: objectData.scoreValue
+            // Note: chunkKey and objectIndex are not known here, ChunkManager adds them
+        };
+
+        // Enable shadows (optional, could be configured elsewhere)
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+
+    } else if (!objectData.collected) {
+         console.warn(`[createObjectVisual] Failed to create mesh for type: ${objectData.type}`);
+    }
+
+
+    return mesh;
+}
+
+
+
+/**
+ * Removes the visual representation of an object from the scene and spatial grid.
+ * Handles basic disposal, but avoids disposing shared assets.
+ * @param {object} objectData - The data object containing the mesh reference.
+ * @param {THREE.Scene} scene - The main scene.
+ * @param {SpatialGrid} spatialGrid - The spatial grid instance.
+ */
+export function disposeObjectVisual(objectData, scene, spatialGrid, levelConfig) { // Added levelConfig (consistency)
+    if (!objectData || !objectData.mesh || objectData.enemyInstance) {
+        // No mesh to dispose, or it's an enemy (handled by EnemyManager)
+        return;
+    }
+
+    const mesh = objectData.mesh;
+
+    // Remove from spatial grid
+    if (spatialGrid) {
+        spatialGrid.remove(mesh);
+    }
+
+    // Remove from scene
+    if (scene) {
+        scene.remove(mesh);
+    }
+
+
+    // --- Resource Disposal --- 
+    // Dispose geometry ONLY if it's not a shared asset.
+    if (objectData.type === 'tree_pine' && mesh instanceof THREE.Group) {
+        // Tree is a group with unique geometries for trunk/foliage
+        mesh.traverse((child) => {
+            if (child instanceof THREE.Mesh && child.geometry) {
+                child.geometry.dispose();
+                // console.log(`[disposeObjectVisual] Disposed geometry for tree part: ${child.name}`);
+            }
+        });
+        // Materials are shared via AssetManager, so DO NOT dispose them here.
+    }
+    // For other types (coin, rock, log, cabin), geometry and material are shared
+    // via AssetManager, so we DO NOT dispose them here.
+
+    // --- Old commented-out generic disposal logic (kept for reference) ---
+    // // Dispose geometry ONLY if it's not a shared asset (e.g., custom geometry)
+    // // Currently, all geometries are shared via AssetManager, so we DON'T dispose them here.
+    // // if (mesh.geometry && !isSharedGeometry(mesh.geometry)) { 
+    // //     mesh.geometry.dispose();
+    // // }
+    // 
+    // // Dispose material ONLY if it's not a shared asset.
+    // // Currently, all materials are shared via AssetManager, so we DON'T dispose them here.
+    // // if (mesh.material && !isSharedMaterial(mesh.material)) { 
+    // //     if (Array.isArray(mesh.material)) {
+    // //         mesh.material.forEach(material => material.dispose());
+    // //     } else {
+    // //         mesh.material.dispose();
+    // //     }
+    // // }
+    // 
+    // // If it's a Group (like the tree), recursively dispose children if needed?
+    // // For now, assuming AssetManager handles disposal of complex objects if required.
+
+    // --- Resource Disposal --- 
+
+    // Dispose geometry ONLY if it's not a shared asset (e.g., custom geometry)
+
+    // Currently, all geometries are shared via AssetManager, so we DON'T dispose them here.
+
+    // if (mesh.geometry && !isSharedGeometry(mesh.geometry)) { 
+
+    //     mesh.geometry.dispose();
+
+    // }
+
+
+
+    // Dispose material ONLY if it's not a shared asset.
+
+    // Currently, all materials are shared via AssetManager, so we DON'T dispose them here.
+
+    // if (mesh.material && !isSharedMaterial(mesh.material)) { 
+
+    //     if (Array.isArray(mesh.material)) {
+
+    //         mesh.material.forEach(material => material.dispose());
+
+    //     } else {
+
+    //         mesh.material.dispose();
+
+    //     }
+
+    // }
+
+
+
+    // If it's a Group (like the tree), recursively dispose children if needed?
+
+    // For now, assuming AssetManager handles disposal of complex objects if required.
+
+
+    // Clear the mesh reference in the original data
+    objectData.mesh = null; 
+// // console.log(`[disposeObjectVisual] Disposed visual for ${objectData.type}`);
+}

@@ -33,7 +33,6 @@ import * as Config from './config.js'; // Import config constants
  *                   }
  */
 export function createPlayerCharacter() {
-    // console.log('Creating player character model...'); // Removed log
 
     const characterGroup = new THREE.Group(); // Overall group for the character model
 
@@ -61,14 +60,12 @@ export function createPlayerCharacter() {
     const calfLength = Config.PLAYER_CALF_LENGTH;
 
     // Head
-    // console.log('Creating head...'); // Removed log
     const headGeometry = new THREE.BoxGeometry(headSize, headSize, headSize);
     const headMesh = new THREE.Mesh(headGeometry, grayMaterial);
     headMesh.position.y = torsoHeight / 2 + headSize / 2; // Position on top of torso
     characterGroup.add(headMesh);
 
     // Torso
-    // console.log('Creating torso...'); // Removed log
     const torsoGeometry = new THREE.BoxGeometry(torsoWidth, torsoHeight, torsoDepth);
     const torsoMesh = new THREE.Mesh(torsoGeometry, grayMaterial);
     // Torso is the center, position y=0 relative to the characterGroup's origin
@@ -102,7 +99,6 @@ export function createPlayerCharacter() {
     const kneeOffsetY = -thighLength; // Y offset from hip pivot to knee pivot
 
     // --- Left Arm ---
-    // console.log('Creating left arm structure...'); // Removed log
     const leftUpperArmMesh = new THREE.Mesh(upperArmGeometry, grayMaterial);
     const leftElbowMesh = new THREE.Mesh(jointGeometry, grayMaterial); // Elbow sphere
     const leftForearmMesh = new THREE.Mesh(forearmGeometry, grayMaterial);
@@ -129,7 +125,6 @@ export function createPlayerCharacter() {
     characterGroup.add(leftArmGroup);
 
     // --- Right Arm ---
-    // console.log('Creating right arm structure...'); // Removed log
     const rightUpperArmMesh = new THREE.Mesh(upperArmGeometry, grayMaterial);
     const rightElbowMesh = new THREE.Mesh(jointGeometry, grayMaterial); // Elbow sphere
     const rightForearmMesh = new THREE.Mesh(forearmGeometry, grayMaterial);
@@ -151,7 +146,6 @@ export function createPlayerCharacter() {
     characterGroup.add(rightArmGroup);
 
     // --- Left Leg ---
-    // console.log('Creating left leg structure...'); // Removed log
     const leftThighMesh = new THREE.Mesh(thighGeometry, grayMaterial);
     const leftKneeMesh = new THREE.Mesh(jointGeometry, grayMaterial); // Knee sphere
     const leftCalfMesh = new THREE.Mesh(calfGeometry, grayMaterial);
@@ -173,7 +167,6 @@ export function createPlayerCharacter() {
     characterGroup.add(leftLegGroup);
 
     // --- Right Leg ---
-    // console.log('Creating right leg structure...'); // Removed log
     const rightThighMesh = new THREE.Mesh(thighGeometry, grayMaterial);
     const rightKneeMesh = new THREE.Mesh(jointGeometry, grayMaterial); // Knee sphere
     const rightCalfMesh = new THREE.Mesh(calfGeometry, grayMaterial);
@@ -196,8 +189,6 @@ export function createPlayerCharacter() {
 
     // The characterGroup's origin remains at the center of the torso.
     // The overall world position is handled in main.js.
-
-    // console.log('Player character model created.'); // Removed log
 
     // Return the main group and references to the limb and joint groups for animation
     return {
@@ -260,5 +251,4 @@ export function animatePlayerCharacter(parts, time, runSpeed = 10) {
     // Note: Bobbing needs the characterGroup reference, might require restructuring createPlayerCharacter or passing it in.
     // Let's skip bobbing for now to keep it simpler.
 }
-
 // console.log('playerCharacter.js loaded'); // Removed log

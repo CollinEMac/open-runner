@@ -1,8 +1,6 @@
 // js/spatialGrid.js
 import * as THREE from 'three';
 
-console.log('spatialGrid.js loading');
-
 /**
  * A simple 2D spatial grid for optimizing collision detection.
  * Stores object references (like meshes) in grid cells based on their XZ position.
@@ -18,7 +16,6 @@ export class SpatialGrid {
         this.cellSize = cellSize;
         // Use a Map where key is "gridX,gridZ" and value is a Set of object references
         this.grid = new Map();
-        console.log(`[SpatialGrid] Initialized with cell size: ${this.cellSize}`);
     }
 
     /**
@@ -64,8 +61,6 @@ export class SpatialGrid {
         // Store the current cell key on the object's userData for efficient removal/update
         if (!objectRef.userData) objectRef.userData = {};
         objectRef.userData.spatialGridKey = key;
-
-        // console.log(`[SpatialGrid] Added object ${objectRef.id || objectRef.name || 'unknown'} to cell ${key}. Cell size: ${this.grid.get(key).size}`);
     }
 
     /**
@@ -81,7 +76,7 @@ export class SpatialGrid {
                 const key = this._getCellKey(this._getGridCoords(objectRef.position).gridX, this._getGridCoords(objectRef.position).gridZ);
                 if (this.grid.has(key)) {
                     this.grid.get(key).delete(objectRef);
-                    // console.log(`[SpatialGrid] Removed object ${objectRef.id || objectRef.name || 'unknown'} from cell ${key} (fallback). Cell size: ${this.grid.get(key).size}`);
+                    // // console.log(`[SpatialGrid] Removed object ${objectRef.id || objectRef.name || 'unknown'} from cell ${key} (fallback). Cell size: ${this.grid.get(key).size}`);
                     if (this.grid.get(key).size === 0) {
                         this.grid.delete(key); // Clean up empty cell
                     }
@@ -96,7 +91,7 @@ export class SpatialGrid {
         if (this.grid.has(key)) {
             const cell = this.grid.get(key);
             cell.delete(objectRef);
-            // console.log(`[SpatialGrid] Removed object ${objectRef.id || objectRef.name || 'unknown'} from cell ${key}. Cell size: ${cell.size}`);
+            // // console.log(`[SpatialGrid] Removed object ${objectRef.id || objectRef.name || 'unknown'} from cell ${key}. Cell size: ${cell.size}`);
             if (cell.size === 0) {
                 this.grid.delete(key); // Clean up empty cell
             }
@@ -126,7 +121,7 @@ export class SpatialGrid {
         const newKey = this._getCellKey(gridX, gridZ);
 
         if (newKey !== currentKey) {
-            // console.log(`[SpatialGrid] Updating object ${objectRef.id || objectRef.name || 'unknown'} from ${currentKey} to ${newKey}`);
+            // // console.log(`[SpatialGrid] Updating object ${objectRef.id || objectRef.name || 'unknown'} from ${currentKey} to ${newKey}`);
             this.remove(objectRef); // Removes from old cell using stored key
             this.add(objectRef, newKey); // Adds to new cell and updates stored key
         }
@@ -144,23 +139,19 @@ export class SpatialGrid {
         const { gridX: centerGridX, gridZ: centerGridZ } = this._getGridCoords(position);
         const nearbyObjects = new Set();
 
-        // console.log(`[SpatialGrid] Querying 3x3 area around cell [${centerGridX}, ${centerGridZ}]`);
-
         // Iterate through the 3x3 grid of cells
         for (let x = centerGridX - 1; x <= centerGridX + 1; x++) {
             for (let z = centerGridZ - 1; z <= centerGridZ + 1; z++) {
                 const key = this._getCellKey(x, z);
                 if (this.grid.has(key)) {
                     const cell = this.grid.get(key);
-                    // console.log(`[SpatialGrid]   Checking cell ${key} with ${cell.size} objects.`);
+                    // // console.log(`[SpatialGrid]   Checking cell ${key} with ${cell.size} objects.`);
                     cell.forEach(obj => nearbyObjects.add(obj));
                 } else {
-                    // console.log(`[SpatialGrid]   Cell ${key} is empty.`);
+                    // // console.log(`[SpatialGrid]   Cell ${key} is empty.`);
                 }
             }
         }
-
-        // console.log(`[SpatialGrid] Query found ${nearbyObjects.size} unique objects nearby.`);
         return nearbyObjects;
     }
 
@@ -169,7 +160,6 @@ export class SpatialGrid {
     /** Clears the entire grid. */
     clear() {
         this.grid.clear();
-        console.log("[SpatialGrid] Grid cleared.");
     }
 
     /** Gets the number of non-empty cells in the grid. */
@@ -186,5 +176,3 @@ export class SpatialGrid {
         return count;
     }
 }
-
-console.log('spatialGrid.js loaded');

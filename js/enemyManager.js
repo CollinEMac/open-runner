@@ -1,8 +1,6 @@
 import * as THREE from 'three';
 // Import the specific enemy classes
-import { Bear, Squirrel, Deer } from './enemy.js';
-
-console.log('enemyManager.js loading');
+import { Bear, Squirrel, Deer, Coyote, Rattlesnake, Scorpion } from './enemy.js'; // Added new enemy imports
 
 export class EnemyManager {
     constructor(scene, spatialGrid) { // Accept spatialGrid
@@ -14,7 +12,6 @@ export class EnemyManager {
         // Use a Map to store active enemies, mapping mesh ID to enemy instance
         // This allows quick lookup if we only have the mesh (e.g., from collision)
         this.activeEnemies = new Map();
-        console.log('[EnemyManager] Initialized.');
     }
 
     /**
@@ -22,29 +19,46 @@ export class EnemyManager {
      * @param {string} enemyType - The type of enemy ('bear', 'squirrel', 'deer').
      * @param {object} initialData - Data containing position, rotation, etc.
      * @param {ChunkManager} chunkManager - The ChunkManager instance (needed for Enemy constructor).
+     * @param {object} levelConfig - The configuration object for the current level.
      * @returns {Enemy|null} The created enemy instance, or null if type is unknown.
      */
-    spawnEnemy(enemyType, initialData, chunkManager) { // Accept chunkManager here
-        if (!chunkManager) {
-             console.error(`[EnemyManager] spawnEnemy called without a valid ChunkManager! Cannot spawn ${enemyType}.`);
+    spawnEnemy(enemyType, initialData, chunkManager, levelConfig) { // Added levelConfig
+        if (!chunkManager || !levelConfig) {
+             console.error(`[EnemyManager] spawnEnemy called without valid ChunkManager or levelConfig! Cannot spawn ${enemyType}.`);
              return null;
         }
+        // Get properties for this enemy type from the level config
+        const properties = levelConfig.ENEMY_PROPERTIES?.[enemyType];
+        if (!properties) {
+            console.warn(`[EnemyManager] Properties not found for enemy type '${enemyType}' in level config.`);
+            return null; // Cannot spawn without properties
+        }
         let enemyInstance = null;
-        console.log(`[EnemyManager] Attempting to spawn enemy of type: ${enemyType}`);
+        // console.log(`[EnemyManager] Attempting to spawn enemy of type: ${enemyType}`);
 
         switch (enemyType) {
             case 'bear':
                 // Pass received chunkManager to constructor
-                enemyInstance = new Bear(initialData, this.scene, chunkManager);
+                enemyInstance = new Bear(initialData, properties, this.scene, chunkManager);
                 break;
             case 'squirrel':
                  // Pass received chunkManager to constructor
-                enemyInstance = new Squirrel(initialData, this.scene, chunkManager);
+                enemyInstance = new Squirrel(initialData, properties, this.scene, chunkManager);
                 break;
             case 'deer':
                  // Pass received chunkManager to constructor
-                enemyInstance = new Deer(initialData, this.scene, chunkManager);
+                enemyInstance = new Deer(initialData, properties, this.scene, chunkManager);
                 break;
+            // Add cases for desert enemies
+            case 'coyote':
+                 enemyInstance = new Coyote(initialData, properties, this.scene, chunkManager);
+                 break;
+            case 'rattlesnake':
+                 enemyInstance = new Rattlesnake(initialData, properties, this.scene, chunkManager);
+                 break;
+            case 'scorpion':
+                 enemyInstance = new Scorpion(initialData, properties, this.scene, chunkManager);
+                 break;
             default:
                 console.warn(`[EnemyManager] Unknown enemy type requested for spawn: ${enemyType}`);
                 return null;
@@ -53,10 +67,10 @@ export class EnemyManager {
         if (enemyInstance && enemyInstance.mesh) {
             this.activeEnemies.set(enemyInstance.mesh.id, enemyInstance);
             this.spatialGrid.add(enemyInstance.mesh); // Add enemy mesh to spatial grid
-            console.log(`[EnemyManager] Spawned ${enemyType} (ID: ${enemyInstance.mesh.id}). Total active: ${this.activeEnemies.size}`);
+            // console.log(`[EnemyManager] Spawned ${enemyType} (ID: ${enemyInstance.mesh.id}). Total active: ${this.activeEnemies.size}`);
             return enemyInstance;
         } else {
-            console.error(`[EnemyManager] Failed to create mesh for enemy type ${enemyType}`);
+            console.error(`[EnemyManager] Failed to create mesh or instance for enemy type ${enemyType}`);
             return null;
         }
     }
@@ -76,7 +90,7 @@ export class EnemyManager {
             this.spatialGrid.remove(enemyInstance.mesh); // Remove enemy mesh from spatial grid
             enemyInstance.removeFromScene(); // Tell the enemy to remove its mesh
             this.activeEnemies.delete(meshId);
-            console.log(`[EnemyManager] Removed enemy ${enemyInstance.type} (ID: ${meshId}). Total active: ${this.activeEnemies.size}`);
+            // console.log(`[EnemyManager] Removed enemy ${enemyInstance.type} (ID: ${meshId}). Total active: ${this.activeEnemies.size}`);
         } else {
             console.warn(`[EnemyManager] Attempted to remove enemy (ID: ${meshId}) not found in active list.`);
             // Ensure mesh is removed even if not in map (belt and suspenders)
@@ -107,9 +121,8 @@ export class EnemyManager {
      */
     update(playerPos, deltaTime, elapsedTime) { // Add elapsedTime
         if (!playerPos) return; // Need player position
-
-        // console.log(`[EnemyManager] Updating ${this.activeEnemies.size} enemies...`);
-        for (const enemy of this.activeEnemies.values()) {
+// // console.log(`[EnemyManager] Updating ${this.activeEnemies.size} enemies...`);
+for (const enemy of this.activeEnemies.values()) {
             // Pass elapsedTime for animation
             enemy.update(playerPos, deltaTime, elapsedTime);
             // Update enemy's position in the spatial grid after its internal update
@@ -130,9 +143,26 @@ export class EnemyManager {
                 meshes.push(enemy.mesh);
             }
         }
-        // console.log(`[EnemyManager] Returning ${meshes.length} active enemy meshes.`);
+        // // console.log(`[EnemyManager] Returning ${meshes.length} active enemy meshes.`);
         return meshes;
     }
-}
 
-console.log('enemyManager.js loaded');
+    /**
+     * Removes all active enemies from the scene and clears the manager.
+     * Used during level transitions.
+     */
+    removeAllEnemies() {
+        console.log(`[EnemyManager] Removing all ${this.activeEnemies.size} enemies...`);
+        // Iterate over a copy of the values, as removeEnemy modifies the map
+        const enemiesToRemove = [...this.activeEnemies.values()];
+        for (const enemyInstance of enemiesToRemove) {
+            this.removeEnemy(enemyInstance); // Use existing remove logic
+        }
+        // Double-check the map is empty
+        if (this.activeEnemies.size > 0) {
+             console.warn(`[EnemyManager] activeEnemies map not empty after removeAllEnemies. Size: ${this.activeEnemies.size}`);
+             this.activeEnemies.clear(); // Force clear if needed
+        }
+        console.log("[EnemyManager] All enemies removed.");
+    }
+}
