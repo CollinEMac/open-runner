@@ -441,7 +441,9 @@ function animate() {
     // console.log("[SUPER DEBUG] Entering animate function!"); // Removed log
     requestAnimationFrame(animate);
 
-    const deltaTime = clock.getDelta();
+    let deltaTime = clock.getDelta();
+    // Use the imported constant from config
+    deltaTime = Math.min(deltaTime, GlobalConfig.MAX_DELTA_TIME); // Apply the cap
     const elapsedTime = clock.getElapsedTime();
 
     // --- Game State Logic ---

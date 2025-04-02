@@ -61,5 +61,8 @@ export const CAMERA_FOLLOW_OFFSET_Z = 30;
 export const CAMERA_LOOK_AT_OFFSET_Y = 2;
 export const CAMERA_SMOOTHING_FACTOR = 0.01;
 
+
+// --- Timing / Engine ---
+export const MAX_DELTA_TIME = 1 / 15; // Max time step allowed (prevents physics explosion after pause)
 // NOTE: Level-specific settings like terrain noise, colors, fog, lighting,
 // object types, and enemy properties have been moved to files in js/levels/
