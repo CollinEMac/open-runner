@@ -112,6 +112,7 @@ async function selectLevelAndStart(levelId) {
     UIManager.hideTitleScreen();
     setGameState(GameStates.LOADING_LEVEL);
     UIManager.showLoadingScreen(`Loading ${levelId}...`);
+    UIManager.hideLevelSelectScreen();
 
     LevelManager.unloadCurrentLevel();
     AssetManager.disposeLevelAssets();
