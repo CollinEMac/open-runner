@@ -135,6 +135,7 @@ class Game {
 
         // Setup UI Button Listeners
         this.uiManager.setupStartButton(() => this.startGame('level1'));
+        this.uiManager.setupLevelSelectButton(() => this.showLevelSelect());
         this.uiManager.setupPauseMenuButtons(
             () => this.resumeGame(),
             () => this.restartLevel(),
@@ -143,7 +144,11 @@ class Game {
 
         // Setup global event listeners
         window.addEventListener('resize', this.onWindowResize.bind(this), false);
-        document.addEventListener('keydown', this.handleGlobalKeys.bind(this));
+
+        // Remove any existing keydown listeners to prevent duplicates
+        const boundHandleGlobalKeys = this.handleGlobalKeys.bind(this);
+        document.removeEventListener('keydown', boundHandleGlobalKeys);
+        document.addEventListener('keydown', boundHandleGlobalKeys);
 
         // Subscribe to events
         this._setupEventSubscriptions();
@@ -179,6 +184,10 @@ class Game {
                 }
                 // Re-initialize drift when entering title state
                 this._initializeCameraDrift();
+
+                // Make sure level select is properly populated when entering title state
+                const availableLevels = this.levelManager.getAvailableLevels();
+                this.uiManager.populateLevelSelect(availableLevels, this.startGame.bind(this));
             }
         });
 
@@ -288,13 +297,19 @@ class Game {
         // 8. Reset Player State & Add to Scene
         console.log("[Game] Resetting player state...");
         if (this.player.model) {
+            // Remove player from scene if already present to avoid duplicates
+            if (this.player.model.parent) {
+                this.player.model.parent.remove(this.player.model);
+            }
+
+            // Reset player position and rotation
             this.player.model.position.set(0, 10, 5);
             this.player.model.rotation.set(0, 0, 0);
             this.player.currentSpeed = GlobalConfig.PLAYER_SPEED;
-            if (!this.player.model.parent) {
-                 this.scene.add(this.player.model);
-                 console.log("[Game] Player model added to scene.");
-            }
+
+            // Add player to scene
+            this.scene.add(this.player.model);
+            console.log("[Game] Player model reset and added to scene.");
         }
         const scoreToReset = this.score;
         this.score = 0;
@@ -446,6 +461,25 @@ class Game {
          // Set state to trigger smooth transition in animate loop
          this.gameStateManager.setGameState(GameStates.TRANSITIONING_TO_TITLE);
          // Camera reset/drift init happens when state actually becomes TITLE
+
+         // Update available levels for level select
+         const availableLevels = this.levelManager.getAvailableLevels();
+         this.uiManager.populateLevelSelect(availableLevels, this.startGame.bind(this));
+    }
+
+    showLevelSelect() {
+        if (this.isTransitioning) {
+            console.warn("[Game] Cannot show level select: Transition in progress.");
+            return;
+        }
+        console.log("[Game] Showing level select screen.");
+
+        // Make sure level select is populated with the latest available levels
+        const availableLevels = this.levelManager.getAvailableLevels();
+        this.uiManager.populateLevelSelect(availableLevels, this.startGame.bind(this));
+
+        // Change game state to show level select screen
+        this.gameStateManager.setGameState(GameStates.LEVEL_SELECT);
     }
 
     handleGameOver() {
@@ -458,6 +492,7 @@ class Game {
      // --- Input Handling ---
      handleGlobalKeys(event) {
          const currentState = this.gameStateManager.getCurrentState();
+         console.log(`[Game] Key pressed: ${event.key} in state: ${currentState}`);
 
          if (event.key === 'Escape') {
              if (currentState === GameStates.PLAYING) {
@@ -474,11 +509,11 @@ class Game {
              this.restartLevel();
          }
 
-         if (event.key.toLowerCase() === 'l' && currentState === GameStates.TITLE) {
-             console.log("[Game] Level select triggered.");
-             this.gameStateManager.setGameState(GameStates.LEVEL_SELECT);
-             const availableLevels = this.levelManager.getAvailableLevels();
-             this.uiManager.populateLevelSelect(availableLevels, this.startGame.bind(this));
+         if (event.key.toLowerCase() === 'l') {
+             if (currentState === GameStates.TITLE) {
+                 console.log("[Game] Level select triggered from title screen via keyboard.");
+                 this.showLevelSelect();
+             }
          }
      }
 
@@ -552,6 +587,11 @@ class Game {
             console.log("[Game] Camera transition to title complete.");
             this.camera.position.copy(targetPosition); // Snap to final position
             this.camera.lookAt(TITLE_LOOK_AT_TARGET); // Ensure final lookAt
+
+            // Make sure level select is properly populated before switching to title
+            const availableLevels = this.levelManager.getAvailableLevels();
+            this.uiManager.populateLevelSelect(availableLevels, this.startGame.bind(this));
+
             this.gameStateManager.setGameState(GameStates.TITLE); // Switch to title state
         }
     }

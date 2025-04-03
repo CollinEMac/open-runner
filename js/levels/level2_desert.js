@@ -90,6 +90,18 @@ export const level2Config = {
             scoreValue: 10,
             maxPlacementAttempts: 10,
         },
+        // --- Atmospheric Elements ---
+        {
+            type: 'buzzard',
+            density: 0.00001, // Very rare, mainly handled by game.js
+            minDistance: 50.0,
+            verticalOffset: 80.0, // High in the sky
+            scaleRange: [1, 1.5],
+            randomRotationY: true,
+            collidable: false,
+            scoreValue: 0,
+            maxPlacementAttempts: 5,
+        },
         // --- Placeholder Obstacle ---
         {
             type: 'rock_desert', // Simple placeholder

@@ -710,7 +710,7 @@ export function createScorpionModel(properties) {
     group.traverse(child => { if (child.isMesh) { child.castShadow = true; } });
     return group;
 }
-// Removed erroneous closing brace that was here
+
 
 export function createBuzzardModel(properties) {
     const group = new THREE.Group();
@@ -741,7 +741,7 @@ export function createBuzzardModel(properties) {
     return group;
 }
 
-// Removed erroneous closing brace that was here
+
 
 // TODO: Add factory functions for other desert objects/enemies in Phase 2
 

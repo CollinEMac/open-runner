@@ -59,7 +59,7 @@ export async function loadLevel(levelId) { // levelId is now a string
             // For now, log error and continue. The lack of assets will likely cause issues later.
         }
 
-        // TODO: Trigger scene setup/reset here (e.g., camera position, lighting specific resets beyond AssetManager)
+        // Scene setup/reset is handled by Game._updateSceneAppearance() after level loading
 
         return true;
 
