@@ -307,37 +307,6 @@ export class ChunkManager {
         return nearbyMeshes;
     }
 
-    /**
-     * Gets all currently active (visible) collectible meshes (e.g., coins) across loaded chunks.
-     * @returns {THREE.Mesh[]} An array of active collectible meshes.
-     */
-    getActiveCollectibleMeshes() {
-        const activeMeshes = [];
-        for (const chunkData of this.loadedChunks.values()) {
-            // Use the pre-filtered list of collectible meshes for efficiency
-            if (chunkData.collectibles) {
-                activeMeshes.push(...chunkData.collectibles);
-            }
-        }
-        // // console.log(`[DEBUG] Found ${activeMeshes.length} active collectible meshes.`);
-        return activeMeshes;
-    }
-
-     /**
-     * Gets all currently active (visible) collidable meshes (e.g., obstacles) across loaded chunks.
-     * @returns {THREE.Mesh[]} An array of active collidable meshes.
-     */
-    getActiveCollidableMeshes() {
-        const activeMeshes = [];
-        for (const chunkData of this.loadedChunks.values()) {
-            // Use the pre-filtered list of collidable meshes for efficiency
-            if (chunkData.collidables) {
-                activeMeshes.push(...chunkData.collidables);
-            }
-        }
-        // // console.log(`[DEBUG] Found ${activeMeshes.length} active collidable meshes.`);
-        return activeMeshes;
-    }
 
 
     /**
