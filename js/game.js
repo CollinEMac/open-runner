@@ -163,7 +163,6 @@ class Game {
              if (this.levelManager.getCurrentLevelId() === 'level1' && this.score >= 300 && this.gameStateManager.getCurrentState() === GameStates.PLAYING) {
                  this.eventBus.emit('requestLevelTransition', 'level2');
                  console.log("[Game] Requesting level transition to level2");
-                 this._triggerLevelTransition('level2');
              }
         });
 
@@ -181,6 +180,11 @@ class Game {
                 // Re-initialize drift when entering title state
                 this._initializeCameraDrift();
             }
+        });
+
+        this.eventBus.subscribe('requestLevelTransition', (levelId) => {
+            console.log(`[Game] Received requestLevelTransition event for: ${levelId}`);
+            this._loadLevel(levelId);
         });
 
         console.log("[Game] Event subscriptions set up.");
