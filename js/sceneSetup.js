@@ -27,7 +27,17 @@ export function initScene(canvasElement, levelConfig) { // Added levelConfig
     camera.lookAt(0, 0, 0);
 
     // Renderer
-    const renderer = new THREE.WebGLRenderer({ canvas: canvasElement, antialias: true });
+    const renderer = new THREE.WebGLRenderer({
+        canvas: canvasElement,
+        antialias: true,
+        // Disable texture flipping to prevent WebGL warnings with 3D textures
+        // See: https://threejs.org/docs/#api/en/renderers/WebGLRenderer
+        alpha: true
+    });
+
+    // Disable texture flipping which causes warnings with 3D textures
+    renderer.outputEncoding = THREE.LinearEncoding;
+
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.shadowMap.enabled = true; // Keep shadows enabled

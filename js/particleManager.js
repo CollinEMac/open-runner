@@ -28,7 +28,11 @@ function createParticleTexture() {
     context.fillStyle = gradient;
     context.fillRect(0, 0, canvas.width, canvas.height);
 
-    return new THREE.CanvasTexture(canvas);
+    // Create texture with specific settings to avoid WebGL warnings
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.flipY = false; // Prevent FLIP_Y warning with 3D textures
+    texture.premultiplyAlpha = false; // Prevent PREMULTIPLY_ALPHA warning
+    return texture;
 }
 
 export class ParticleManager {
