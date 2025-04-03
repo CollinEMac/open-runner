@@ -1,11 +1,59 @@
 // js/audioManager.js
 import * as UIManager from './uiManager.js'; // Import UI Manager for error display
+import eventBus from './eventBus.js';
+import { GameStates } from './gameStateManager.js';
 
 let audioContext = null;
 let masterGain = null; // Master gain node for overall volume control
 
 /**
- * Initializes the Web Audio API AudioContext.
+ * Sets up the event listeners for the AudioManager.
+ * Assumes audioContext is initialized.
+ */
+function setupEventListeners() {
+    if (!audioContext) return;
+
+    console.log("[AudioManager] Setting up event listeners...");
+
+    // Listen for player death (collision)
+    eventBus.subscribe('playerDied', () => {
+        console.log("[AudioManager] Received playerDied event.");
+        playCollisionSound();
+    });
+
+    // Listen for game state changes (specifically for Game Over)
+    eventBus.subscribe('gameStateChanged', (newState) => {
+        if (newState === GameStates.GAME_OVER) {
+            console.log("[AudioManager] Received gameStateChanged to GAME_OVER event.");
+            playGameOverSound();
+        }
+        // Add other state-based sounds here if needed (e.g., music changes)
+    });
+
+    // Listen for score changes (coin collection)
+    eventBus.subscribe('scoreChanged', (scoreIncrement) => {
+        // Only play sound for positive score changes (collections)
+        if (scoreIncrement > 0) {
+             console.log("[AudioManager] Received scoreChanged event (positive).");
+             playCoinSound();
+        }
+    });
+
+    // Listen for generic UI button clicks
+    eventBus.subscribe('uiButtonClicked', () => {
+        console.log("[AudioManager] Received uiButtonClicked event.");
+        playButtonClickSound();
+    });
+
+    // Example: Listen for player turning (if event existed)
+    // eventBus.subscribe('playerTurned', playTurnSound);
+
+     console.log("[AudioManager] Event listeners set up.");
+}
+
+
+/**
+ * Initializes the Web Audio API AudioContext and sets up event listeners.
  * Must be called after a user interaction (e.g., button click).
  */
 export function initAudio() {
@@ -22,8 +70,17 @@ export function initAudio() {
 
         // Resume context if it starts suspended
         if (audioContext.state === 'suspended') {
-            audioContext.resume();
+            audioContext.resume().then(() => {
+                 console.log("AudioContext resumed successfully.");
+                 setupEventListeners(); // Setup listeners after context is ready
+            }).catch(e => {
+                 console.error("Failed to resume AudioContext:", e);
+                 UIManager.displayError(new Error('Failed to resume audio context. Audio might not work.'));
+            });
+        } else {
+             setupEventListeners(); // Setup listeners immediately if context is running
         }
+
     } catch (e) {
         // Display error to user if Web Audio fails
         UIManager.displayError(new Error('Web Audio API is not supported or failed to initialize. Game audio will be disabled.'));

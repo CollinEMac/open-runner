@@ -15,6 +15,9 @@ export const RENDER_DISTANCE_CHUNKS = 5; // Render distance in chunks
 export const TERRAIN_SEGMENTS_X = 50;
 export const TERRAIN_SEGMENTS_Y = 50;
 
+// --- Spatial Grid ---
+export const GRID_CELL_SIZE = 25; // Size of cells in the spatial grid for collision detection
+
 // --- Player ---
 export const PLAYER_SPEED = 15.0; // Initial units per second
 export const PLAYER_SPEED_INCREASE_RATE = 0.25; // Units per second, per second

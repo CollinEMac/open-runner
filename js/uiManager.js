@@ -1,4 +1,6 @@
 // js/uiManager.js
+import eventBus from './eventBus.js';
+import { GameStates } from './gameStateManager.js'; // Import states for comparison
 
 // --- Element References ---
 let scoreElement;
@@ -15,9 +17,80 @@ let resumeButtonElement;
 let restartButtonElement;
 let returnToTitleButtonElement;
 
+// --- Internal State ---
+let currentScore = 0; // Keep track internally for display
+
 /**
- * Initializes the UI Manager by getting references to DOM elements.
- * Must be called before other UI functions.
+ * Handles game state changes by updating UI visibility.
+ * @param {string} newState - The new game state (from GameStates).
+ */
+function handleGameStateChange(newState) {
+    console.log(`[UIManager] Handling state change: ${newState}`);
+    // Hide all major screen overlays by default, then show the correct one
+    if (titleScreenElement) titleScreenElement.style.display = 'none';
+    if (gameOverElement) gameOverElement.style.display = 'none';
+    if (loadingScreenElement) loadingScreenElement.style.display = 'none';
+    if (levelSelectScreenElement) levelSelectScreenElement.style.display = 'none';
+    if (pauseMenuElement) pauseMenuElement.style.display = 'none';
+    // Keep score display visibility separate (managed below)
+
+    switch (newState) {
+        case GameStates.LOADING:
+        case GameStates.LOADING_LEVEL:
+            showLoadingScreen(); // Show loading screen
+            if (scoreElement) scoreElement.style.display = 'none'; // Hide score
+            break;
+        case GameStates.TITLE:
+        case GameStates.TRANSITIONING_TO_TITLE: // Also show title screen during transition
+            showTitleScreen();
+            if (scoreElement) scoreElement.style.display = 'none'; // Hide score
+            break;
+        case GameStates.LEVEL_SELECT:
+            showLevelSelectScreen();
+            if (scoreElement) scoreElement.style.display = 'none'; // Hide score
+            break;
+        case GameStates.PLAYING:
+            showGameScreen(); // Shows score, ensures game over is hidden
+            break;
+        case GameStates.PAUSED:
+            showPauseMenu();
+            // Score is hidden by showPauseMenu
+            break;
+        case GameStates.GAME_OVER:
+            // Game over screen display (including score) is handled by the 'gameOverInfo' event listener
+            if (scoreElement) scoreElement.style.display = 'none'; // Hide score display
+            break;
+        case GameStates.LEVEL_TRANSITION:
+            // Often shows loading screen during transition
+            showLoadingScreen("Transitioning...");
+             if (scoreElement) scoreElement.style.display = 'none'; // Hide score
+            break;
+        default:
+            console.warn(`[UIManager] Unhandled game state for UI: ${newState}`);
+    }
+}
+
+/**
+ * Displays the game over screen with the final score.
+ * Triggered by the 'gameOverInfo' event.
+ * @param {number} finalScore - The player's final score.
+ */
+function showGameOverScreenWithScore(finalScore) {
+    // Update internal score just in case, though Game class is the source of truth
+    currentScore = finalScore;
+    if (gameOverElement) {
+        gameOverElement.innerHTML = `GAME OVER!<br>Final Score: ${finalScore}<br>(Press R to Restart)`;
+        gameOverElement.style.display = 'flex';
+    }
+    // Ensure other conflicting elements are hidden
+    if (scoreElement) scoreElement.style.display = 'none';
+    if (pauseMenuElement) pauseMenuElement.style.display = 'none';
+    if (titleScreenElement) titleScreenElement.style.display = 'none';
+}
+
+
+/**
+ * Initializes the UI Manager by getting references and setting up event listeners.
  * @returns {boolean} True if all essential elements were found, false otherwise.
  */
 export function initUIManager() {
@@ -40,18 +113,28 @@ export function initUIManager() {
         !scoreElement || !gameOverElement || !titleScreenElement || !startButtonElement ||
         !levelSelectScreenElement || !levelListElement || !pauseMenuElement ||
         !resumeButtonElement || !restartButtonElement || !returnToTitleButtonElement) {
-        // Use displayError for critical UI init failures
         displayError(new Error("One or more essential UI elements not found! Check HTML IDs."));
         return false;
     }
 
-    // Initial state setup (hide game elements, show loading)
-    if (scoreElement) scoreElement.style.display = 'none';
-    if (gameOverElement) gameOverElement.style.display = 'none';
-    if (titleScreenElement) titleScreenElement.style.display = 'none';
-    if (loadingScreenElement) loadingScreenElement.style.display = 'flex'; // Show loading initially
-    if (levelSelectScreenElement) levelSelectScreenElement.style.display = 'none';
-    if (pauseMenuElement) pauseMenuElement.style.display = 'none'; // Hide pause menu initially
+    // --- Setup Event Listeners ---
+    try {
+        eventBus.subscribe('scoreChanged', updateScore);
+        eventBus.subscribe('gameStateChanged', handleGameStateChange);
+        eventBus.subscribe('gameOverInfo', showGameOverScreenWithScore); // Listen for score info
+        console.log("[UIManager] Subscribed to events: scoreChanged, gameStateChanged, gameOverInfo");
+    } catch (e) {
+         console.error("[UIManager] Failed to subscribe to eventBus events:", e);
+         displayError(new Error("Failed to set up UI event listeners."));
+         return false; // Critical failure
+    }
+
+
+    // Initial state setup (handled by gameStateChanged event emission later)
+    // We can set a default safe state here before the first gameStateChanged event fires
+    handleGameStateChange(GameStates.LOADING); // Assume initial state is LOADING
+    updateScore(0); // Initialize score display to 0
+
     return true;
 }
 
@@ -66,7 +149,10 @@ export function updateLoadingProgress(loadedCount, totalCount) {
         progressBarElement.style.width = `${percentage}%`;
     }
     if (progressTextElement) {
-        progressTextElement.textContent = `Loading... ${percentage.toFixed(0)}%`;
+        // Avoid overwriting specific loading messages if percentage is 0
+        if (percentage > 0 || loadedCount === totalCount) {
+             progressTextElement.textContent = `Loading... ${percentage.toFixed(0)}%`;
+        }
     }
 }
 
@@ -106,28 +192,26 @@ export function hideTitleScreen() {
 /** Shows the main game UI elements (like score). */
 export function showGameScreen() {
     if (scoreElement) scoreElement.style.display = 'block';
-    if (gameOverElement) gameOverElement.style.display = 'none'; // Ensure game over is hidden
+    // Ensure conflicting overlays are hidden (handled by gameStateChanged)
 }
 
 /**
- * Shows the game over screen with the final score.
- * @param {number} finalScore - The player's final score.
+ * Updates the score display based on increments or resets.
+ * Triggered by 'scoreChanged' event.
+ * @param {number} scoreIncrement - The value change (positive for increment, negative for reset signal).
  */
-export function showGameOverScreen(finalScore) {
-    if (gameOverElement) {
-        gameOverElement.innerHTML = `GAME OVER!<br>Final Score: ${finalScore}<br>(Press R to Restart)`;
-        gameOverElement.style.display = 'flex';
+export function updateScore(scoreIncrement) {
+    if (scoreIncrement < 0) {
+        // Treat negative value as a signal to reset the score to 0
+        currentScore = 0;
+    } else {
+        // Otherwise, add the increment to the current score
+        currentScore += scoreIncrement;
     }
-     if (scoreElement) scoreElement.style.display = 'none'; // Hide score during game over
-}
 
-/**
- * Updates the score display.
- * @param {number} newScore - The new score to display.
- */
-export function updateScore(newScore) {
+    // Update the display element
     if (scoreElement) {
-        scoreElement.textContent = `Score: ${newScore}`;
+        scoreElement.textContent = `Score: ${currentScore}`;
     }
 }
 
@@ -142,11 +226,10 @@ export function setupStartButton(startGameCallback) {
         startButtonElement = document.getElementById('startButton'); // Re-fetch the cloned element
 
         startButtonElement.addEventListener('click', () => {
-             // Optionally play sound here if AudioManager is imported, or handle in main.js
+            // Sound etc. should be handled by the callback (e.g., in Game class)
             startGameCallback();
         });
     } else {
-        // Use displayError for critical UI setup failures
         displayError(new Error("Start button or callback missing for setup."));
     }
 }
@@ -169,7 +252,6 @@ export function hideLevelSelectScreen() {
  */
 export function populateLevelSelect(levels, selectLevelCallback) {
     if (!levelListElement || !selectLevelCallback) {
-        // Use displayError for critical UI setup failures
         displayError(new Error("Level list element or select callback missing."));
         return;
     }
@@ -183,7 +265,6 @@ export function populateLevelSelect(levels, selectLevelCallback) {
         button.textContent = level.name;
         button.onclick = () => selectLevelCallback(level.id);
         button.classList.add('level-select-button'); // Add class for styling
-        // Add styling class if needed: button.classList.add('level-select-button');
         listItem.appendChild(button);
         levelListElement.appendChild(listItem);
     });
@@ -196,7 +277,6 @@ export function showPauseMenu() {
         pauseMenuElement.style.display = 'flex';
         console.log("Pause menu element display set to flex");
     } else {
-        // Use displayError for critical UI state failures
         displayError(new Error("Pause menu element not found when trying to show it."));
     }
     if (scoreElement) scoreElement.style.display = 'none'; // Hide score during pause
@@ -209,10 +289,9 @@ export function hidePauseMenu() {
         pauseMenuElement.style.display = 'none';
         console.log("Pause menu element display set to none");
     } else {
-        // Use displayError for critical UI state failures
         displayError(new Error("Pause menu element not found when trying to hide it."));
     }
-    // We don't automatically show the score here as it depends on the state we're returning to
+    // Score visibility is handled by the gameStateChanged handler when returning to PLAYING state
 }
 
 /**
@@ -222,24 +301,25 @@ export function hidePauseMenu() {
  * @param {function} onReturnToTitle - Function to call when Return to Title button is clicked.
  */
 export function setupPauseMenuButtons(onResume, onRestart, onReturnToTitle) {
-    if (resumeButtonElement && onResume) {
-        // Clone and replace to avoid duplicate listeners
-        resumeButtonElement.replaceWith(resumeButtonElement.cloneNode(true));
-        resumeButtonElement = document.getElementById('resumeButton');
-        resumeButtonElement.addEventListener('click', onResume);
-    }
-    
-    if (restartButtonElement && onRestart) {
-        restartButtonElement.replaceWith(restartButtonElement.cloneNode(true));
-        restartButtonElement = document.getElementById('restartButton');
-        restartButtonElement.addEventListener('click', onRestart);
-    }
-    
-    if (returnToTitleButtonElement && onReturnToTitle) {
-        returnToTitleButtonElement.replaceWith(returnToTitleButtonElement.cloneNode(true));
-        returnToTitleButtonElement = document.getElementById('returnToTitleButton');
-        returnToTitleButtonElement.addEventListener('click', onReturnToTitle);
-    }
+    // Use helper to avoid repetition
+    const setupButton = (buttonElement, id, callback) => {
+        let element = buttonElement; // Use local variable
+        if (element && callback) {
+            element.replaceWith(element.cloneNode(true));
+            element = document.getElementById(id); // Re-fetch by ID
+            if (element) {
+                 element.addEventListener('click', callback);
+            } else {
+                 displayError(new Error(`Pause menu button #${id} not found after clone.`));
+            }
+            return element; // Return the potentially new element reference
+        }
+        return buttonElement; // Return original if no setup happened
+    };
+
+    resumeButtonElement = setupButton(resumeButtonElement, 'resumeButton', onResume);
+    restartButtonElement = setupButton(restartButtonElement, 'restartButton', onRestart);
+    returnToTitleButtonElement = setupButton(returnToTitleButtonElement, 'returnToTitleButton', onReturnToTitle);
 }
 
 /**
@@ -248,15 +328,27 @@ export function setupPauseMenuButtons(onResume, onRestart, onReturnToTitle) {
  */
 export function displayError(error) {
      console.error("Displaying error to user:", error);
-     const errorDiv = document.createElement('div');
-     errorDiv.style.position = 'absolute';
-     errorDiv.style.top = '10px';
-     errorDiv.style.left = '10px';
-     errorDiv.style.padding = '10px';
-     errorDiv.style.backgroundColor = 'rgba(255, 0, 0, 0.8)';
-     errorDiv.style.color = 'white';
-     errorDiv.style.fontFamily = 'monospace';
-     errorDiv.style.zIndex = '1000'; // Ensure it's on top
-     errorDiv.textContent = `Error: ${error.message}\nCheck console for details.`;
-     document.body.appendChild(errorDiv);
+     // Avoid creating multiple error divs if called repeatedly
+     let errorDiv = document.getElementById('runtimeErrorDisplay');
+     if (!errorDiv) {
+         errorDiv = document.createElement('div');
+         errorDiv.id = 'runtimeErrorDisplay'; // Give it an ID
+         errorDiv.style.position = 'fixed'; // Use fixed to stay in view
+         errorDiv.style.bottom = '10px';
+         errorDiv.style.left = '10px';
+         errorDiv.style.padding = '15px';
+         errorDiv.style.backgroundColor = 'rgba(200, 0, 0, 0.85)';
+         errorDiv.style.color = 'white';
+         errorDiv.style.fontFamily = 'monospace';
+         errorDiv.style.fontSize = '14px';
+         errorDiv.style.border = '1px solid darkred';
+         errorDiv.style.borderRadius = '5px';
+         errorDiv.style.zIndex = '1000'; // Ensure it's on top
+         errorDiv.style.maxWidth = '80%';
+         errorDiv.style.whiteSpace = 'pre-wrap'; // Allow wrapping
+         document.body.appendChild(errorDiv);
+     }
+     // Append new error message or replace content
+     errorDiv.textContent = `Error: ${error.message}\n(Check console for more details)`;
+     errorDiv.style.display = 'block'; // Ensure it's visible
 }

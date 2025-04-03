@@ -1,6 +1,7 @@
 // js/collisionManager.js
 import * as Config from './config.js';
 import { GameStates, getCurrentState } from './gameStateManager.js'; // Need state info
+import eventBus from './eventBus.js'; // Import the event bus
 
 // --- Collision Constants ---
 // Moved from main.js
@@ -39,21 +40,20 @@ const enemyCollisionSizes = {
 // --- Module State ---
 let _spatialGrid = null;
 let _chunkManager = null;
-let _scoreUpdater = null; // Function to update score in main.js
-let _gameOverHandler = null; // Function to trigger game over in main.js
+// let _scoreUpdater = null; // No longer needed, use eventBus
+// let _gameOverHandler = null; // No longer needed, use eventBus
 
 /**
  * Initializes the Collision Manager with necessary dependencies.
  * @param {SpatialGrid} spatialGridInstance
  * @param {ChunkManager} chunkManagerInstance
- * @param {function(number): void} scoreUpdateCallback - Function to call when score increases.
- * @param {function(): void} gameOverCallback - Function to call on game-ending collision.
+ * Removed scoreUpdateCallback and gameOverCallback, using eventBus instead.
  */
-export function initCollisionManager(spatialGridInstance, chunkManagerInstance, scoreUpdateCallback, gameOverCallback) {
+export function initCollisionManager(spatialGridInstance, chunkManagerInstance) {
     _spatialGrid = spatialGridInstance;
     _chunkManager = chunkManagerInstance;
-    _scoreUpdater = scoreUpdateCallback;
-    _gameOverHandler = gameOverCallback;
+    // _scoreUpdater = scoreUpdateCallback; // Removed
+    // _gameOverHandler = gameOverCallback; // Removed
 }
 
 /**
@@ -61,7 +61,8 @@ export function initCollisionManager(spatialGridInstance, chunkManagerInstance, 
  * @param {THREE.Vector3} playerPosition - The player's current position.
  */
 export function checkCollisions(playerPosition) {
-    if (getCurrentState() !== GameStates.PLAYING || !_spatialGrid || !_chunkManager || !_scoreUpdater || !_gameOverHandler) {
+    // Removed checks for callbacks, only check for core dependencies and game state
+    if (getCurrentState() !== GameStates.PLAYING || !_spatialGrid || !_chunkManager) {
         // Only check collisions during 'playing' state and if initialized
         return;
     }
@@ -89,9 +90,8 @@ export function checkCollisions(playerPosition) {
                 const collected = _chunkManager.collectObject(chunkKey, objectIndex);
 
                 if (collected) {
-                    if (_scoreUpdater) {
-                        _scoreUpdater(scoreValue || 0); // Update score via callback
-                    }
+                    // Emit score change event instead of calling callback
+                    eventBus.emit('scoreChanged', scoreValue || 0);
                     // console.log(`Collectible collected!`);
                     nearbyArray.splice(i, 1); // Remove from local array for this check
                 }
@@ -118,7 +118,7 @@ export function checkCollisions(playerPosition) {
                  const collisionThresholdSqTumbleweed = (playerCollisionRadius + tumbleweedRadius) ** 2;
                  if (distanceSq < collisionThresholdSqTumbleweed) {
                      console.log(`Collision detected with hazard: ${objectType}`);
-                     if (_gameOverHandler) _gameOverHandler();
+                     eventBus.emit('playerDied'); // Emit player death event
                      return; // Stop checking
                  }
             }
@@ -129,7 +129,7 @@ export function checkCollisions(playerPosition) {
 
                 if (distanceSq < collisionThresholdSqObstacle) {
                     // console.log(`Collision detected with obstacle: ${objectType}`);
-                    if (_gameOverHandler) _gameOverHandler(); // Trigger game over via callback
+                    eventBus.emit('playerDied'); // Emit player death event
                     return; // Stop checking
                 }
             }
@@ -153,7 +153,7 @@ export function checkCollisions(playerPosition) {
 
             if (distanceSq < collisionThresholdSqEnemy) {
                 // console.log(`Collision detected with enemy: ${enemyType}`);
-                 if (_gameOverHandler) _gameOverHandler(); // Trigger game over via callback
+                 eventBus.emit('playerDied'); // Emit player death event
                 return; // Stop checking
             }
         }
