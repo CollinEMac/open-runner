@@ -29,6 +29,7 @@ export function initPlayerController(raycasterInstance) {
  * @param {number} elapsedTime - Total time elapsed.
  * @param {ChunkManager} chunkManager - For terrain height checks.
  * @param {function} updateCameraFollowFunc - Function to update camera position based on player.
+ *                                          Pass null during camera transitions.
  */
 export function updatePlayer(playerObj, deltaTime, animationTime, chunkManager, updateCameraFollowFunc) {
     if (!playerObj || !playerObj.model || !_raycaster) {
@@ -129,10 +130,9 @@ export function updatePlayer(playerObj, deltaTime, animationTime, chunkManager, 
         }
     }
 
-    // 6. Camera Following (Call the passed-in function)
+    // 6. Camera Following (Call the passed-in function if provided)
+    // During camera transitions, updateCameraFollowFunc will be null intentionally
     if (updateCameraFollowFunc) {
         updateCameraFollowFunc(playerObj, deltaTime);
-    } else {
-        console.warn("updateCameraFollowFunc not provided to updatePlayer.");
     }
 }

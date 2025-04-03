@@ -244,9 +244,10 @@ class Game {
 
             if (this.player.model) {
                 // Update player and game elements
-                this.playerController.updatePlayer(this.player, deltaTime, this.playerAnimationTime, this.chunkManager,
-                    // Only use normal camera follow if not in transition
-                    this.isCameraTransitioning ? null : this.updateCameraFollow.bind(this));
+                // During camera transitions, we intentionally pass null for the camera follow function
+                // because the camera position is being controlled by the transition logic
+                const cameraFollowFunc = this.isCameraTransitioning ? null : this.updateCameraFollow.bind(this);
+                this.playerController.updatePlayer(this.player, deltaTime, this.playerAnimationTime, this.chunkManager, cameraFollowFunc);
 
                 // Handle camera transition if needed
                 if (this.isCameraTransitioning) {
