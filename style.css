@@ -79,11 +79,6 @@ html, body {
     background-color: #45a049; /* Darker green */
 }
 
-.keyboard-hint {
-    font-size: 0.9em;
-    color: rgba(255, 255, 255, 0.7);
-    margin-top: 10px;
-}
 
 #gameOverDisplay {
     /* Inherits base styles from .ui-overlay */
