@@ -7,8 +7,10 @@ import * as AssetManager from './assetManager.js'; // Import AssetManager
 
 /**
  * Generates data for all placeable objects (coins, obstacles) for a specific chunk.
+ * Objects will not be placed too close to the player's spawn point (0, 10, 5).
  * @param {number} chunkX - The X coordinate of the chunk.
  * @param {number} chunkZ - The Z coordinate of the chunk.
+ * @param {Object} levelConfig - The level configuration containing object types and properties.
  * @returns {Array<Object>} An array of object data objects.
  * Each object contains: { position, type, scale, rotationY, collected, collidable, scoreValue, mesh }
  */
@@ -20,6 +22,10 @@ export function generateObjectsForChunk(chunkX, chunkZ, levelConfig) { // Added 
     const chunkOffsetX = chunkX * GlobalConfig.CHUNK_SIZE; // Use GlobalConfig
     const chunkOffsetZ = chunkZ * GlobalConfig.CHUNK_SIZE; // Use GlobalConfig
     const chunkArea = GlobalConfig.CHUNK_SIZE * GlobalConfig.CHUNK_SIZE; // Use GlobalConfig
+
+    // Define player spawn point (hardcoded based on game.js)
+    const playerSpawnPoint = new THREE.Vector3(0, 10, 5);
+    const playerSpawnSafeRadiusSq = GlobalConfig.PLAYER_SPAWN_SAFE_RADIUS * GlobalConfig.PLAYER_SPAWN_SAFE_RADIUS;
 
     // --- Generate Non-Enemy Objects ---
     // Iterate through each defined NON-ENEMY object type
@@ -70,6 +76,16 @@ export function generateObjectsForChunk(chunkX, chunkZ, levelConfig) { // Added 
                 if (tooClose) {
                     // // console.log(`[DEBUG] ${type} placement attempt ${attempt + 1} too close at [${worldX.toFixed(1)}, ${worldZ.toFixed(1)}]. Retrying...`);
                     continue; // Try a new random position
+                }
+
+                // Check if too close to player spawn point
+                const dx = worldX - playerSpawnPoint.x;
+                const dz = worldZ - playerSpawnPoint.z;
+                const distanceToSpawnSq = dx * dx + dz * dz;
+
+                if (distanceToSpawnSq < playerSpawnSafeRadiusSq) {
+                    // Too close to player spawn point, try another position
+                    continue;
                 }
 
                 // If placement is valid, calculate height, scale, rotation and add
@@ -158,6 +174,16 @@ export function generateObjectsForChunk(chunkX, chunkZ, levelConfig) { // Added 
             if (tooClose) {
                 // // console.log(`[DEBUG] Enemy placement attempt ${attempt + 1} too close at [${worldX.toFixed(1)}, ${worldZ.toFixed(1)}]. Retrying...`);
                 continue; // Try a new random position
+            }
+
+            // Check if too close to player spawn point
+            const dx = worldX - playerSpawnPoint.x;
+            const dz = worldZ - playerSpawnPoint.z;
+            const distanceToSpawnSq = dx * dx + dz * dz;
+
+            if (distanceToSpawnSq < playerSpawnSafeRadiusSq) {
+                // Too close to player spawn point, try another position
+                continue;
             }
 
             // --- Position is valid for *an* enemy ---
@@ -378,7 +404,7 @@ export function disposeObjectVisual(objectData, scene, spatialGrid, levelConfig)
     }
 
 
-    // --- Resource Disposal --- 
+    // --- Resource Disposal ---
     // Dispose geometry ONLY if it's not a shared asset.
     if (objectData.type === 'tree_pine' && mesh instanceof THREE.Group) {
         // Tree is a group with unique geometries for trunk/foliage
@@ -396,30 +422,30 @@ export function disposeObjectVisual(objectData, scene, spatialGrid, levelConfig)
     // --- Old commented-out generic disposal logic (kept for reference) ---
     // // Dispose geometry ONLY if it's not a shared asset (e.g., custom geometry)
     // // Currently, all geometries are shared via AssetManager, so we DON'T dispose them here.
-    // // if (mesh.geometry && !isSharedGeometry(mesh.geometry)) { 
+    // // if (mesh.geometry && !isSharedGeometry(mesh.geometry)) {
     // //     mesh.geometry.dispose();
     // // }
-    // 
+    //
     // // Dispose material ONLY if it's not a shared asset.
     // // Currently, all materials are shared via AssetManager, so we DON'T dispose them here.
-    // // if (mesh.material && !isSharedMaterial(mesh.material)) { 
+    // // if (mesh.material && !isSharedMaterial(mesh.material)) {
     // //     if (Array.isArray(mesh.material)) {
     // //         mesh.material.forEach(material => material.dispose());
     // //     } else {
     // //         mesh.material.dispose();
     // //     }
     // // }
-    // 
+    //
     // // If it's a Group (like the tree), recursively dispose children if needed?
     // // For now, assuming AssetManager handles disposal of complex objects if required.
 
-    // --- Resource Disposal --- 
+    // --- Resource Disposal ---
 
     // Dispose geometry ONLY if it's not a shared asset (e.g., custom geometry)
 
     // Currently, all geometries are shared via AssetManager, so we DON'T dispose them here.
 
-    // if (mesh.geometry && !isSharedGeometry(mesh.geometry)) { 
+    // if (mesh.geometry && !isSharedGeometry(mesh.geometry)) {
 
     //     mesh.geometry.dispose();
 
@@ -431,7 +457,7 @@ export function disposeObjectVisual(objectData, scene, spatialGrid, levelConfig)
 
     // Currently, all materials are shared via AssetManager, so we DON'T dispose them here.
 
-    // if (mesh.material && !isSharedMaterial(mesh.material)) { 
+    // if (mesh.material && !isSharedMaterial(mesh.material)) {
 
     //     if (Array.isArray(mesh.material)) {
 
@@ -453,6 +479,6 @@ export function disposeObjectVisual(objectData, scene, spatialGrid, levelConfig)
 
 
     // Clear the mesh reference in the original data
-    objectData.mesh = null; 
+    objectData.mesh = null;
 // // console.log(`[disposeObjectVisual] Disposed visual for ${objectData.type}`);
 }

@@ -29,7 +29,8 @@ const worldConfig = {
     SEED: 'open-runner-seed', // Fixed seed for consistent world generation
     CHUNK_SIZE: 100, // Width and depth of a single terrain chunk
     RENDER_DISTANCE_CHUNKS: 5, // Render distance in chunks
-    GRID_CELL_SIZE: 25 // Size of cells in the spatial grid for collision detection
+    GRID_CELL_SIZE: 25, // Size of cells in the spatial grid for collision detection
+    PLAYER_SPAWN_SAFE_RADIUS: 30 // Minimum distance objects can spawn from player's spawn point
 };
 
 // Terrain configuration
@@ -144,6 +145,7 @@ export const WORLD_SEED = WORLD.SEED;
 export const CHUNK_SIZE = WORLD.CHUNK_SIZE;
 export const RENDER_DISTANCE_CHUNKS = WORLD.RENDER_DISTANCE_CHUNKS;
 export const GRID_CELL_SIZE = WORLD.GRID_CELL_SIZE;
+export const PLAYER_SPAWN_SAFE_RADIUS = WORLD.PLAYER_SPAWN_SAFE_RADIUS;
 
 // Terrain
 export const TERRAIN_SEGMENTS_X = TERRAIN.SEGMENTS_X;
