@@ -61,6 +61,13 @@ class Game {
         this.atmosphericElements = [];
         this.isTransitioning = false;
 
+        // Camera transition properties
+        this.isCameraTransitioning = false;
+        this.cameraStartPosition = null;
+        this.cameraStartQuaternion = null;
+        this.cameraTransitionStartTime = 0;
+        this.cameraTransitionDuration = 1.0; // seconds
+
         // Title Screen Animation
         this.titleCameraDrift = null;
 
@@ -226,8 +233,17 @@ class Game {
             this.playerAnimationTime += deltaTime;
 
             if (this.player.model) {
-                 this.playerController.updatePlayer(this.player, deltaTime, this.playerAnimationTime, this.chunkManager, this.updateCameraFollow.bind(this));
+                // Update player and game elements
+                this.playerController.updatePlayer(this.player, deltaTime, this.playerAnimationTime, this.chunkManager,
+                    // Only use normal camera follow if not in transition
+                    this.isCameraTransitioning ? null : this.updateCameraFollow.bind(this));
+
+                // Handle camera transition if needed
+                if (this.isCameraTransitioning) {
+                    this._updateCameraTransition(deltaTime, elapsedTime);
+                }
             }
+
             if (this.chunkManager && this.player.model) {
                 this.chunkManager.update(this.player.model.position);
             }
@@ -247,8 +263,6 @@ class Game {
             this._updateTitleCamera(deltaTime);
         } else if (currentState === GameStates.TRANSITIONING_TO_TITLE) {
             this._transitionCameraToTitle(deltaTime);
-        } else if (currentState === GameStates.TRANSITIONING_TO_GAMEPLAY) {
-            this._transitionCameraToPlayer(deltaTime);
         }
 
         if (this.renderer && this.scene && this.camera) {
@@ -262,11 +276,17 @@ class Game {
         console.log(`[Game] Starting level: ${levelId}`);
         this.eventBus.emit('uiButtonClicked');
 
-        // Immediately set to transition state - no loading screen
-        this.gameStateManager.setGameState(GameStates.TRANSITIONING_TO_GAMEPLAY);
+        // Store the current camera position for smooth transition
+        this.cameraStartPosition = this.camera.position.clone();
+        this.cameraStartQuaternion = this.camera.quaternion.clone();
+        this.cameraTransitionStartTime = this.clock.getElapsedTime();
+        this.isCameraTransitioning = true;
 
-        // Load the level in the background while camera is transitioning
+        // Load the level silently in the background
         await this._loadLevel(levelId);
+
+        // Immediately set to PLAYING state - don't wait for camera
+        this.gameStateManager.setGameState(GameStates.PLAYING);
     }
 
     async _loadLevel(levelId) {
@@ -627,8 +647,8 @@ class Game {
         }
     }
 
-    // Transition camera to player for gameplay
-    _transitionCameraToPlayer(deltaTime) {
+    // Update camera transition during gameplay
+    _updateCameraTransition(deltaTime, elapsedTime) {
         if (!this.camera || !this.player || !this.player.model) return;
 
         // Get the player position
@@ -648,34 +668,49 @@ class Game {
 
         const targetCameraPosition = playerPosition.clone().add(rotatedOffset);
 
-        // Smoothly interpolate position towards the player
-        this.camera.position.lerp(targetCameraPosition, GAMEPLAY_TRANSITION_SPEED * deltaTime);
-
-        // Calculate the look-at position (same as in updateCameraFollow)
+        // Calculate the look-at position
         const lookAtPosition = playerPosition.clone();
         lookAtPosition.y += GlobalConfig.CAMERA_LOOK_AT_OFFSET_Y;
 
-        // Smoothly interpolate lookAt towards the player
-        const currentQuaternion = this.camera.quaternion.clone();
-        const targetRotationMatrix = new THREE.Matrix4();
-        targetRotationMatrix.lookAt(this.camera.position, lookAtPosition, this.camera.up);
-        const targetQuaternion = new THREE.Quaternion().setFromRotationMatrix(targetRotationMatrix);
+        // Calculate transition progress (0 to 1)
+        const timeElapsed = elapsedTime - this.cameraTransitionStartTime;
+        const progress = Math.min(timeElapsed / this.cameraTransitionDuration, 1.0);
 
-        // Slerp for smoother rotation
-        currentQuaternion.slerp(targetQuaternion, GAMEPLAY_TRANSITION_SPEED * deltaTime);
-        this.camera.quaternion.copy(currentQuaternion);
+        if (progress < 1.0) {
+            // Use smooth easing function
+            const easedProgress = this._easeInOutCubic(progress);
 
-        // Check if close enough to target position to switch state
-        if (this.camera.position.distanceToSquared(targetCameraPosition) < GAMEPLAY_TRANSITION_THRESHOLD_SQ) {
+            // Interpolate position
+            const newPosition = new THREE.Vector3().lerpVectors(
+                this.cameraStartPosition,
+                targetCameraPosition,
+                easedProgress
+            );
+            this.camera.position.copy(newPosition);
+
+            // Interpolate rotation
+            const targetRotationMatrix = new THREE.Matrix4();
+            targetRotationMatrix.lookAt(newPosition, lookAtPosition, this.camera.up);
+            const targetQuaternion = new THREE.Quaternion().setFromRotationMatrix(targetRotationMatrix);
+
+            this.camera.quaternion.slerpQuaternions(
+                this.cameraStartQuaternion,
+                targetQuaternion,
+                easedProgress
+            );
+        } else {
+            // Transition complete
             console.log("[Game] Camera transition to player complete.");
+            this.isCameraTransitioning = false;
 
-            // Snap to final position and orientation
-            this.camera.position.copy(targetCameraPosition);
-            this.camera.lookAt(lookAtPosition);
-
-            // Switch to playing state
-            this.gameStateManager.setGameState(GameStates.PLAYING);
+            // From now on, use normal camera follow
+            this.updateCameraFollow(this.player, deltaTime);
         }
+    }
+
+    // Easing function for smoother transitions
+    _easeInOutCubic(t) {
+        return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
     }
 
     // --- Camera Follow Logic ---
