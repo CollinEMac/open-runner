@@ -135,4 +135,5 @@ export function updatePlayer(playerObj, deltaTime, animationTime, chunkManager, 
     if (updateCameraFollowFunc) {
         updateCameraFollowFunc(playerObj, deltaTime);
     }
+    // No warning needed for null camera follow function during transitions
 }
