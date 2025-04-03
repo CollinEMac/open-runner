@@ -276,16 +276,19 @@ class Game {
         console.log(`[Game] Starting level: ${levelId}`);
         this.eventBus.emit('uiButtonClicked');
 
-        // Store the current camera position for smooth transition
+        // Keep the title screen visible while loading
+        // Don't change the game state yet
+
+        // Load the level silently in the background
+        await this._loadLevel(levelId);
+
+        // Now that the level is loaded, store camera position for transition
         this.cameraStartPosition = this.camera.position.clone();
         this.cameraStartQuaternion = this.camera.quaternion.clone();
         this.cameraTransitionStartTime = this.clock.getElapsedTime();
         this.isCameraTransitioning = true;
 
-        // Load the level silently in the background
-        await this._loadLevel(levelId);
-
-        // Immediately set to PLAYING state - don't wait for camera
+        // Set to PLAYING state after level is loaded
         this.gameStateManager.setGameState(GameStates.PLAYING);
     }
 
