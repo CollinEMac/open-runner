@@ -25,7 +25,7 @@ export const level2Config = {
     ENEMY_DEFAULT_SPEED: 5.0, // Keep defaults for now
     ENEMY_DEFAULT_AGGRO_RADIUS: 30.0,
     ENEMY_DEFAULT_DEAGGRO_RADIUS: 30.0,
-    ENEMY_SPAWN_DENSITY: 0.00015, // Overall density for desert enemies (adjust as needed)
+    ENEMY_SPAWN_DENSITY: 0.000225, // Overall density for desert enemies (adjust as needed)
     ENEMY_TYPES: ['coyote', 'rattlesnake', 'scorpion'], // Added desert enemies
     ENEMY_PROPERTIES: { // Define properties for desert enemies
         'coyote': {
@@ -44,7 +44,7 @@ export const level2Config = {
         'rattlesnake': {
             speed: 2.0, // Very slow when moving (mostly stationary)
             aggroRadius: 10.0, // Short range, maybe lunge?
-            deaggroRadius: 12.0,
+            deaggroRadius: 30.0,
             color: 0xCD853F, // Peru (brownish)
             minDistance: 5.0,
             verticalOffset: 0.05, // Close to ground
@@ -58,7 +58,7 @@ export const level2Config = {
         'scorpion': {
             speed: 4.0, // Slow but faster than snake
             aggroRadius: 8.0, // Very short range
-            deaggroRadius: 10.0,
+            deaggroRadius: 30.0,
             color: 0x444444, // Dark grey / black
             minDistance: 4.0,
             verticalOffset: 0.05,
@@ -81,7 +81,7 @@ export const level2Config = {
         // --- Coins (Keep definition for potential testing) ---
         {
             type: 'coin',
-            density: 0.00031, // Same density for now
+            density: 0.000465, // Same density for now
             minDistance: 3.0,
             verticalOffset: 1.5,
             scaleRange: [1, 1],
@@ -93,7 +93,7 @@ export const level2Config = {
         // --- Placeholder Obstacle ---
         {
             type: 'rock_desert', // Simple placeholder
-            density: 0.0002, // Some density
+            density: 0.0003, // Some density
             minDistance: 2.5,
             verticalOffset: 0.6,
             scaleRange: [1.0, 3.0],
@@ -105,7 +105,7 @@ export const level2Config = {
         // --- Desert Specific Obstacles ---
         {
             type: 'cactus_saguaro', // Tall cactus
-            density: 0.0001,
+            density: 0.00015,
             minDistance: 4.0,
             verticalOffset: 0,
             scaleRange: [2.0, 5.0], // Tall
@@ -116,7 +116,7 @@ export const level2Config = {
         },
         {
             type: 'cactus_barrel', // Short, round cactus
-            density: 0.00015,
+            density: 0.000225,
             minDistance: 2.0,
             verticalOffset: 0.3,
             scaleRange: [0.8, 1.8],
@@ -127,7 +127,7 @@ export const level2Config = {
         },
         {
             type: 'saloon', // Structure
-            density: 0.00001, // Rare
+            density: 0.000015, // Rare
             minDistance: 20.0,
             verticalOffset: 0,
             scaleRange: [1, 1], // Fixed size
@@ -138,7 +138,7 @@ export const level2Config = {
         },
         {
             type: 'railroad_sign',
-            density: 0.00005,
+            density: 0.000075,
             minDistance: 3.0,
             verticalOffset: 0,
             scaleRange: [1, 1],
@@ -149,7 +149,7 @@ export const level2Config = {
         },
         {
             type: 'skull', // Scatter detail
-            density: 0.0001,
+            density: 0.00015,
             minDistance: 1.5,
             verticalOffset: 0.1,
             scaleRange: [0.7, 1.5],
@@ -160,7 +160,7 @@ export const level2Config = {
         },
         {
             type: 'dried_bush',
-            density: 0.00025,
+            density: 0.000375,
             minDistance: 1.8,
             verticalOffset: 0.2,
             scaleRange: [0.9, 2.2],
@@ -171,7 +171,7 @@ export const level2Config = {
         },
         {
             type: 'wagon_wheel',
-            density: 0.00008,
+            density: 0.00012,
             minDistance: 2.5,
             verticalOffset: 0.1,
             scaleRange: [1, 1],
@@ -182,7 +182,7 @@ export const level2Config = {
         },
         {
             type: 'mine_entrance', // Structure facade
-            density: 0.000015, // Rare
+            density: 0.0000225, // Rare
             minDistance: 15.0,
             verticalOffset: 0,
             scaleRange: [1, 1],
@@ -193,7 +193,7 @@ export const level2Config = {
         },
         {
             type: 'water_tower', // Structure
-            density: 0.000012, // Rare
+            density: 0.000018, // Rare
             minDistance: 18.0,
             verticalOffset: 0,
             scaleRange: [1, 1],
@@ -204,7 +204,7 @@ export const level2Config = {
         },
         {
             type: 'tumbleweed', // Hazard - initially static placement
-            density: 0.00012, // Density for initial placement
+            density: 0.00018, // Density for initial placement
             minDistance: 4.0,
             verticalOffset: 0.8, // Start slightly above ground
             scaleRange: [0.8, 1.5],

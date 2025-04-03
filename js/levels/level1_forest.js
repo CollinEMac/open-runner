@@ -25,7 +25,7 @@ export const level1Config = {
     ENEMY_DEFAULT_SPEED: 5.0,
     ENEMY_DEFAULT_AGGRO_RADIUS: 30.0,
     ENEMY_DEFAULT_DEAGGRO_RADIUS: 30.0,
-    ENEMY_SPAWN_DENSITY: 0.000125, // Overall density for any enemy type
+    ENEMY_SPAWN_DENSITY: 0.0001875, // Overall density for any enemy type
 
     // --- Enemy Roaming ---
     ENEMY_ROAMING_RADIUS: 15.0,
@@ -70,7 +70,7 @@ export const level1Config = {
         // --- Coins ---
         {
             type: 'coin',
-            density: 0.00031,
+            density: 0.000465,
             minDistance: 3.0,
             verticalOffset: 1.5,
             scaleRange: [1, 1],
@@ -82,7 +82,7 @@ export const level1Config = {
         // --- Obstacles ---
         {
             type: 'rock_small',
-            density: 0.00019,
+            density: 0.000285,
             minDistance: 2.0,
             verticalOffset: 0.5,
             scaleRange: [0.8, 2.4],
@@ -93,7 +93,7 @@ export const level1Config = {
         },
         {
             type: 'rock_large',
-            density: 0.000063,
+            density: 0.0000945,
             minDistance: 5.0,
             verticalOffset: 1.0,
             scaleRange: [1.5, 4.5],
@@ -104,7 +104,7 @@ export const level1Config = {
         },
         {
             type: 'tree_pine',
-            density: 0.00025,
+            density: 0.000375,
             minDistance: 4.0,
             verticalOffset: 0,
             scaleRange: [1.5, 3.0],
@@ -115,7 +115,7 @@ export const level1Config = {
         },
         {
             type: 'log_fallen',
-            density: 0.000126,
+            density: 0.000189,
             minDistance: 5.0,
             verticalOffset: 0.2,
             scaleRange: [0.8, 3.5],
@@ -126,7 +126,7 @@ export const level1Config = {
         },
         {
             type: 'cabin_simple',
-            density: 0.0000063,
+            density: 0.00000945,
             minDistance: 15.0,
             verticalOffset: 0,
             scaleRange: [1, 1],
