@@ -4,6 +4,7 @@ import * as UIManager from './uiManager.js'; // Import UI Manager for error disp
 // Removed duplicate import of THREE
 import { createTerrainChunk } from './terrainGenerator.js';
 import { generateObjectsForChunk, createObjectVisual, disposeObjectVisual } from './objectGenerator.js'; // Import visual creator and disposer
+import Tumbleweed from './gameObjects/Tumbleweed.js'; // Import Tumbleweed GameObject
 import { EnemyManager } from './enemyManager.js'; // Import EnemyManager
 import * as AudioManager from './audioManager.js';
 import * as AssetManager from './assetManager.js'; // Import AssetManager
@@ -168,6 +169,7 @@ export class ChunkManager {
             const collectibleMeshes = [];
             const collidableMeshes = []; // Only non-enemy collidables
             const enemies = []; // Store enemy instances for this chunk
+            const tumbleweeds = []; // Store tumbleweed instances
 
             // Create meshes/instances for all generated objects
             objectDataArray.forEach((objectData, index) => {
@@ -183,8 +185,33 @@ export class ChunkManager {
                          // Display error if enemy spawning fails
                          UIManager.displayError(new Error(`[ChunkManager] Failed to spawn enemy instance for type ${objectData.type} in chunk ${key}`));
                     }
+                } else if (objectData.type === 'tumbleweed' && objectData.isDynamic) {
+                    // Create a Tumbleweed GameObject instead of a simple mesh
+                    const tumbleweed = new Tumbleweed({
+                        position: objectData.position,
+                        scale: objectData.scale.x, // Use uniform scale
+                        scene: this.scene,
+                        levelConfig: this.levelConfig
+                    });
+
+                    // Add to scene and store references
+                    tumbleweed.object3D.userData.chunkKey = key;
+                    tumbleweed.object3D.userData.objectIndex = index;
+                    tumbleweed.object3D.userData.objectType = 'tumbleweed';
+                    tumbleweed.object3D.userData.gameObject = tumbleweed;
+                    tumbleweed.object3D.name = `tumbleweed_${key}_${index}`;
+
+                    // Store in tumbleweeds array
+                    tumbleweeds.push(tumbleweed);
+
+                    // Add to spatial grid for collision detection
+                    this.spatialGrid.add(tumbleweed.object3D);
+
+                    // Store reference in object data
+                    objectData.gameObject = tumbleweed;
+                    objectData.mesh = tumbleweed.object3D; // For compatibility with existing code
                 } else {
-                    // For non-enemies, delegate visual creation to objectGenerator
+                    // For non-enemies and non-tumbleweeds, delegate visual creation to objectGenerator
                     // Pass levelConfig to createObjectVisual
                     const mesh = createObjectVisual(objectData, this.levelConfig);
 
@@ -215,7 +242,8 @@ export class ChunkManager {
                 objects: objectDataArray, // Store raw data (includes enemy data with instance refs)
                 collectibles: collectibleMeshes, // Store active collectible meshes
                 collidables: collidableMeshes,   // Store active non-enemy collidable meshes
-                enemies: enemies                 // Store active enemy instances
+                enemies: enemies,                // Store active enemy instances
+                tumbleweeds: tumbleweeds         // Store active tumbleweed instances
             });
             // console.log(`[DEBUG] Chunk ${key}: Added terrain, ${collectibleMeshes.length} collectibles, ${collidableMeshes.length} obstacles, ${enemies.length} enemies.`);
 
@@ -273,6 +301,18 @@ export class ChunkManager {
                     unloadedEnemies++;
                 });
                 // console.log(`[DEBUG] Removed ${unloadedEnemies} enemies for chunk ${key}`);
+            }
+
+            // Unload Tumbleweeds
+            let unloadedTumbleweeds = 0;
+            if (chunkData.tumbleweeds) {
+                chunkData.tumbleweeds.forEach(tumbleweed => {
+                    // Remove from scene and spatial grid
+                    this.scene.remove(tumbleweed.object3D);
+                    this.spatialGrid.remove(tumbleweed.object3D);
+                    unloadedTumbleweeds++;
+                });
+                // console.log(`[DEBUG] Unloaded ${unloadedTumbleweeds} tumbleweeds from chunk ${key}.`);
             }
 
             // Clear local references (collectibles/collidables/enemies arrays are part of chunkData)
@@ -466,6 +506,27 @@ export class ChunkManager {
                     if (coinMesh && coinMesh.userData.objectType === 'coin') {
                         // Rotate the coin around its Y axis
                         coinMesh.rotation.y += spinSpeed * deltaTime;
+                    }
+                });
+            }
+        }
+    }
+
+    /**
+     * Updates all tumbleweeds in loaded chunks.
+     * @param {number} deltaTime - Time since last update in seconds.
+     * @param {number} elapsedTime - Total elapsed time in seconds.
+     * @param {THREE.Vector3} playerPosition - Current player position.
+     */
+    updateTumbleweeds(deltaTime, elapsedTime, playerPosition) {
+        // Iterate through all loaded chunks
+        for (const [key, chunkData] of this.loadedChunks.entries()) {
+            // Update all tumbleweeds in this chunk
+            if (chunkData.tumbleweeds && chunkData.tumbleweeds.length > 0) {
+                chunkData.tumbleweeds.forEach(tumbleweed => {
+                    if (tumbleweed) {
+                        // Update the tumbleweed GameObject
+                        tumbleweed.update(deltaTime, elapsedTime, playerPosition);
                     }
                 });
             }

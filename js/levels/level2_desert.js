@@ -215,16 +215,18 @@ export const level2Config = {
             maxPlacementAttempts: 18,
         },
         {
-            type: 'tumbleweed', // Hazard - initially static placement
-            density: 0.00018, // Density for initial placement
-            minDistance: 4.0,
+            type: 'tumbleweed', // Hazard - dynamic rolling hazard
+            density: 0.00025, // Increased density for more tumbleweeds
+            minDistance: 15.0, // Increased to spawn further from path
             verticalOffset: 0.8, // Start slightly above ground
             scaleRange: [0.8, 1.5],
             randomRotationY: true,
             collidable: true, // Will be handled by physics/collision
-            scoreValue: 0, // Or negative score?
-            maxPlacementAttempts: 10,
-            isHazard: true, // Custom flag for movement logic later
+            scoreValue: 0,
+            maxPlacementAttempts: 15,
+            isHazard: true,
+            spawnOffPath: true, // New flag to indicate spawning to sides of player path
+            spawnOffsetRange: [20, 50], // Range of distance to spawn from player path
         },
     ],
 

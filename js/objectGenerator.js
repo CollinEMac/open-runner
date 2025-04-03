@@ -52,13 +52,41 @@ export function generateObjectsForChunk(chunkX, chunkZ, levelConfig) { // Added 
         for (let i = 0; i < numObjects; i++) {
             let placed = false;
             for (let attempt = 0; attempt < maxPlacementAttempts; attempt++) {
-                // Generate random relative X/Z within the chunk boundaries
-                const relativeX = (rng() - 0.5) * GlobalConfig.CHUNK_SIZE; // Use GlobalConfig
-                const relativeZ = (rng() - 0.5) * GlobalConfig.CHUNK_SIZE; // Use GlobalConfig
+                // Special handling for tumbleweeds to spawn off to the sides of player path
+                let relativeX, relativeZ, worldX, worldZ;
 
-                // Calculate world coordinates
-                const worldX = relativeX + chunkOffsetX;
-                const worldZ = relativeZ + chunkOffsetZ;
+                if (type === 'tumbleweed' && objectType.spawnOffPath) {
+                    // For tumbleweeds, we want to spawn them off to the sides of the player's path
+                    // The player generally moves along the Z axis in the negative direction
+
+                    // Determine which side of the path to spawn on (left or right)
+                    const side = rng() > 0.5 ? 1 : -1;
+
+                    // Get the offset range from the object type
+                    const offsetRange = objectType.spawnOffsetRange || [20, 50];
+
+                    // Calculate a random offset from the path
+                    const offsetDistance = offsetRange[0] + rng() * (offsetRange[1] - offsetRange[0]);
+
+                    // Calculate position relative to chunk
+                    // X is perpendicular to path (left/right)
+                    // Z is along the path (forward/backward)
+                    relativeX = (rng() - 0.5) * GlobalConfig.CHUNK_SIZE * 0.5 + (side * offsetDistance);
+                    relativeZ = (rng() - 0.5) * GlobalConfig.CHUNK_SIZE;
+
+                    // Calculate world coordinates
+                    worldX = relativeX + chunkOffsetX;
+                    worldZ = relativeZ + chunkOffsetZ;
+                } else {
+                    // Standard object placement for non-tumbleweeds
+                    // Generate random relative X/Z within the chunk boundaries
+                    relativeX = (rng() - 0.5) * GlobalConfig.CHUNK_SIZE; // Use GlobalConfig
+                    relativeZ = (rng() - 0.5) * GlobalConfig.CHUNK_SIZE; // Use GlobalConfig
+
+                    // Calculate world coordinates
+                    worldX = relativeX + chunkOffsetX;
+                    worldZ = relativeZ + chunkOffsetZ;
+                }
 
                 // Check for overlap with *all* already placed objects in this chunk
                 let tooClose = false;
@@ -104,7 +132,8 @@ export function generateObjectsForChunk(chunkX, chunkZ, levelConfig) { // Added 
                 // Calculate random rotation
                 const objectRotationY = randomRotationY ? rng() * Math.PI * 2 : 0;
 
-                chunkObjectsData.push({
+                // Create the object data with common properties
+                const objectData = {
                     position: objectPos,
                     type: type,
                     scale: objectScale,
@@ -114,7 +143,21 @@ export function generateObjectsForChunk(chunkX, chunkZ, levelConfig) { // Added 
                     scoreValue: scoreValue,
                     minDistance: minDistance, // Store minDistance for later checks
                     mesh: null // Mesh will be created by chunkManager
-                });
+                };
+
+                // Add special properties for tumbleweeds
+                if (type === 'tumbleweed') {
+                    objectData.isHazard = objectType.isHazard || false;
+                    objectData.isDynamic = true; // Flag for dynamic behavior
+
+                    // If it was spawned off path, add a property to indicate which side
+                    if (objectType.spawnOffPath) {
+                        // Determine which side of the path it's on (positive X is right, negative X is left)
+                        objectData.spawnSide = objectPos.x > chunkOffsetX ? 'right' : 'left';
+                    }
+                }
+
+                chunkObjectsData.push(objectData);
                 // // console.log(`[DEBUG] Placed ${type} ${placedCount + 1}/${numObjects} at [${objectPos.x.toFixed(1)}, ${objectPos.y.toFixed(1)}, ${objectPos.z.toFixed(1)}]`);
                 placed = true;
                 placedCount++;
