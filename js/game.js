@@ -300,13 +300,24 @@ class Game {
         this.cameraStartPosition = this.camera.position.clone();
         this.cameraStartQuaternion = this.camera.quaternion.clone();
 
-        // 3. Load the level into the gameplay scene (not the title scene)
+        // 3. Create new managers for the gameplay scene
         const originalScene = this.scene;
-        this.scene = this.gameplayScene; // Temporarily set gameplay scene as main scene for loading
+        const originalChunkManager = this.chunkManager;
+        const originalEnemyManager = this.enemyManager;
+        const originalParticleManager = this.particleManager;
 
+        // Create new managers for the gameplay scene
+        this.scene = this.gameplayScene; // Temporarily set gameplay scene as main scene
+        this.chunkManager = new ChunkManager(this.gameplayScene, this.enemyManager, this.spatialGrid, this.currentLevelConfig);
+        this.enemyManager = new EnemyManager(this.gameplayScene, this.spatialGrid);
+        this.particleManager = new ParticleManager(this.gameplayScene);
+        this.levelManager.setManagers(this.chunkManager, this.enemyManager);
+
+        // Load the level with the new managers
         await this._loadLevel(levelId);
 
-        // 4. Restore the original scene
+        // 4. Keep the new managers for gameplay, but restore the original scene for now
+        // We'll switch to the gameplay scene during transition
         this.scene = originalScene;
 
         // 5. Render one frame of the gameplay scene to ensure it's ready
