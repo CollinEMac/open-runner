@@ -446,5 +446,30 @@ export class ChunkManager {
         }
         console.log("[ChunkManager] All chunks cleared.");
     }
+
+    /**
+     * Updates all coins in loaded chunks to make them spin.
+     * @param {number} deltaTime - Time since last update in seconds.
+     * @param {number} elapsedTime - Total elapsed time in seconds.
+     */
+    updateCoins(deltaTime, elapsedTime) {
+        if (!this.levelConfig || !this.levelConfig.COIN_VISUALS) return;
+
+        // Get the spin speed from level config
+        const spinSpeed = this.levelConfig.COIN_VISUALS.spinSpeed || 1.0;
+
+        // Iterate through all loaded chunks
+        for (const [key, chunkData] of this.loadedChunks.entries()) {
+            // Update all collectible coins in this chunk
+            if (chunkData.collectibles && chunkData.collectibles.length > 0) {
+                chunkData.collectibles.forEach(coinMesh => {
+                    if (coinMesh && coinMesh.userData.objectType === 'coin') {
+                        // Rotate the coin around its Y axis
+                        coinMesh.rotation.y += spinSpeed * deltaTime;
+                    }
+                });
+            }
+        }
+    }
 }
 

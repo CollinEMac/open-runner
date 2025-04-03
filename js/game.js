@@ -256,6 +256,8 @@ class Game {
 
             if (this.chunkManager && this.player.model) {
                 this.chunkManager.update(this.player.model.position);
+                // Update coins to make them spin
+                this.chunkManager.updateCoins(deltaTime, elapsedTime);
             }
             if (this.enemyManager && this.player.model) {
                 this.enemyManager.update(this.player.model.position, deltaTime, elapsedTime);
