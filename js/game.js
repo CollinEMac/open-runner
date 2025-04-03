@@ -23,8 +23,8 @@ const TITLE_TRANSITION_THRESHOLD_SQ = 0.1; // Squared distance threshold to swit
 const TITLE_LOOK_AT_TARGET = new THREE.Vector3(0, 0, 0); // Target for camera lookAt during title
 
 // Constants for gameplay camera transition
-const GAMEPLAY_TRANSITION_SPEED = 0.8; // Slower for smoother transition
-const GAMEPLAY_TRANSITION_THRESHOLD_SQ = 0.5; // Squared distance threshold to switch to PLAYING state
+const GAMEPLAY_TRANSITION_SPEED = 2.0; // Faster transition
+const GAMEPLAY_TRANSITION_THRESHOLD_SQ = 1.0; // Squared distance threshold to switch to PLAYING state
 
 class Game {
     constructor(canvasElement) {
@@ -262,12 +262,11 @@ class Game {
         console.log(`[Game] Starting level: ${levelId}`);
         this.eventBus.emit('uiButtonClicked');
 
-        // First load the level with a loading screen
-        this.gameStateManager.setGameState(GameStates.LOADING_LEVEL);
-        await this._loadLevel(levelId);
-
-        // Then transition the camera to the player
+        // Immediately set to transition state - no loading screen
         this.gameStateManager.setGameState(GameStates.TRANSITIONING_TO_GAMEPLAY);
+
+        // Load the level in the background while camera is transitioning
+        await this._loadLevel(levelId);
     }
 
     async _loadLevel(levelId) {
@@ -278,8 +277,8 @@ class Game {
         this.isTransitioning = true;
         console.log(`[Game] Loading level ${levelId}...`);
 
-        // 1. Set Loading State & Update UI
-        this.gameStateManager.setGameState(GameStates.LOADING_LEVEL);
+        // 1. Don't change the state - keep the current transition state
+        // Skip showing loading screen
 
         // 2. Unload Current Level Assets & State (if necessary)
         console.log("[Game] Unloading current level (if necessary)...");
@@ -340,9 +339,8 @@ class Game {
 
         // 9. Load Initial Chunks for New Level
         console.log("[Game] Loading initial chunks for new level...");
-        await this.chunkManager.loadInitialChunks((loaded, total) => {
-            this.uiManager.updateLoadingProgress(loaded, total);
-        });
+        // Load chunks silently without updating UI
+        await this.chunkManager.loadInitialChunks(() => {});
 
         // 10. Finalize Transition
         console.log(`[Game] Level ${levelId} loaded successfully.`);
