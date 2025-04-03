@@ -25,7 +25,9 @@ export const GameStates = Object.freeze({
     /** Actively loading next level assets/chunks */
     LOADING_LEVEL: 'loadingLevel',
     /** Smooth camera transition back to title */
-    TRANSITIONING_TO_TITLE: 'transitioningToTitle'
+    TRANSITIONING_TO_TITLE: 'transitioningToTitle',
+    /** Smooth camera transition to player before gameplay */
+    TRANSITIONING_TO_GAMEPLAY: 'transitioningToGameplay'
 });
 
 /**

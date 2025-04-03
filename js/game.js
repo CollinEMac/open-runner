@@ -17,10 +17,14 @@ import { initCollisionManager, checkCollisions as checkCollisionsController } fr
 import * as UIManager from './uiManager.js';
 import * as AssetManager from './assetManager.js';
 
-// Constants for camera transition
+// Constants for camera transitions
 const TITLE_TRANSITION_SPEED = 1.5; // Adjust for desired speed
 const TITLE_TRANSITION_THRESHOLD_SQ = 0.1; // Squared distance threshold to switch to TITLE state
 const TITLE_LOOK_AT_TARGET = new THREE.Vector3(0, 0, 0); // Target for camera lookAt during title
+
+// Constants for gameplay camera transition
+const GAMEPLAY_TRANSITION_SPEED = 1.0; // Adjust for desired speed
+const GAMEPLAY_TRANSITION_THRESHOLD_SQ = 1.0; // Squared distance threshold to switch to PLAYING state
 
 class Game {
     constructor(canvasElement) {
@@ -242,7 +246,9 @@ class Game {
             // Use the same camera drift for both title and level select screens
             this._updateTitleCamera(deltaTime);
         } else if (currentState === GameStates.TRANSITIONING_TO_TITLE) {
-            this._transitionCameraToTitle(deltaTime); // Added call
+            this._transitionCameraToTitle(deltaTime);
+        } else if (currentState === GameStates.TRANSITIONING_TO_GAMEPLAY) {
+            this._transitionCameraToPlayer(deltaTime);
         }
 
         if (this.renderer && this.scene && this.camera) {
@@ -255,6 +261,10 @@ class Game {
     async startGame(levelId) {
         console.log(`[Game] Starting level: ${levelId}`);
         this.eventBus.emit('uiButtonClicked');
+
+        // Set the state to transitioning to gameplay
+        this.gameStateManager.setGameState(GameStates.TRANSITIONING_TO_GAMEPLAY);
+
         await this._loadLevel(levelId);
     }
 
@@ -334,7 +344,13 @@ class Game {
 
         // 10. Finalize Transition
         console.log(`[Game] Level ${levelId} loaded successfully.`);
-        this.gameStateManager.setGameState(GameStates.PLAYING);
+
+        // Only set to PLAYING state if we're not in the TRANSITIONING_TO_GAMEPLAY state
+        // Otherwise, let the camera transition complete first
+        if (this.gameStateManager.getCurrentState() !== GameStates.TRANSITIONING_TO_GAMEPLAY) {
+            this.gameStateManager.setGameState(GameStates.PLAYING);
+        }
+
         this.isTransitioning = false;
     }
 
@@ -581,6 +597,7 @@ class Game {
     }
 
     // --- Camera Transition Logic ---
+    // Transition camera back to title screen
     _transitionCameraToTitle(deltaTime) {
         if (!this.camera) return;
 
@@ -613,6 +630,56 @@ class Game {
         }
     }
 
+    // Transition camera to player for gameplay
+    _transitionCameraToPlayer(deltaTime) {
+        if (!this.camera || !this.player || !this.player.model) return;
+
+        // Get the player position
+        const playerModel = this.player.model;
+        const playerPosition = new THREE.Vector3();
+        playerModel.getWorldPosition(playerPosition);
+
+        // Calculate the target camera position (same as in updateCameraFollow)
+        const cameraOffset = new THREE.Vector3(
+            GlobalConfig.CAMERA_FOLLOW_OFFSET_X,
+            GlobalConfig.CAMERA_FOLLOW_OFFSET_Y,
+            GlobalConfig.CAMERA_FOLLOW_OFFSET_Z
+        );
+
+        const rotatedOffset = cameraOffset.clone();
+        rotatedOffset.applyQuaternion(playerModel.quaternion);
+
+        const targetCameraPosition = playerPosition.clone().add(rotatedOffset);
+
+        // Smoothly interpolate position towards the player
+        this.camera.position.lerp(targetCameraPosition, GAMEPLAY_TRANSITION_SPEED * deltaTime);
+
+        // Calculate the look-at position (same as in updateCameraFollow)
+        const lookAtPosition = playerPosition.clone();
+        lookAtPosition.y += GlobalConfig.CAMERA_LOOK_AT_OFFSET_Y;
+
+        // Smoothly interpolate lookAt towards the player
+        const currentQuaternion = this.camera.quaternion.clone();
+        const targetRotationMatrix = new THREE.Matrix4();
+        targetRotationMatrix.lookAt(this.camera.position, lookAtPosition, this.camera.up);
+        const targetQuaternion = new THREE.Quaternion().setFromRotationMatrix(targetRotationMatrix);
+
+        // Slerp for smoother rotation
+        currentQuaternion.slerp(targetQuaternion, GAMEPLAY_TRANSITION_SPEED * deltaTime);
+        this.camera.quaternion.copy(currentQuaternion);
+
+        // Check if close enough to target position to switch state
+        if (this.camera.position.distanceToSquared(targetCameraPosition) < GAMEPLAY_TRANSITION_THRESHOLD_SQ) {
+            console.log("[Game] Camera transition to player complete.");
+
+            // Snap to final position and orientation
+            this.camera.position.copy(targetCameraPosition);
+            this.camera.lookAt(lookAtPosition);
+
+            // Switch to playing state
+            this.gameStateManager.setGameState(GameStates.PLAYING);
+        }
+    }
 
     // --- Camera Follow Logic ---
     updateCameraFollow(playerObj, deltaTime) {

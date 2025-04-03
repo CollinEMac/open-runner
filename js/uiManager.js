@@ -60,6 +60,11 @@ function handleGameStateChange(newState) {
         case GameStates.PLAYING:
             showGameScreen(); // Shows score, ensures game over is hidden
             break;
+        case GameStates.TRANSITIONING_TO_GAMEPLAY:
+            // Show loading screen during transition to gameplay
+            showLoadingScreen("Starting game...");
+            if (scoreElement) scoreElement.style.display = 'none'; // Hide score
+            break;
         case GameStates.PAUSED:
             showPauseMenu();
             // Score is hidden by showPauseMenu
