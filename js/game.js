@@ -23,8 +23,8 @@ const TITLE_TRANSITION_THRESHOLD_SQ = 0.1; // Squared distance threshold to swit
 const TITLE_LOOK_AT_TARGET = new THREE.Vector3(0, 0, 0); // Target for camera lookAt during title
 
 // Constants for gameplay camera transition
-const GAMEPLAY_TRANSITION_SPEED = 1.0; // Adjust for desired speed
-const GAMEPLAY_TRANSITION_THRESHOLD_SQ = 1.0; // Squared distance threshold to switch to PLAYING state
+const GAMEPLAY_TRANSITION_SPEED = 0.8; // Slower for smoother transition
+const GAMEPLAY_TRANSITION_THRESHOLD_SQ = 0.5; // Squared distance threshold to switch to PLAYING state
 
 class Game {
     constructor(canvasElement) {
@@ -262,10 +262,12 @@ class Game {
         console.log(`[Game] Starting level: ${levelId}`);
         this.eventBus.emit('uiButtonClicked');
 
-        // Set the state to transitioning to gameplay
-        this.gameStateManager.setGameState(GameStates.TRANSITIONING_TO_GAMEPLAY);
-
+        // First load the level with a loading screen
+        this.gameStateManager.setGameState(GameStates.LOADING_LEVEL);
         await this._loadLevel(levelId);
+
+        // Then transition the camera to the player
+        this.gameStateManager.setGameState(GameStates.TRANSITIONING_TO_GAMEPLAY);
     }
 
     async _loadLevel(levelId) {
@@ -345,11 +347,8 @@ class Game {
         // 10. Finalize Transition
         console.log(`[Game] Level ${levelId} loaded successfully.`);
 
-        // Only set to PLAYING state if we're not in the TRANSITIONING_TO_GAMEPLAY state
-        // Otherwise, let the camera transition complete first
-        if (this.gameStateManager.getCurrentState() !== GameStates.TRANSITIONING_TO_GAMEPLAY) {
-            this.gameStateManager.setGameState(GameStates.PLAYING);
-        }
+        // Don't change the state here - let the calling function handle state changes
+        // This allows for proper sequencing of loading and camera transitions
 
         this.isTransitioning = false;
     }

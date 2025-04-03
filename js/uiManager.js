@@ -61,9 +61,9 @@ function handleGameStateChange(newState) {
             showGameScreen(); // Shows score, ensures game over is hidden
             break;
         case GameStates.TRANSITIONING_TO_GAMEPLAY:
-            // Show loading screen during transition to gameplay
-            showLoadingScreen("Starting game...");
-            if (scoreElement) scoreElement.style.display = 'none'; // Hide score
+            // Keep UI clean during camera transition to gameplay
+            // Hide all UI elements during the transition
+            if (scoreElement) scoreElement.style.display = 'none';
             break;
         case GameStates.PAUSED:
             showPauseMenu();
