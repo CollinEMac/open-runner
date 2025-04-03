@@ -5,7 +5,7 @@ import { ChunkManager } from './chunkManager.js';
 import { EnemyManager } from './enemyManager.js';
 import { SpatialGrid } from './spatialGrid.js';
 import { ParticleManager } from './particleManager.js';
-import { setupPlayerControls } from './controlsSetup.js';
+import { setupPlayerControls, initInputStateManager, resetInputStates } from './controlsSetup.js';
 import { createPlayerCharacter } from './playerCharacter.js';
 import * as GlobalConfig from './config.js';
 import * as AudioManager from './audioManager.js';
@@ -142,6 +142,7 @@ class Game {
 
         // --- Setup Controls ---
         setupPlayerControls(this.renderer.domElement);
+        initInputStateManager(); // Initialize input state manager to handle input resets
 
         // --- Initialize Audio ---
         this.audioManager.initAudio();
@@ -516,6 +517,9 @@ class Game {
 
     pauseGame() {
         if (this.gameStateManager.getCurrentState() === GameStates.PLAYING) {
+            // Reset input states when pausing to prevent inputs from persisting
+            resetInputStates();
+
             this.gameStateManager.setGameState(GameStates.PAUSED);
             console.log("[Game] Paused.");
         }
@@ -523,6 +527,10 @@ class Game {
 
     resumeGame() {
         if (this.gameStateManager.getCurrentState() === GameStates.PAUSED) {
+            // Reset input states directly for immediate effect
+            // This is in addition to the event-based reset for extra safety
+            resetInputStates();
+
             this.eventBus.emit('uiButtonClicked');
             this.gameStateManager.setGameState(GameStates.PLAYING);
             console.log("[Game] Resumed.");

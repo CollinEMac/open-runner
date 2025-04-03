@@ -2,6 +2,7 @@
 // import { OrbitControls } from 'three/addons/controls/OrbitControls.js'; // Removed OrbitControls
 import { GameStates, getCurrentState, setGameState } from './gameStateManager.js';
 import * as UIManager from './uiManager.js';
+import eventBus from './eventBus.js';
 
 // --- State Variables ---
 // Variables to track keyboard steering keys
@@ -13,7 +14,18 @@ export let mouseLeftPressed = false;
 export let mouseRightPressed = false;
 
 // --- Reset Functions ---
-// Note: Key states are reset by keyup events, no explicit reset function needed here
+/**
+ * Resets all input state variables to their default (unpressed) state.
+ * This is important when transitioning between game states to prevent
+ * inputs from persisting across state changes (e.g., when pausing/resuming).
+ */
+export function resetInputStates() {
+    console.log("[Controls] Resetting all input states");
+    keyLeftPressed = false;
+    keyRightPressed = false;
+    mouseLeftPressed = false;
+    mouseRightPressed = false;
+}
 
 // Store event listener references
 let keydownListener = null;
@@ -53,7 +65,7 @@ export function setupPlayerControls(canvasElement) {
                 break;
         }
     };
-    
+
     document.addEventListener('keydown', keydownListener);
 
     keyupListener = (event) => {
@@ -68,7 +80,7 @@ export function setupPlayerControls(canvasElement) {
                 break;
         }
     };
-    
+
     document.addEventListener('keyup', keyupListener);
 
     // --- Mouse Listeners for Steering ---
@@ -83,7 +95,7 @@ export function setupPlayerControls(canvasElement) {
                 break;
         }
     };
-    
+
     canvasElement.addEventListener('mousedown', mousedownListener);
 
     mouseupListener = (event) => {
@@ -96,16 +108,33 @@ export function setupPlayerControls(canvasElement) {
                 break;
         }
     };
-    
+
     canvasElement.addEventListener('mouseup', mouseupListener);
 
     // Prevent context menu on the canvas (important for RMB steering)
     contextmenuListener = (event) => {
         event.preventDefault();
     };
-    
+
     canvasElement.addEventListener('contextmenu', contextmenuListener);
 
 }
 
 // Removed setupOrbitControls function
+
+/**
+ * Initialize event listeners for game state changes to handle input resets.
+ * This should be called once during game initialization.
+ */
+export function initInputStateManager() {
+    // Subscribe to game state changes to reset inputs when pausing/resuming
+    eventBus.subscribe('gameStateChanged', (newState, previousState) => {
+        // Reset input states when entering or exiting the PAUSED state
+        if (newState === GameStates.PAUSED ||
+            (previousState === GameStates.PAUSED && newState === GameStates.PLAYING)) {
+            resetInputStates();
+        }
+    });
+
+    console.log("[Controls] Input state manager initialized");
+}
