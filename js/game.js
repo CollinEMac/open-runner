@@ -232,7 +232,8 @@ class Game {
             }
             this._updateAtmosphericElements(deltaTime, elapsedTime);
 
-        } else if (currentState === GameStates.TITLE) {
+        } else if (currentState === GameStates.TITLE || currentState === GameStates.LEVEL_SELECT) {
+            // Use the same camera drift for both title and level select screens
             this._updateTitleCamera(deltaTime);
         } else if (currentState === GameStates.TRANSITIONING_TO_TITLE) {
             this._transitionCameraToTitle(deltaTime); // Added call
