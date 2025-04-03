@@ -1,3 +1,37 @@
+/* --- Variables --- */
+:root {
+    /* Colors */
+    --primary-color: #4CAF50;
+    --primary-dark: #388E3C;
+    --primary-light: #81C784;
+    --accent-color: #FF9800;
+    --accent-dark: #F57C00;
+    --accent-light: #FFB74D;
+    --danger-color: #f44336;
+    --danger-dark: #d32f2f;
+    --text-light: #FFFFFF;
+    --text-dark: #212121;
+    --text-muted: #757575;
+    --overlay-bg: rgba(0, 0, 0, 0.75);
+    --card-bg: rgba(33, 33, 33, 0.85);
+    --score-bg: rgba(0, 0, 0, 0.6);
+    --progress-bg: #424242;
+
+    /* Fonts */
+    --title-font: 'Orbitron', sans-serif;
+    --body-font: 'Exo 2', sans-serif;
+
+    /* Shadows */
+    --text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+    --box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    --button-shadow: 0 3px 5px rgba(0, 0, 0, 0.2);
+
+    /* Transitions */
+    --transition-fast: 0.2s ease;
+    --transition-normal: 0.3s ease;
+    --transition-slow: 0.5s ease;
+}
+
 /* Basic reset */
 * {
     margin: 0;
@@ -9,6 +43,8 @@ html, body {
     width: 100%;
     height: 100%;
     overflow: hidden; /* Prevent scrollbars */
+    font-family: var(--body-font);
+    color: var(--text-light);
 }
 
 #gameCanvas {
@@ -19,15 +55,21 @@ html, body {
 
 #scoreDisplay {
     position: absolute; /* Position relative to the viewport */
-    top: 10px;          /* 10px from the top */
-    left: 10px;         /* 10px from the left */
-    padding: 8px 12px;
-    background-color: rgba(255, 255, 255, 0.7); /* Semi-transparent white background */
-    color: #333;        /* Dark text color */
-    font-family: Arial, sans-serif;
-    font-size: 16px;
-    border-radius: 4px;
+    top: 15px;          /* 15px from the top */
+    left: 15px;         /* 15px from the left */
+    padding: 10px 15px;
+    background-color: var(--score-bg); /* Semi-transparent dark background */
+    color: var(--text-light);        /* Light text color */
+    font-family: var(--body-font);
+    font-size: 18px;
+    font-weight: 600;
+    border-radius: 8px;
     z-index: 10;        /* Ensure it's above the canvas */
+    box-shadow: var(--box-shadow);
+    border-left: 3px solid var(--primary-color);
+    letter-spacing: 0.5px;
+    text-shadow: var(--text-shadow);
+    transition: transform var(--transition-fast);
 }
 
 /* --- UI Overlays --- */
@@ -41,42 +83,88 @@ html, body {
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    background-color: rgba(0, 0, 0, 0.7); /* Semi-transparent black background */
-    color: white;
-    font-family: 'Arial', sans-serif;
+    background-color: var(--overlay-bg); /* Semi-transparent black background */
+    color: var(--text-light);
+    font-family: var(--body-font);
     text-align: center;
     z-index: 20; /* Higher than score display */
     display: none; /* Hidden by default, controlled by JS */
+    backdrop-filter: blur(3px); /* Blur background for modern browsers */
+    transition: opacity var(--transition-normal);
 }
 
 #titleScreen h1 {
-    font-size: 3em;
-    margin-bottom: 20px;
+    font-size: 4em;
+    margin-bottom: 30px;
+    font-family: var(--title-font);
+    font-weight: 700;
+    color: var(--text-light);
+    text-shadow: var(--text-shadow), 0 0 15px var(--primary-light);
+    letter-spacing: 2px;
+    transform: scale(1);
+    transition: transform var(--transition-normal);
+}
+
+#titleScreen h1:hover {
+    transform: scale(1.05);
 }
 
 .title-buttons {
     display: flex;
     flex-direction: column;
-    gap: 15px;
-    margin-bottom: 20px;
+    gap: 18px;
+    margin-bottom: 30px;
+    width: 250px;
 }
 
 #titleScreen button,
 #gameOverDisplay button { /* Style restart button if added later */
-    padding: 10px 20px;
+    padding: 12px 24px;
     font-size: 1.2em;
+    font-weight: 600;
     cursor: pointer;
-    background-color: #4CAF50; /* Green */
-    color: white;
+    background: linear-gradient(to bottom, var(--primary-light), var(--primary-color));
+    color: var(--text-light);
     border: none;
-    border-radius: 5px;
-    transition: background-color 0.3s ease;
-    min-width: 200px;
+    border-radius: 8px;
+    transition: all var(--transition-normal);
+    min-width: 220px;
+    box-shadow: var(--button-shadow);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    position: relative;
+    overflow: hidden;
+    font-family: var(--body-font);
+    letter-spacing: 0.5px;
+}
+
+#titleScreen button::after,
+#gameOverDisplay button::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s ease;
 }
 
 #titleScreen button:hover,
 #gameOverDisplay button:hover {
-    background-color: #45a049; /* Darker green */
+    background: linear-gradient(to bottom, var(--primary-color), var(--primary-dark));
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+}
+
+#titleScreen button:hover::after,
+#gameOverDisplay button:hover::after {
+    left: 100%;
+}
+
+#titleScreen button:active,
+#gameOverDisplay button:active {
+    transform: translateY(1px);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
 }
 
 
@@ -85,9 +173,26 @@ html, body {
     font-size: 2em;
 }
 
+#gameOverDisplay h2 {
+    font-family: var(--title-font);
+    font-size: 3em;
+    margin-bottom: 20px;
+    color: var(--danger-color);
+    text-shadow: var(--text-shadow), 0 0 10px rgba(244, 67, 54, 0.5);
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
 #gameOverDisplay p { /* For potential multi-line messages */
-    margin-bottom: 15px;
-    line-height: 1.4;
+    margin-bottom: 20px;
+    line-height: 1.5;
+    max-width: 600px;
+    font-size: 0.7em;
 }
 
 /* --- Pause Menu Styles --- */
@@ -96,35 +201,61 @@ html, body {
 }
 
 #pauseMenu h2 {
-    font-size: 2.5em;
+    font-family: var(--title-font);
+    font-size: 2.8em;
     margin-bottom: 30px;
+    color: var(--accent-color);
+    text-shadow: var(--text-shadow);
+    letter-spacing: 1px;
 }
 
 .menu-buttons {
     display: flex;
     flex-direction: column;
     gap: 15px;
-    width: 250px;
+    width: 280px;
 }
 
 .menu-buttons button {
-    padding: 12px 20px;
+    padding: 14px 20px;
     font-size: 1.1em;
+    font-weight: 600;
     cursor: pointer;
-    background-color: #4CAF50; /* Green */
-    color: white;
+    background: linear-gradient(to bottom, var(--primary-light), var(--primary-color));
+    color: var(--text-light);
     border: none;
-    border-radius: 5px;
-    transition: background-color 0.2s, transform 0.1s;
+    border-radius: 8px;
+    transition: all var(--transition-normal);
+    box-shadow: var(--button-shadow);
+    position: relative;
+    overflow: hidden;
+    font-family: var(--body-font);
+}
+
+.menu-buttons button::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s ease;
 }
 
 .menu-buttons button:hover {
-    background-color: #45a049; /* Darker green */
-    transform: scale(1.05);
+    background: linear-gradient(to bottom, var(--primary-color), var(--primary-dark));
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+}
+
+.menu-buttons button:hover::after {
+    left: 100%;
 }
 
 .menu-buttons button:active {
-    transform: scale(0.98);
+    transform: translateY(1px);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
 }
 
 /* --- Loading Screen Styles --- */
@@ -135,34 +266,69 @@ html, body {
     z-index: 30; /* Highest z-index */
 }
 
+#loadingScreen::before {
+    content: 'OPEN RUNNER';
+    font-family: var(--title-font);
+    font-size: 3em;
+    font-weight: 700;
+    margin-bottom: 40px;
+    color: var(--text-light);
+    text-shadow: var(--text-shadow), 0 0 15px var(--primary-light);
+    letter-spacing: 2px;
+    animation: glow 2s infinite alternate;
+}
+
+@keyframes glow {
+    from { text-shadow: var(--text-shadow), 0 0 5px var(--primary-light); }
+    to { text-shadow: var(--text-shadow), 0 0 20px var(--primary-light), 0 0 30px var(--primary-color); }
+}
+
 #progressBarContainer {
-    width: 60%; /* Adjust width as needed */
-    max-width: 400px;
-    height: 20px;
-    background-color: #555; /* Dark background for the container */
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    margin-bottom: 15px; /* Space between bar and text */
+    width: 70%; /* Adjust width as needed */
+    max-width: 450px;
+    height: 24px;
+    background-color: var(--progress-bg); /* Dark background for the container */
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    margin-bottom: 20px; /* Space between bar and text */
     overflow: hidden; /* Ensure progress bar stays within bounds */
+    box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.5);
+    position: relative;
 }
 
 #progressBar {
     width: 0%; /* Start at 0% */
     height: 100%;
-    background-color: #4CAF50; /* Green progress color */
-    transition: width 0.1s linear; /* Smooth transition for width changes */
+    background: linear-gradient(to right, var(--primary-dark), var(--primary-color), var(--primary-light));
+    background-size: 200% 100%;
+    animation: gradientMove 2s linear infinite;
+    transition: width 0.2s ease-out; /* Smooth transition for width changes */
+    border-radius: 10px;
+    box-shadow: 0 0 10px var(--primary-light);
+}
+
+@keyframes gradientMove {
+    0% { background-position: 0% 0; }
+    100% { background-position: 200% 0; }
 }
 
 #progressText {
-    font-size: 1.1em;
-    color: #eee; /* Light text color */
+    font-size: 1.2em;
+    color: var(--text-light); /* Light text color */
+    font-family: var(--body-font);
+    letter-spacing: 0.5px;
+    text-shadow: var(--text-shadow);
 }
 
 
 /* --- Level Select Screen Styles --- */
 #levelSelectScreen h2 {
-    font-size: 2.5em; /* Match pause menu heading */
+    font-family: var(--title-font);
+    font-size: 2.8em; /* Match pause menu heading */
     margin-bottom: 30px;
+    color: var(--accent-color);
+    text-shadow: var(--text-shadow);
+    letter-spacing: 1px;
 }
 
 #levelList {
@@ -170,53 +336,159 @@ html, body {
     padding: 0; /* Remove default padding */
     display: flex;
     flex-direction: column;
-    gap: 15px; /* Match pause menu button gap */
-    width: 250px; /* Match pause menu button container width */
+    gap: 18px; /* Match pause menu button gap */
+    width: 350px; /* Wider for level buttons */
     align-items: center; /* Center buttons horizontally */
+    max-height: 60vh; /* Limit height */
+    overflow-y: auto; /* Add scrolling if many levels */
+    padding: 10px;
+    margin-bottom: 20px;
+}
+
+/* Scrollbar styling for level list */
+#levelList::-webkit-scrollbar {
+    width: 8px;
+}
+
+#levelList::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 10px;
+}
+
+#levelList::-webkit-scrollbar-thumb {
+    background: var(--primary-dark);
+    border-radius: 10px;
+}
+
+#levelList::-webkit-scrollbar-thumb:hover {
+    background: var(--primary-color);
 }
 
 .level-select-button {
-    /* Copy styles from .menu-buttons button */
-    padding: 12px 20px;
+    padding: 14px 20px;
     font-size: 1.1em;
+    font-weight: 600;
     cursor: pointer;
-    background-color: #4CAF50; /* Green */
-    color: white;
+    background: linear-gradient(to bottom, var(--primary-light), var(--primary-color));
+    color: var(--text-light);
     border: none;
-    border-radius: 5px;
-    transition: background-color 0.2s, transform 0.1s;
+    border-radius: 8px;
+    transition: all var(--transition-normal);
     width: 100%; /* Make buttons fill the container width */
     text-align: center;
+    box-shadow: var(--button-shadow);
+    position: relative;
+    overflow: hidden;
+    font-family: var(--body-font);
+}
+
+.level-select-button::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s ease;
 }
 
 .level-select-button:hover {
-    /* Copy styles from .menu-buttons button:hover */
-    background-color: #45a049; /* Darker green */
-    transform: scale(1.05);
+    background: linear-gradient(to bottom, var(--primary-color), var(--primary-dark));
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+}
+
+.level-select-button:hover::after {
+    left: 100%;
 }
 
 .level-select-button:active {
-    /* Copy styles from .menu-buttons button:active */
-    transform: scale(0.98);
+    transform: translateY(1px);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
 }
 
 .back-button {
     margin-top: 20px;
-    padding: 8px 16px;
+    padding: 10px 20px;
     font-size: 1em;
+    font-weight: 600;
     cursor: pointer;
-    background-color: #f44336; /* Red */
-    color: white;
+    background: linear-gradient(to bottom, var(--danger-color), var(--danger-dark));
+    color: var(--text-light);
     border: none;
-    border-radius: 5px;
-    transition: background-color 0.2s, transform 0.1s;
+    border-radius: 8px;
+    transition: all var(--transition-normal);
+    box-shadow: var(--button-shadow);
+    font-family: var(--body-font);
+    letter-spacing: 0.5px;
+    position: relative;
+    overflow: hidden;
+}
+
+.back-button::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s ease;
 }
 
 .back-button:hover {
-    background-color: #d32f2f; /* Darker red */
-    transform: scale(1.05);
+    background: linear-gradient(to bottom, #f55549, #c62828);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+}
+
+.back-button:hover::after {
+    left: 100%;
 }
 
 .back-button:active {
-    transform: scale(0.98);
+    transform: translateY(1px);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+/* Level button styles */
+.level-button {
+    background: linear-gradient(135deg, rgba(60, 60, 60, 0.7), rgba(30, 30, 30, 0.7));
+    border-radius: 10px;
+    padding: 15px 20px;
+    margin: 5px 0;
+    cursor: pointer;
+    transition: all var(--transition-normal);
+    width: 100%;
+    box-shadow: var(--box-shadow);
+    border-left: 4px solid var(--primary-color);
+    text-align: left;
+}
+
+.level-button:hover {
+    background: linear-gradient(135deg, rgba(70, 70, 70, 0.8), rgba(40, 40, 40, 0.8));
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+}
+
+.level-button.locked {
+    opacity: 0.7;
+    cursor: not-allowed;
+    border-left-color: var(--text-muted);
+    filter: grayscale(0.8);
+}
+
+.level-button h3 {
+    margin: 0 0 8px 0;
+    font-family: var(--title-font);
+    font-size: 1.3em;
+    color: var(--text-light);
+}
+
+.level-button p {
+    margin: 0;
+    font-size: 0.9em;
+    color: var(--text-muted);
+    font-family: var(--body-font);
 }

@@ -678,78 +678,97 @@ function addCustomStyles() {
     style.textContent = `
         .high-score {
             position: fixed;
-            top: 50px;
-            right: 20px;
+            top: 15px;
+            right: 15px;
             color: gold;
-            font-size: 24px;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+            font-size: 18px;
+            font-weight: 600;
+            font-family: var(--body-font);
+            text-shadow: var(--text-shadow);
+            background-color: var(--score-bg);
+            padding: 10px 15px;
+            border-radius: 8px;
+            box-shadow: var(--box-shadow);
+            border-right: 3px solid gold;
+            letter-spacing: 0.5px;
+            z-index: 10;
+            transition: transform var(--transition-fast);
         }
 
         .notification {
             position: fixed;
-            top: 100px;
+            top: 80px;
             left: 50%;
             transform: translateX(-50%);
-            background-color: rgba(0, 0, 0, 0.7);
-            color: white;
+            background: linear-gradient(135deg, rgba(40, 40, 40, 0.9), rgba(20, 20, 20, 0.9));
+            color: var(--text-light);
             padding: 15px 25px;
-            border-radius: 10px;
+            border-radius: 12px;
             font-size: 20px;
+            font-family: var(--body-font);
+            font-weight: 600;
             z-index: 1000;
             text-align: center;
+            box-shadow: var(--box-shadow);
+            backdrop-filter: blur(4px);
+            border-bottom: 3px solid var(--primary-color);
+            min-width: 300px;
+            max-width: 80%;
+            animation: slideDown 0.3s ease-out;
+        }
+
+        @keyframes slideDown {
+            from { transform: translateX(-50%) translateY(-20px); opacity: 0; }
+            to { transform: translateX(-50%) translateY(0); opacity: 1; }
         }
 
         .high-score-notification {
             color: gold;
             font-weight: bold;
+            border-bottom-color: gold;
         }
 
         .level-unlock-notification {
             color: #7cfc00;
             font-weight: bold;
+            border-bottom-color: #7cfc00;
         }
 
         .game-over-score, .game-over-high-score {
-            font-size: 24px;
-            margin: 10px 0;
+            font-size: 28px;
+            margin: 15px 0;
+            font-family: var(--body-font);
+            font-weight: 600;
+            text-shadow: var(--text-shadow);
+            background-color: rgba(0, 0, 0, 0.3);
+            padding: 10px 20px;
+            border-radius: 8px;
+            display: inline-block;
         }
 
         .game-over-high-score {
             color: gold;
+            border-left: 3px solid gold;
+        }
+
+        .game-over-score {
+            border-left: 3px solid var(--primary-color);
         }
 
         .game-over-instruction {
-            margin-top: 20px;
-            font-size: 18px;
-            opacity: 0.8;
+            margin-top: 30px;
+            font-size: 20px;
+            opacity: 0.9;
+            font-family: var(--body-font);
+            color: var(--text-light);
+            text-shadow: var(--text-shadow);
+            animation: pulse 2s infinite;
         }
 
-        .level-button {
-            background-color: rgba(255, 255, 255, 0.2);
-            border-radius: 10px;
-            padding: 15px;
-            margin: 10px 0;
-            cursor: pointer;
-            transition: background-color 0.3s;
-        }
-
-        .level-button:hover {
-            background-color: rgba(255, 255, 255, 0.3);
-        }
-
-        .level-button.locked {
-            opacity: 0.6;
-            cursor: not-allowed;
-        }
-
-        .level-button h3 {
-            margin: 0 0 10px 0;
-        }
-
-        .level-button p {
-            margin: 0;
-            font-size: 14px;
-            opacity: 0.8;
+        @keyframes pulse {
+            0% { opacity: 0.7; }
+            50% { opacity: 1; }
+            100% { opacity: 0.7; }
         }
     `;
     document.head.appendChild(style);

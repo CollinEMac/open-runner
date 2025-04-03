@@ -4,7 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Open Runner</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;600;700&family=Orbitron:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="favicon.ico" type="image/x-icon">
     <style>
         /* Basic styles directly in HTML for initial setup */
         body { margin: 0; overflow: hidden; }
@@ -35,7 +39,10 @@
 
     <canvas id="gameCanvas"></canvas>
     <div id="scoreDisplay">Score: 0</div>
-    <div id="gameOverDisplay" class="ui-overlay">GAME OVER!</div> <!-- Added Game Over Display -->
+    <div id="gameOverDisplay" class="ui-overlay">
+        <h2>GAME OVER!</h2>
+        <!-- Score elements will be added dynamically -->
+    </div> <!-- Game Over Display -->
 
     <!-- Pause Menu -->
     <div id="pauseMenu" class="ui-overlay" style="display: none;">
