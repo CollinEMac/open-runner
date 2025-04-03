@@ -10,11 +10,13 @@ let gameOverScoreElement;
 let gameOverHighScoreElement;
 let titleScreenElement;
 let startButtonElement;
+let levelSelectButtonElement;
 let loadingScreenElement;
 let progressBarElement;
 let progressTextElement;
 let levelSelectScreenElement;
 let levelListElement;
+let backToTitleButtonElement;
 let pauseMenuElement;
 let resumeButtonElement;
 let restartButtonElement;
@@ -153,6 +155,7 @@ export function initUIManager() {
     gameOverElement = document.getElementById('gameOverDisplay');
     titleScreenElement = document.getElementById('titleScreen');
     startButtonElement = document.getElementById('startButton');
+    levelSelectButtonElement = document.getElementById('levelSelectButton');
     loadingScreenElement = document.getElementById('loadingScreen');
     progressBarElement = document.getElementById('progressBar');
     progressTextElement = document.getElementById('progressText');
@@ -354,6 +357,25 @@ export function setupStartButton(startGameCallback) {
         });
     } else {
         displayError(new Error("Start button or callback missing for setup."));
+    }
+}
+
+/**
+ * Adds the click listener to the level select button.
+ * @param {function} showLevelSelectCallback - The function to call when the button is clicked.
+ */
+export function setupLevelSelectButton(showLevelSelectCallback) {
+    if (levelSelectButtonElement && showLevelSelectCallback) {
+        // Ensure listener isn't added multiple times if called again
+        levelSelectButtonElement.replaceWith(levelSelectButtonElement.cloneNode(true));
+        levelSelectButtonElement = document.getElementById('levelSelectButton'); // Re-fetch the cloned element
+
+        levelSelectButtonElement.addEventListener('click', () => {
+            eventBus.emit('uiButtonClicked');
+            showLevelSelectCallback();
+        });
+    } else {
+        console.warn("Level select button or callback missing for setup.");
     }
 }
 

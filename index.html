@@ -20,15 +20,18 @@
     </div>
     <div id="titleScreen" class="ui-overlay" style="display: none;"> <!-- Initially hidden -->
         <h1>Open Runner</h1>
-        <button id="startButton">Start Game</button>
+        <div class="title-buttons">
+            <button id="startButton">Start Game</button>
+            <button id="levelSelectButton">Level Select</button>
+        </div>
+        <p class="keyboard-hint">Press 'L' for level select</p>
     </div>
     <div id="levelSelectScreen" class="ui-overlay" style="display: none;">
         <h2>Select Level</h2>
         <ul id="levelList">
             <!-- Level buttons will be added here by uiManager.js -->
         </ul>
-        <!-- Optional: Add a back button -->
-        <!-- <button id="backToTitleButton">Back</button> -->
+        <button id="backToTitleButton" class="back-button">Back to Title</button>
     </div>
 
     <canvas id="gameCanvas"></canvas>

@@ -54,6 +54,13 @@ html, body {
     margin-bottom: 20px;
 }
 
+.title-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
 #titleScreen button,
 #gameOverDisplay button { /* Style restart button if added later */
     padding: 10px 20px;
@@ -64,11 +71,18 @@ html, body {
     border: none;
     border-radius: 5px;
     transition: background-color 0.3s ease;
+    min-width: 200px;
 }
 
 #titleScreen button:hover,
 #gameOverDisplay button:hover {
     background-color: #45a049; /* Darker green */
+}
+
+.keyboard-hint {
+    font-size: 0.9em;
+    color: rgba(255, 255, 255, 0.7);
+    margin-top: 10px;
 }
 
 #gameOverDisplay {
@@ -188,5 +202,26 @@ html, body {
 
 .level-select-button:active {
     /* Copy styles from .menu-buttons button:active */
+    transform: scale(0.98);
+}
+
+.back-button {
+    margin-top: 20px;
+    padding: 8px 16px;
+    font-size: 1em;
+    cursor: pointer;
+    background-color: #f44336; /* Red */
+    color: white;
+    border: none;
+    border-radius: 5px;
+    transition: background-color 0.2s, transform 0.1s;
+}
+
+.back-button:hover {
+    background-color: #d32f2f; /* Darker red */
+    transform: scale(1.05);
+}
+
+.back-button:active {
     transform: scale(0.98);
 }
