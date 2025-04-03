@@ -174,8 +174,8 @@ class Game {
 
         this.eventBus.subscribe('playerDied', () => this.handleGameOver());
 
-        this.eventBus.subscribe('gameStateChanged', (newState) => {
-            console.log(`[Game] Observed state changed to: ${newState}`);
+        this.eventBus.subscribe('gameStateChanged', (newState, previousState) => {
+            console.log(`[Game] Observed state changed to: ${newState} from ${previousState}`);
             if (newState === GameStates.PLAYING) {
                  this.playerAnimationTime = 0;
             }
@@ -183,8 +183,14 @@ class Game {
                 if (this.player.model && this.player.model.parent) {
                     this.player.model.parent.remove(this.player.model);
                 }
-                // Re-initialize drift when entering title state
-                this._initializeCameraDrift();
+
+                // Only re-initialize drift when NOT coming from level select
+                if (previousState !== GameStates.LEVEL_SELECT) {
+                    console.log("[Game] Re-initializing camera drift for title screen.");
+                    this._initializeCameraDrift();
+                } else {
+                    console.log("[Game] Preserving camera drift from level select.");
+                }
 
                 // Make sure level select is properly populated when entering title state
                 const availableLevels = this.levelManager.getAvailableLevels();
@@ -460,8 +466,17 @@ class Game {
              this.player.model.parent.remove(this.player.model);
          }
 
-         // Set state to trigger smooth transition in animate loop
-         this.gameStateManager.setGameState(GameStates.TRANSITIONING_TO_TITLE);
+         // Check if we're coming from the level select menu
+         const currentState = this.gameStateManager.getCurrentState();
+         if (currentState === GameStates.LEVEL_SELECT) {
+             // Skip camera transition if coming from level select menu
+             // This preserves the camera position and drift
+             console.log("[Game] Coming from level select, skipping camera transition.");
+             this.gameStateManager.setGameState(GameStates.TITLE);
+         } else {
+             // For other states, use the normal transition
+             this.gameStateManager.setGameState(GameStates.TRANSITIONING_TO_TITLE);
+         }
          // Camera reset/drift init happens when state actually becomes TITLE
 
          // Update available levels for level select
