@@ -282,13 +282,22 @@ class Game {
         // Load the level silently in the background
         await this._loadLevel(levelId);
 
-        // Now that the level is loaded, store camera position for transition
+        // Render a frame with both the title screen and the loaded level
+        // This ensures the level is fully rendered before we start the transition
+        if (this.renderer && this.scene && this.camera) {
+            this.renderer.render(this.scene, this.camera);
+        }
+
+        // Add a small delay to ensure everything is rendered
+        await new Promise(resolve => setTimeout(resolve, 50));
+
+        // Now that the level is loaded and rendered, store camera position for transition
         this.cameraStartPosition = this.camera.position.clone();
         this.cameraStartQuaternion = this.camera.quaternion.clone();
         this.cameraTransitionStartTime = this.clock.getElapsedTime();
         this.isCameraTransitioning = true;
 
-        // Set to PLAYING state after level is loaded
+        // Set to PLAYING state after level is loaded and rendered
         this.gameStateManager.setGameState(GameStates.PLAYING);
     }
 

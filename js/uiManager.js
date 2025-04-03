@@ -58,7 +58,21 @@ function handleGameStateChange(newState) {
             if (scoreElement) scoreElement.style.display = 'none'; // Hide score
             break;
         case GameStates.PLAYING:
-            showGameScreen(); // Shows score, ensures game over is hidden
+            // Fade out title screen and fade in game UI
+            if (titleScreenElement) {
+                // First make title screen transparent but still visible
+                // This allows the game to be seen behind it during transition
+                titleScreenElement.style.opacity = '0';
+                titleScreenElement.style.transition = 'opacity 0.5s';
+
+                // After transition, hide it completely
+                setTimeout(() => {
+                    titleScreenElement.style.display = 'none';
+                    showGameScreen(); // Shows score after title screen is gone
+                }, 500);
+            } else {
+                showGameScreen();
+            }
             break;
         case GameStates.TRANSITIONING_TO_GAMEPLAY:
             // Keep UI clean during camera transition to gameplay
@@ -290,7 +304,11 @@ export function showLoadingScreen(message = 'Loading...') {
 
 /** Shows the title screen overlay. */
 export function showTitleScreen() {
-    if (titleScreenElement) titleScreenElement.style.display = 'flex';
+    if (titleScreenElement) {
+        titleScreenElement.style.display = 'flex';
+        titleScreenElement.style.opacity = '1';
+        titleScreenElement.style.transition = 'opacity 0.5s';
+    }
 }
 
 /** Hides the title screen overlay. */
