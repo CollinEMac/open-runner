@@ -305,13 +305,18 @@ class Game {
         const originalChunkManager = this.chunkManager;
         const originalEnemyManager = this.enemyManager;
         const originalParticleManager = this.particleManager;
+        const originalSpatialGrid = this.spatialGrid;
 
-        // Create new managers for the gameplay scene
+        // Create new spatial grid and managers for the gameplay scene
         this.scene = this.gameplayScene; // Temporarily set gameplay scene as main scene
-        this.chunkManager = new ChunkManager(this.gameplayScene, this.enemyManager, this.spatialGrid, this.currentLevelConfig);
+        this.spatialGrid = new SpatialGrid(GlobalConfig.GRID_CELL_SIZE);
         this.enemyManager = new EnemyManager(this.gameplayScene, this.spatialGrid);
+        this.chunkManager = new ChunkManager(this.gameplayScene, this.enemyManager, this.spatialGrid, this.currentLevelConfig);
         this.particleManager = new ParticleManager(this.gameplayScene);
         this.levelManager.setManagers(this.chunkManager, this.enemyManager);
+
+        // Re-initialize collision manager with the new spatial grid
+        initCollisionManager(this.spatialGrid, this.chunkManager);
 
         // Load the level with the new managers
         await this._loadLevel(levelId);
