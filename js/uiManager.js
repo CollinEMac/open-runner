@@ -1,6 +1,6 @@
 // js/uiManager.js
 import eventBus from './eventBus.js';
-import { GameStates } from './gameStateManager.js'; // Import states for comparison
+import { GameStates, getPreviousState } from './gameStateManager.js'; // Import states and functions
 
 // --- Element References ---
 let scoreElement;
@@ -58,20 +58,31 @@ function handleGameStateChange(newState) {
             if (scoreElement) scoreElement.style.display = 'none'; // Hide score
             break;
         case GameStates.PLAYING:
-            // Fade out title screen and fade in game UI
-            if (titleScreenElement) {
-                // First make title screen transparent but still visible
-                // This allows the game to be seen behind it during transition
-                titleScreenElement.style.opacity = '0';
-                titleScreenElement.style.transition = 'opacity 0.5s';
-
-                // After transition, hide it completely
-                setTimeout(() => {
-                    titleScreenElement.style.display = 'none';
-                    showGameScreen(); // Shows score after title screen is gone
-                }, 500);
-            } else {
+            // Check if we're coming from the pause state to handle immediate UI display
+            const previousState = getPreviousState();
+            if (previousState === GameStates.PAUSED) {
+                // Coming from pause - show UI immediately
                 showGameScreen();
+                if (highScoreElement) highScoreElement.style.display = 'block';
+            } else {
+                // Normal transition (e.g., from title screen)
+                // Fade out title screen and fade in game UI
+                if (titleScreenElement) {
+                    // First make title screen transparent but still visible
+                    // This allows the game to be seen behind it during transition
+                    titleScreenElement.style.opacity = '0';
+                    titleScreenElement.style.transition = 'opacity 0.5s';
+
+                    // After transition, hide it completely
+                    setTimeout(() => {
+                        titleScreenElement.style.display = 'none';
+                        showGameScreen(); // Shows score after title screen is gone
+                        if (highScoreElement) highScoreElement.style.display = 'block';
+                    }, 500);
+                } else {
+                    showGameScreen();
+                    if (highScoreElement) highScoreElement.style.display = 'block';
+                }
             }
             break;
         case GameStates.TRANSITIONING_TO_GAMEPLAY:
@@ -309,6 +320,7 @@ export function showTitleScreen() {
         titleScreenElement.style.opacity = '1';
         titleScreenElement.style.transition = 'opacity 0.5s';
     }
+    if (highScoreElement) highScoreElement.style.display = 'none'; // Hide high score on title screen
 }
 
 /** Hides the title screen overlay. */
@@ -316,9 +328,10 @@ export function hideTitleScreen() {
      if (titleScreenElement) titleScreenElement.style.display = 'none';
 }
 
-/** Shows the main game UI elements (like score). */
+/** Shows the main game UI elements (like score and high score). */
 export function showGameScreen() {
     if (scoreElement) scoreElement.style.display = 'block';
+    if (highScoreElement) highScoreElement.style.display = 'block';
     // Ensure conflicting overlays are hidden (handled by gameStateChanged)
 }
 
@@ -469,6 +482,7 @@ export function showPauseMenu() {
         displayError(new Error("Pause menu element not found when trying to show it."));
     }
     if (scoreElement) scoreElement.style.display = 'none'; // Hide score during pause
+    if (highScoreElement) highScoreElement.style.display = 'none'; // Hide high score during pause
 }
 
 /** Hides the pause menu overlay. */
@@ -480,7 +494,9 @@ export function hidePauseMenu() {
     } else {
         displayError(new Error("Pause menu element not found when trying to hide it."));
     }
-    // Score visibility is handled by the gameStateChanged handler when returning to PLAYING state
+    // Immediately show score UI when hiding pause menu
+    if (scoreElement) scoreElement.style.display = 'block';
+    if (highScoreElement) highScoreElement.style.display = 'block';
 }
 
 /**
