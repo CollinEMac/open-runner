@@ -171,8 +171,9 @@ export class ChunkManager {
 
             // Create meshes/instances for all generated objects
             objectDataArray.forEach((objectData, index) => {
-                // Handle enemy spawning first
-                if (objectData.type === 'bear' || objectData.type === 'squirrel' || objectData.type === 'deer') {
+                // Check if the object type is defined as an enemy in the current level config
+                const enemyTypesForLevel = this.levelConfig?.ENEMY_TYPES || [];
+                if (enemyTypesForLevel.includes(objectData.type)) {
                     // Pass levelConfig to spawnEnemy
                     const enemyInstance = this.enemyManager.spawnEnemy(objectData.type, objectData, this, this.levelConfig);
                     if (enemyInstance) {
