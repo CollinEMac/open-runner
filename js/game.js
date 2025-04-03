@@ -34,11 +34,18 @@ class Game {
         this.canvas = canvasElement;
 
         // Core Three.js components
-        this.scene = null;
+        this.scene = null;           // Main scene (title screen)
+        this.gameplayScene = null;   // Gameplay scene (prepared in background)
+        this.activeScene = null;     // Currently active scene for rendering
         this.camera = null;
         this.renderer = null;
         this.clock = new THREE.Clock();
         this.initialCameraPosition = new THREE.Vector3();
+
+        // Scene transition properties
+        this.isSceneTransitioning = false;
+        this.sceneTransitionStartTime = 0;
+        this.sceneTransitionDuration = 1.0; // seconds
 
         // Managers
         this.assetManager = AssetManager;
@@ -102,6 +109,9 @@ class Game {
         this.camera = sceneComponents.camera;
         this.renderer = sceneComponents.renderer;
         this.initialCameraPosition.copy(this.camera.position); // Store initial position
+
+        // Set the title scene as the active scene
+        this.activeScene = this.scene;
 
         // --- Initialize Title Camera Drift ---
         this._initializeCameraDrift();
@@ -265,8 +275,14 @@ class Game {
             this._transitionCameraToTitle(deltaTime);
         }
 
-        if (this.renderer && this.scene && this.camera) {
-            this.renderer.render(this.scene, this.camera);
+        // Handle scene transition if needed
+        if (this.isSceneTransitioning) {
+            this._updateSceneTransition(deltaTime, elapsedTime);
+        }
+
+        // Render the active scene
+        if (this.renderer && this.activeScene && this.camera) {
+            this.renderer.render(this.activeScene, this.camera);
         }
     }
 
@@ -276,28 +292,36 @@ class Game {
         console.log(`[Game] Starting level: ${levelId}`);
         this.eventBus.emit('uiButtonClicked');
 
-        // Keep the title screen visible while loading
-        // Don't change the game state yet
+        // 1. Create a new scene for gameplay
+        const gameplaySceneComponents = initScene(this.canvas, this.currentLevelConfig);
+        this.gameplayScene = gameplaySceneComponents.scene;
 
-        // Load the level silently in the background
-        await this._loadLevel(levelId);
-
-        // Render a frame with both the title screen and the loaded level
-        // This ensures the level is fully rendered before we start the transition
-        if (this.renderer && this.scene && this.camera) {
-            this.renderer.render(this.scene, this.camera);
-        }
-
-        // Add a small delay to ensure everything is rendered
-        await new Promise(resolve => setTimeout(resolve, 50));
-
-        // Now that the level is loaded and rendered, store camera position for transition
+        // 2. Store the current camera position for the transition
         this.cameraStartPosition = this.camera.position.clone();
         this.cameraStartQuaternion = this.camera.quaternion.clone();
+
+        // 3. Load the level into the gameplay scene (not the title scene)
+        const originalScene = this.scene;
+        this.scene = this.gameplayScene; // Temporarily set gameplay scene as main scene for loading
+
+        await this._loadLevel(levelId);
+
+        // 4. Restore the original scene
+        this.scene = originalScene;
+
+        // 5. Render one frame of the gameplay scene to ensure it's ready
+        if (this.renderer && this.gameplayScene && this.camera) {
+            this.renderer.render(this.gameplayScene, this.camera);
+        }
+
+        // 6. Start the scene transition
+        this.activeScene = this.gameplayScene; // Switch to gameplay scene
+        this.sceneTransitionStartTime = this.clock.getElapsedTime();
+        this.isSceneTransitioning = true;
         this.cameraTransitionStartTime = this.clock.getElapsedTime();
         this.isCameraTransitioning = true;
 
-        // Set to PLAYING state after level is loaded and rendered
+        // 7. Set to PLAYING state
         this.gameStateManager.setGameState(GameStates.PLAYING);
     }
 
@@ -723,6 +747,30 @@ class Game {
     // Easing function for smoother transitions
     _easeInOutCubic(t) {
         return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    }
+
+    // Handle transition between scenes
+    _updateSceneTransition(deltaTime, elapsedTime) {
+        if (!this.gameplayScene || !this.scene) return;
+
+        // Calculate transition progress (0 to 1)
+        const timeElapsed = elapsedTime - this.sceneTransitionStartTime;
+        const progress = Math.min(timeElapsed / this.sceneTransitionDuration, 1.0);
+
+        if (progress < 1.0) {
+            // Use smooth easing function
+            const easedProgress = this._easeInOutCubic(progress);
+
+            // During transition, we're already rendering the gameplay scene
+            // The UI fade is handled separately in the UI manager
+
+            // Just update the camera position during this time
+            // (Camera transition is handled by _updateCameraTransition)
+        } else {
+            // Transition complete
+            console.log("[Game] Scene transition complete.");
+            this.isSceneTransitioning = false;
+        }
     }
 
     // --- Camera Follow Logic ---
