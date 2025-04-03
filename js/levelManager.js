@@ -48,15 +48,12 @@ export async function loadLevel(levelId) { // levelId is now a string
 
         currentLevelId = levelId;
         console.log(`[LevelManager] Successfully loaded configuration for level ${levelId}.`);
-        // Asset initialization is now triggered after config is confirmed loaded
-        if (currentLevelConfig) {
-            // Assuming AssetManager might become async later
-            await AssetManager.initLevelAssets(currentLevelConfig);
-            console.log("[LevelManager] Triggered AssetManager initialization.");
-        } else {
-            console.error("[LevelManager] Cannot initialize assets, config is null.");
-            // Should we return false here? The config load itself succeeded earlier.
-            // For now, log error and continue. The lack of assets will likely cause issues later.
+        // Asset initialization is now handled by Game.init() after level loading
+        if (!currentLevelConfig) {
+            console.error("[LevelManager] Cannot proceed, config is null.");
+            // The config load itself succeeded earlier, but the config object is null.
+            // This is a critical error that should be handled.
+            return false;
         }
 
         // Scene setup/reset is handled by Game._updateSceneAppearance() after level loading
