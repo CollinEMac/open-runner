@@ -379,6 +379,27 @@ export function setupLevelSelectButton(showLevelSelectCallback) {
     }
 }
 
+/**
+ * Adds the click listener to the back to title button in the level select screen.
+ * @param {function} returnToTitleCallback - The function to call when the button is clicked.
+ */
+export function setupBackToTitleButton(returnToTitleCallback) {
+    backToTitleButtonElement = document.getElementById('backToTitleButton');
+    if (backToTitleButtonElement && returnToTitleCallback) {
+        // Ensure listener isn't added multiple times if called again
+        backToTitleButtonElement.replaceWith(backToTitleButtonElement.cloneNode(true));
+        backToTitleButtonElement = document.getElementById('backToTitleButton'); // Re-fetch the cloned element
+
+        backToTitleButtonElement.addEventListener('click', () => {
+            eventBus.emit('uiButtonClicked');
+            returnToTitleCallback();
+        });
+        console.log("[UIManager] Back to title button setup complete");
+    } else {
+        console.warn("Back to title button or callback missing for setup.");
+    }
+}
+
 
 /** Shows the level select screen overlay. */
 export function showLevelSelectScreen() {

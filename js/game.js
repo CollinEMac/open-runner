@@ -135,7 +135,7 @@ class Game {
 
         // Setup UI Button Listeners
         this.uiManager.setupStartButton(() => this.startGame('level1'));
-        this.uiManager.setupLevelSelectButton(() => this.showLevelSelect());
+        this.uiManager.setupBackToTitleButton(() => this.returnToTitle());
         this.uiManager.setupPauseMenuButtons(
             () => this.resumeGame(),
             () => this.restartLevel(),
