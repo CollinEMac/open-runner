@@ -63,7 +63,6 @@ function handleGameStateChange(newState) {
             if (previousState === GameStates.PAUSED) {
                 // Coming from pause - show UI immediately
                 showGameScreen();
-                if (highScoreElement) highScoreElement.style.display = 'block';
             } else {
                 // Normal transition (e.g., from title screen)
                 // Fade out title screen and fade in game UI
@@ -71,17 +70,15 @@ function handleGameStateChange(newState) {
                     // First make title screen transparent but still visible
                     // This allows the game to be seen behind it during transition
                     titleScreenElement.style.opacity = '0';
-                    titleScreenElement.style.transition = 'opacity 0.5s';
+                    titleScreenElement.style.transition = 'opacity 0.3s'; // Faster transition
 
                     // After transition, hide it completely
                     setTimeout(() => {
                         titleScreenElement.style.display = 'none';
                         showGameScreen(); // Shows score after title screen is gone
-                        if (highScoreElement) highScoreElement.style.display = 'block';
-                    }, 500);
+                    }, 300); // Reduced delay
                 } else {
                     showGameScreen();
-                    if (highScoreElement) highScoreElement.style.display = 'block';
                 }
             }
             break;
@@ -290,9 +287,19 @@ export function updateLoadingProgress(loadedCount, totalCount) {
     }
 }
 
-/** Hides the loading screen overlay. */
+/** Hides the loading screen overlay with a smooth fade out. */
 export function hideLoadingScreen() {
-    if (loadingScreenElement) loadingScreenElement.style.display = 'none';
+    if (loadingScreenElement) {
+        // First fade out
+        loadingScreenElement.style.opacity = '0';
+
+        // Then hide after transition completes
+        setTimeout(() => {
+            loadingScreenElement.style.display = 'none';
+            // Reset opacity for next time
+            loadingScreenElement.style.opacity = '1';
+        }, 400); // Match the transition duration in CSS
+    }
 }
 
 /**
@@ -301,6 +308,8 @@ export function hideLoadingScreen() {
  */
 export function showLoadingScreen(message = 'Loading...') {
     if (loadingScreenElement) {
+        // Ensure opacity is set to 1 before displaying
+        loadingScreenElement.style.opacity = '1';
         loadingScreenElement.style.display = 'flex';
     }
     if (progressTextElement) {
@@ -320,7 +329,8 @@ export function showTitleScreen() {
         titleScreenElement.style.opacity = '1';
         titleScreenElement.style.transition = 'opacity 0.5s';
     }
-    if (highScoreElement) highScoreElement.style.display = 'none'; // Hide high score on title screen
+    // Always hide high score on title screen
+    if (highScoreElement) highScoreElement.style.display = 'none';
 }
 
 /** Hides the title screen overlay. */
@@ -330,8 +340,16 @@ export function hideTitleScreen() {
 
 /** Shows the main game UI elements (like score and high score). */
 export function showGameScreen() {
-    if (scoreElement) scoreElement.style.display = 'block';
-    if (highScoreElement) highScoreElement.style.display = 'block';
+    if (scoreElement) {
+        scoreElement.style.display = 'block';
+        scoreElement.style.opacity = '1';
+        scoreElement.style.transition = 'opacity 0.3s';
+    }
+    if (highScoreElement) {
+        highScoreElement.style.display = 'block';
+        highScoreElement.style.opacity = '1';
+        highScoreElement.style.transition = 'opacity 0.3s';
+    }
     // Ensure conflicting overlays are hidden (handled by gameStateChanged)
 }
 
@@ -481,8 +499,9 @@ export function showPauseMenu() {
     } else {
         displayError(new Error("Pause menu element not found when trying to show it."));
     }
-    if (scoreElement) scoreElement.style.display = 'none'; // Hide score during pause
-    if (highScoreElement) highScoreElement.style.display = 'none'; // Hide high score during pause
+    // Hide score and high score during pause
+    if (scoreElement) scoreElement.style.display = 'none';
+    if (highScoreElement) highScoreElement.style.display = 'none';
 }
 
 /** Hides the pause menu overlay. */
@@ -697,18 +716,18 @@ function addCustomStyles() {
             top: 15px;
             right: 15px;
             color: gold;
-            font-size: 18px;
-            font-weight: 600;
+            font-size: 20px; /* Larger font */
+            font-weight: 700; /* Bolder font */
             font-family: var(--body-font);
-            text-shadow: var(--text-shadow);
-            background-color: var(--score-bg);
-            padding: 10px 15px;
-            border-radius: 8px;
-            box-shadow: var(--box-shadow);
-            border-right: 3px solid gold;
+            text-shadow: var(--text-shadow), 0 0 5px rgba(255, 215, 0, 0.5); /* Gold glow */
+            background-color: rgba(0, 0, 0, 0.7); /* Darker, more opaque background */
+            padding: 12px 18px; /* Increased padding */
+            border-radius: 10px; /* More rounded corners */
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5); /* Stronger shadow */
+            border-right: 4px solid gold; /* Thicker border */
             letter-spacing: 0.5px;
             z-index: 10;
-            transition: transform var(--transition-fast);
+            transition: transform var(--transition-fast), opacity 0.3s ease;
         }
 
         .notification {

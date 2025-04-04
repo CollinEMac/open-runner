@@ -62,17 +62,17 @@ export function generateObjectsForChunk(chunkX, chunkZ, levelConfig) { // Added 
                     // Determine which side of the path to spawn on (left or right)
                     const side = rng() > 0.5 ? 1 : -1;
 
-                    // Get the offset range from the object type
-                    const offsetRange = objectType.spawnOffsetRange || [20, 50];
+                    // Get the offset range from the object type - increased for better visibility
+                    const offsetRange = objectType.spawnOffsetRange || [40, 80];
 
                     // Calculate a random offset from the path
                     const offsetDistance = offsetRange[0] + rng() * (offsetRange[1] - offsetRange[0]);
 
                     // Calculate position relative to chunk
-                    // X is perpendicular to path (left/right)
-                    // Z is along the path (forward/backward)
-                    relativeX = (rng() - 0.5) * GlobalConfig.CHUNK_SIZE * 0.5 + (side * offsetDistance);
-                    relativeZ = (rng() - 0.5) * GlobalConfig.CHUNK_SIZE;
+                    // X is perpendicular to path (left/right) - spawn further to the sides
+                    // Z is along the path (forward/backward) - spawn more ahead of player
+                    relativeX = (rng() - 0.5) * GlobalConfig.CHUNK_SIZE * 0.3 + (side * offsetDistance);
+                    relativeZ = (rng() - 0.5) * GlobalConfig.CHUNK_SIZE * 1.5; // Spread more along Z axis
 
                     // Calculate world coordinates
                     worldX = relativeX + chunkOffsetX;

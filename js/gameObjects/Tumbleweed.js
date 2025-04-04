@@ -32,16 +32,16 @@ export default class Tumbleweed extends GameObject {
         this.scale = options.scale || 1.0;
 
         // Tumbleweed properties
-        this.rollSpeed = 2.0 + Math.random() * 3.0; // Random speed between 2-5
+        this.rollSpeed = 3.0 + Math.random() * 4.0; // Increased random speed between 3-7
         this.rotationSpeed = new THREE.Vector3(
-            (Math.random() - 0.5) * 2.0,
-            (Math.random() - 0.5) * 2.0,
-            (Math.random() - 0.5) * 2.0
+            (Math.random() - 0.5) * 3.0, // Increased rotation speed
+            (Math.random() - 0.5) * 3.0,
+            (Math.random() - 0.5) * 3.0
         );
         this.targetDirection = new THREE.Vector3();
         this.isActive = false;
-        this.activationDistance = 50; // Distance from player to activate
-        this.deactivationDistance = 100; // Distance from player to deactivate
+        this.activationDistance = 80; // Increased distance from player to activate
+        this.deactivationDistance = 120; // Increased distance from player to deactivate
 
         // Create the visual representation
         this._createVisual();
@@ -150,16 +150,16 @@ export default class Tumbleweed extends GameObject {
             new THREE.Quaternion().setFromEuler(new THREE.Euler(0, playerPosition.y, 0))
         );
 
-        // Calculate a point ahead of the player
+        // Calculate a point ahead of the player - increased distance for better intercept path
         const targetPoint = playerPosition.clone().add(
-            playerDirection.clone().multiplyScalar(20)
+            playerDirection.clone().multiplyScalar(30 + Math.random() * 20)
         );
 
         // Direction from tumbleweed to that point
         this.targetDirection.subVectors(targetPoint, this.object3D.position).normalize();
 
-        // Set initial velocity
-        const initialSpeed = this.rollSpeed * (0.8 + Math.random() * 0.4);
+        // Set initial velocity - increased for more dramatic movement
+        const initialSpeed = this.rollSpeed * (0.9 + Math.random() * 0.5);
         this.physics.setVelocity(
             this.targetDirection.clone().multiplyScalar(initialSpeed)
         );

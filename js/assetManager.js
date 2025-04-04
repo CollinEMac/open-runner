@@ -37,11 +37,11 @@ export function initLevelAssets(levelConfig) { // Renamed and added levelConfig
     const magnetVis = levelConfig.MAGNET_VISUALS || { radius: 0.8, height: 0.5, color: 0xF60000 };
     levelAssets.magnetGeometry = new THREE.CylinderGeometry(magnetVis.radius, magnetVis.radius, magnetVis.height, 16, 1, false);
     levelAssets.magnetGeometry.rotateX(Math.PI / 2);
-    levelAssets.magnetMaterial = new THREE.MeshStandardMaterial({ 
-      color: magnetVis.color, 
+    levelAssets.magnetMaterial = new THREE.MeshStandardMaterial({
+      color: magnetVis.color,
       emissive: 0x330000,
-      metalness: 0.5, 
-      roughness: 0.10 
+      metalness: 0.5,
+      roughness: 0.10
     });
 
     // --- Obstacles ---
@@ -181,7 +181,7 @@ function createBoxPart(width, height, depth, color, roughness = 0.7) {
     return part;
 }
 
-// Helper function to create eyes for animals
+// Helper function to create detailed eyes for animals
 function createEyes(headWidth, headPosition, color = 0x000000, size = 0.1) {
     const group = new THREE.Group();
 
@@ -192,58 +192,170 @@ function createEyes(headWidth, headPosition, color = 0x000000, size = 0.1) {
         metalness: 0.2
     });
 
-    // Create eye geometry (small sphere)
-    const eyeGeometry = new THREE.SphereGeometry(size, 8, 8);
+    // Create white part of the eye for more realism
+    const eyeWhiteMaterial = new THREE.MeshStandardMaterial({
+        color: 0xFFFFFF,
+        roughness: 0.3,
+        metalness: 0.0
+    });
 
-    // Create left and right eyes
+    // Create eye geometry with more segments for smoother appearance
+    const eyeGeometry = new THREE.SphereGeometry(size, 12, 12);
+    const eyeWhiteGeometry = new THREE.SphereGeometry(size * 1.3, 12, 12);
+
+    // Create left and right eye whites (larger spheres behind the pupils)
+    const leftEyeWhite = new THREE.Mesh(eyeWhiteGeometry, eyeWhiteMaterial);
+    const rightEyeWhite = new THREE.Mesh(eyeWhiteGeometry, eyeWhiteMaterial);
+
+    // Create left and right eye pupils (smaller black spheres)
     const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
     const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
 
     // Position eyes on the head
     const eyeOffset = headWidth * 0.25;
-    leftEye.position.set(-eyeOffset, headPosition.y, headPosition.z - headWidth * 0.4);
-    rightEye.position.set(eyeOffset, headPosition.y, headPosition.z - headWidth * 0.4);
+    const eyeDepth = headPosition.z - headWidth * 0.4;
 
+    // Position eye whites
+    leftEyeWhite.position.set(-eyeOffset, headPosition.y, eyeDepth);
+    rightEyeWhite.position.set(eyeOffset, headPosition.y, eyeDepth);
+
+    // Position pupils slightly in front of whites
+    leftEye.position.set(-eyeOffset, headPosition.y, eyeDepth - size * 0.5);
+    rightEye.position.set(eyeOffset, headPosition.y, eyeDepth - size * 0.5);
+
+    // Add all parts to the group
+    group.add(leftEyeWhite);
+    group.add(rightEyeWhite);
     group.add(leftEye);
     group.add(rightEye);
 
     return group;
 }
 
-// Helper function to create a snout/nose for animals
+// Helper function to create a more detailed snout/nose for animals
 function createSnout(headPosition, color, width = 0.3, height = 0.3, depth = 0.3) {
+    const group = new THREE.Group();
+
     // Create a slightly darker color for the snout
     const snoutColor = new THREE.Color(color).multiplyScalar(0.9);
 
-    // Create snout geometry (box or cylinder)
-    const snout = createBoxPart(width, height, depth, snoutColor.getHex(), 0.9);
+    // Create even darker color for the nose tip
+    const noseTipColor = new THREE.Color(color).multiplyScalar(0.7);
+
+    // Create snout geometry with more segments for smoother appearance
+    const snoutGeometry = new THREE.BoxGeometry(width, height, depth, 3, 3, 3);
+    const snoutMaterial = new THREE.MeshStandardMaterial({
+        color: snoutColor.getHex(),
+        roughness: 0.9
+    });
+    const snout = new THREE.Mesh(snoutGeometry, snoutMaterial);
+    snout.castShadow = true;
+
+    // Add a nose tip (small sphere at the end of the snout)
+    const noseTipGeometry = new THREE.SphereGeometry(width * 0.3, 8, 8);
+    const noseTipMaterial = new THREE.MeshStandardMaterial({
+        color: noseTipColor.getHex(),
+        roughness: 0.7
+    });
+    const noseTip = new THREE.Mesh(noseTipGeometry, noseTipMaterial);
+    noseTip.position.set(0, 0, -depth * 0.6); // Position at the front of the snout
+    noseTip.castShadow = true;
+
+    // Add nose tip to the snout
+    snout.add(noseTip);
 
     // Position snout at the front of the head
     snout.position.set(0, headPosition.y - height * 0.1, headPosition.z - depth * 1.2);
 
-    return snout;
+    group.add(snout);
+    return group;
 }
 
-// Helper function to create ears for animals
+// Helper function to create more detailed ears for animals
 function createEars(headWidth, headHeight, headPosition, color, pointy = false) {
     const group = new THREE.Group();
 
     // Create ear material (same color as body but slightly darker)
     const earColor = new THREE.Color(color).multiplyScalar(0.9);
 
+    // Create inner ear material (darker pink/red color)
+    const innerEarColor = new THREE.Color(0xFF9999);
+
     // Create ear geometry based on whether they should be pointy
-    let leftEar, rightEar;
+    let leftEar, rightEar, leftInnerEar, rightInnerEar;
 
     if (pointy) {
-        // Pointy ears using cones
-        const earGeometry = new THREE.ConeGeometry(headWidth * 0.15, headHeight * 0.5, 5);
-        leftEar = new THREE.Mesh(earGeometry, new THREE.MeshStandardMaterial({ color: earColor.getHex(), roughness: 0.8 }));
-        rightEar = new THREE.Mesh(earGeometry, new THREE.MeshStandardMaterial({ color: earColor.getHex(), roughness: 0.8 }));
+        // Pointy ears using cones with more segments for smoother appearance
+        const earGeometry = new THREE.ConeGeometry(headWidth * 0.15, headHeight * 0.5, 8);
+        const innerEarGeometry = new THREE.ConeGeometry(headWidth * 0.1, headHeight * 0.35, 8);
+
+        // Create outer ear parts
+        leftEar = new THREE.Mesh(earGeometry, new THREE.MeshStandardMaterial({
+            color: earColor.getHex(),
+            roughness: 0.8
+        }));
+        rightEar = new THREE.Mesh(earGeometry, new THREE.MeshStandardMaterial({
+            color: earColor.getHex(),
+            roughness: 0.8
+        }));
+
+        // Create inner ear parts
+        leftInnerEar = new THREE.Mesh(innerEarGeometry, new THREE.MeshStandardMaterial({
+            color: innerEarColor.getHex(),
+            roughness: 0.7
+        }));
+        rightInnerEar = new THREE.Mesh(innerEarGeometry, new THREE.MeshStandardMaterial({
+            color: innerEarColor.getHex(),
+            roughness: 0.7
+        }));
+
+        // Position inner ears slightly in front of outer ears
+        leftInnerEar.position.z = -0.05;
+        rightInnerEar.position.z = -0.05;
+
+        // Add inner ears to outer ears
+        leftEar.add(leftInnerEar);
+        rightEar.add(rightInnerEar);
     } else {
-        // Round ears using spheres or boxes
-        const earGeometry = new THREE.SphereGeometry(headWidth * 0.2, 6, 6);
-        leftEar = new THREE.Mesh(earGeometry, new THREE.MeshStandardMaterial({ color: earColor.getHex(), roughness: 0.8 }));
-        rightEar = new THREE.Mesh(earGeometry, new THREE.MeshStandardMaterial({ color: earColor.getHex(), roughness: 0.8 }));
+        // Round ears using ellipsoids (scaled spheres) for more realistic shape
+        const earGeometry = new THREE.SphereGeometry(headWidth * 0.2, 12, 12);
+        const innerEarGeometry = new THREE.SphereGeometry(headWidth * 0.15, 10, 10);
+
+        // Create outer ear parts
+        leftEar = new THREE.Mesh(earGeometry, new THREE.MeshStandardMaterial({
+            color: earColor.getHex(),
+            roughness: 0.8
+        }));
+        rightEar = new THREE.Mesh(earGeometry, new THREE.MeshStandardMaterial({
+            color: earColor.getHex(),
+            roughness: 0.8
+        }));
+
+        // Scale to make ears more oval-shaped
+        leftEar.scale.set(1, 1.2, 0.7);
+        rightEar.scale.set(1, 1.2, 0.7);
+
+        // Create inner ear parts
+        leftInnerEar = new THREE.Mesh(innerEarGeometry, new THREE.MeshStandardMaterial({
+            color: innerEarColor.getHex(),
+            roughness: 0.7
+        }));
+        rightInnerEar = new THREE.Mesh(innerEarGeometry, new THREE.MeshStandardMaterial({
+            color: innerEarColor.getHex(),
+            roughness: 0.7
+        }));
+
+        // Scale inner ears to match outer ear shape
+        leftInnerEar.scale.set(1, 1.2, 0.7);
+        rightInnerEar.scale.set(1, 1.2, 0.7);
+
+        // Position inner ears slightly in front of outer ears
+        leftInnerEar.position.z = -0.05;
+        rightInnerEar.position.z = -0.05;
+
+        // Add inner ears to outer ears
+        leftEar.add(leftInnerEar);
+        rightEar.add(rightInnerEar);
     }
 
     // Position ears on top of the head
@@ -256,6 +368,9 @@ function createEars(headWidth, headHeight, headPosition, color, pointy = false) 
         leftEar.rotation.z = Math.PI / 12;
         rightEar.rotation.z = -Math.PI / 12;
     }
+
+    leftEar.castShadow = true;
+    rightEar.castShadow = true;
 
     group.add(leftEar);
     group.add(rightEar);

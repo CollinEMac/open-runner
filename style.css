@@ -57,19 +57,19 @@ html, body {
     position: absolute; /* Position relative to the viewport */
     top: 15px;          /* 15px from the top */
     left: 15px;         /* 15px from the left */
-    padding: 10px 15px;
-    background-color: var(--score-bg); /* Semi-transparent dark background */
+    padding: 12px 18px; /* Increased padding */
+    background-color: rgba(0, 0, 0, 0.7); /* Darker, more opaque background */
     color: var(--text-light);        /* Light text color */
     font-family: var(--body-font);
-    font-size: 18px;
-    font-weight: 600;
-    border-radius: 8px;
+    font-size: 20px; /* Larger font */
+    font-weight: 700; /* Bolder font */
+    border-radius: 10px; /* More rounded corners */
     z-index: 10;        /* Ensure it's above the canvas */
-    box-shadow: var(--box-shadow);
-    border-left: 3px solid var(--primary-color);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5); /* Stronger shadow */
+    border-left: 4px solid var(--primary-color); /* Thicker border */
     letter-spacing: 0.5px;
     text-shadow: var(--text-shadow);
-    transition: transform var(--transition-fast);
+    transition: transform var(--transition-fast), opacity 0.3s ease;
 }
 
 /* --- UI Overlays --- */
@@ -264,6 +264,7 @@ html, body {
     /* Ensure it's displayed initially (overrides .ui-overlay display: none) */
     display: flex;
     z-index: 30; /* Highest z-index */
+    transition: opacity 0.4s ease; /* Smoother fade out */
 }
 
 #loadingScreen::before {

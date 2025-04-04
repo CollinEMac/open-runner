@@ -18,13 +18,13 @@ import * as UIManager from './uiManager.js';
 import * as AssetManager from './assetManager.js';
 
 // Constants for camera transitions
-const TITLE_TRANSITION_SPEED = 1.5; // Adjust for desired speed
+const TITLE_TRANSITION_SPEED = 2.5; // Increased for faster transition
 const TITLE_TRANSITION_THRESHOLD_SQ = 0.1; // Squared distance threshold to switch to TITLE state
 const TITLE_LOOK_AT_TARGET = new THREE.Vector3(0, 0, 0); // Target for camera lookAt during title
 
 // Constants for gameplay camera transition
-const GAMEPLAY_TRANSITION_SPEED = 2.0; // Faster transition
-const GAMEPLAY_TRANSITION_THRESHOLD_SQ = 1.0; // Squared distance threshold to switch to PLAYING state
+const GAMEPLAY_TRANSITION_SPEED = 3.0; // Increased for faster transition
+const GAMEPLAY_TRANSITION_THRESHOLD_SQ = 0.5; // Reduced threshold for quicker state change
 
 class Game {
     constructor(canvasElement) {
@@ -45,7 +45,7 @@ class Game {
         // Scene transition properties
         this.isSceneTransitioning = false;
         this.sceneTransitionStartTime = 0;
-        this.sceneTransitionDuration = 1.0; // seconds
+        this.sceneTransitionDuration = 0.6; // seconds - reduced for faster transitions
 
         // Managers
         this.assetManager = AssetManager;
@@ -79,7 +79,7 @@ class Game {
         this.cameraStartPosition = null;
         this.cameraStartQuaternion = null;
         this.cameraTransitionStartTime = 0;
-        this.cameraTransitionDuration = 1.0; // seconds
+        this.cameraTransitionDuration = 0.6; // seconds - reduced for faster transitions
 
         // Title Screen Animation
         this.titleCameraDrift = null;
