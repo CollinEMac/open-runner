@@ -445,6 +445,11 @@ class Game {
 
         // 5. Render one frame of the gameplay scene to ensure it's ready
         if (this.renderer && this.gameplayScene && this.camera) {
+            // Ensure player is visible before rendering
+            if (this.player && this.player.model) {
+                this.player.model.visible = true;
+                console.log("[Game] Ensuring player is visible before first render.");
+            }
             this.renderer.render(this.gameplayScene, this.camera);
         }
 
@@ -510,9 +515,10 @@ class Game {
         // 8. Reset Player State & Add to Scene
         console.log("[Game] Resetting player state...");
         if (this.player.model) {
-            // Only remove the player from its previous parent if it exists
-            // and we're not in the middle of a camera transition
-            if (playerCurrentParent && !this.isCameraTransitioning) {
+            // Always remove the player from its previous parent if it exists
+            // This ensures we don't have the player in multiple scenes
+            if (playerCurrentParent) {
+                console.log("[Game] Removing player from previous parent.");
                 playerCurrentParent.remove(this.player.model);
             }
 
@@ -525,7 +531,7 @@ class Game {
             this.scene.add(this.player.model);
             // Make sure the player is visible
             this.player.model.visible = true;
-            console.log("[Game] Player model reset and added to scene.");
+            console.log("[Game] Player model reset and added to scene. Visibility:", this.player.model.visible);
         }
         const scoreToReset = this.score;
         this.score = 0;
@@ -895,6 +901,12 @@ class Game {
     _updateCameraTransition(deltaTime, elapsedTime) {
         if (!this.camera || !this.player || !this.player.model) return;
 
+        // Ensure player is visible during camera transitions
+        if (!this.player.model.visible) {
+            console.log("[Game] Player was invisible during camera transition, making visible.");
+            this.player.model.visible = true;
+        }
+
         // Get the player position
         const playerModel = this.player.model;
         const playerPosition = new THREE.Vector3();
@@ -947,6 +959,12 @@ class Game {
             console.log("[Game] Camera transition to player complete.");
             this.isCameraTransitioning = false;
 
+            // Double-check player visibility after transition
+            if (!this.player.model.visible) {
+                console.log("[Game] Player still invisible after transition, forcing visibility.");
+                this.player.model.visible = true;
+            }
+
             // From now on, use normal camera follow
             this.updateCameraFollow(this.player, deltaTime);
         }
@@ -960,6 +978,12 @@ class Game {
     // Handle transition between scenes
     _updateSceneTransition(deltaTime, elapsedTime) {
         if (!this.gameplayScene || !this.scene) return;
+
+        // Ensure player is visible during scene transitions
+        if (this.player && this.player.model && !this.player.model.visible) {
+            console.log("[Game] Player was invisible during scene transition, making visible.");
+            this.player.model.visible = true;
+        }
 
         // Calculate transition progress (0 to 1)
         const timeElapsed = elapsedTime - this.sceneTransitionStartTime;
@@ -978,6 +1002,12 @@ class Game {
             // Transition complete
             console.log("[Game] Scene transition complete.");
             this.isSceneTransitioning = false;
+
+            // Double-check player visibility after scene transition
+            if (this.player && this.player.model && !this.player.model.visible) {
+                console.log("[Game] Player still invisible after scene transition, forcing visibility.");
+                this.player.model.visible = true;
+            }
         }
     }
 
