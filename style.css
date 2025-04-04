@@ -492,7 +492,7 @@ html, body {
     left: 0;
     width: 100%;
     padding: 15px;
-    display: none !important; /* Always hidden by default with !important */
+    display: none; /* Hidden by default */
     z-index: 15;
     pointer-events: none; /* Allow clicks to pass through the container */
     opacity: 0; /* Start fully transparent */

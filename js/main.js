@@ -7,12 +7,16 @@ import { isMobileDevice } from './utils/deviceUtils.js';
 document.addEventListener('DOMContentLoaded', async () => {
     console.log("DOM fully loaded and parsed");
 
-    // Directly hide mobile controls on desktop
+    // Set appropriate visibility for mobile controls based on device type
     const mobileControls = document.getElementById('mobileControls');
-    if (mobileControls && !isMobileDevice()) {
-        mobileControls.style.display = 'none';
-        mobileControls.style.opacity = '0';
-        console.log("Mobile controls forcibly hidden on desktop");
+    if (mobileControls) {
+        if (isMobileDevice()) {
+            console.log("Mobile device detected, mobile controls will be available");
+            // Don't set any inline styles, let the CSS handle it
+        } else {
+            console.log("Desktop device detected, mobile controls will be hidden");
+            // Don't set any inline styles, let the CSS handle it
+        }
     }
 
     const canvas = document.getElementById('gameCanvas');

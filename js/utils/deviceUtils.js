@@ -14,6 +14,14 @@ export function isMobileDevice() {
     const isMobileByScreenSize = window.matchMedia && window.matchMedia('(max-width: 768px)').matches;
 
     const result = isMobileByUserAgent || isMobileByScreenSize;
+
+    // Add more detailed logging
+    console.log(`DEVICE DETECTION: isMobile=${result}`);
+    console.log(`- User Agent: ${navigator.userAgent}`);
+    console.log(`- Is Mobile by User Agent: ${isMobileByUserAgent}`);
+    console.log(`- Is Mobile by Screen Size: ${isMobileByScreenSize}`);
+    console.log(`- Screen Width: ${window.innerWidth}px`);
+
     logger.debug(`Device detection: isMobile=${result} (userAgent=${isMobileByUserAgent}, screenSize=${isMobileByScreenSize})`);
 
     return result;
@@ -58,22 +66,41 @@ export function updateMobileControlsVisibility(forceShow = false, forceHide = fa
     // First ensure the device class is set
     setDeviceClass();
 
+    // Get reference to mobile controls for debugging
+    const mobileControls = document.getElementById('mobileControls');
+
     if (forceHide) {
         // Force hide mobile controls
         document.body.classList.remove('show-mobile-controls');
         logger.debug('Mobile controls forcibly hidden');
+        console.log('MOBILE CONTROLS: Forcibly hidden');
     } else if (forceShow) {
         // Force show mobile controls
         document.body.classList.add('show-mobile-controls');
         logger.debug('Mobile controls forcibly shown');
+        console.log('MOBILE CONTROLS: Forcibly shown');
     } else {
         // Normal behavior - only show on mobile
         if (isMobileDevice()) {
             document.body.classList.add('show-mobile-controls');
             logger.debug('Mobile controls enabled for mobile device');
+            console.log('MOBILE CONTROLS: Enabled for mobile device');
         } else {
             document.body.classList.remove('show-mobile-controls');
             logger.debug('Mobile controls disabled for desktop device');
+            console.log('MOBILE CONTROLS: Disabled for desktop device');
         }
+    }
+
+    // Debug the current state
+    if (mobileControls) {
+        setTimeout(() => {
+            const computedStyle = window.getComputedStyle(mobileControls);
+            console.log('MOBILE CONTROLS STATE:');
+            console.log(`- Display: ${computedStyle.display}`);
+            console.log(`- Opacity: ${computedStyle.opacity}`);
+            console.log(`- Visibility: ${computedStyle.visibility}`);
+            console.log(`- Has 'show-mobile-controls' class: ${document.body.classList.contains('show-mobile-controls')}`);
+        }, 100); // Small delay to let styles apply
     }
 }
