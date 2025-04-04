@@ -228,7 +228,7 @@ export class ChunkManager {
                          if (objectData.collidable) {
                              collidableMeshes.push(mesh);
                              this.spatialGrid.add(mesh);
-                         } else if (['coin', 'magnet'].includes(objectData.type)) {
+                         } else {
                              collectibleMeshes.push(mesh);
                              this.spatialGrid.add(mesh);
                          }
@@ -503,7 +503,7 @@ export class ChunkManager {
             // Update all collectible coins in this chunk
             if (chunkData.collectibles && chunkData.collectibles.length > 0) {
                 chunkData.collectibles.forEach(coinMesh => {
-                    if (coinMesh && ['coin', 'magnet'].includes(coinMesh.userData.objectType)) {
+                    if (coinMesh?.userData.collidable === false) {
                         // Rotate the coin around its Y axis
                         coinMesh.rotation.y += spinSpeed * deltaTime;
                     }
