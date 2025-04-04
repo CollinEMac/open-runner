@@ -94,7 +94,7 @@ export class ParticleManager {
 }
 
     emitParticle(originPosition) {
-        if (this.activeParticleCount >= MAX_PARTICLES) {
+        if (this.activeParticleCount >= this.maxParticles) {
             // console.warn("Max particles reached, skipping emission.");
             return; // Pool is full
         }
@@ -195,7 +195,7 @@ export class ParticleManager {
             // particle.velocity.y -= 0.5 * deltaTime; // Simple gravity
 
             // Update opacity (fade out)
-            const lifeRatio = particle.age / PARTICLE_LIFETIME;
+            const lifeRatio = particle.age / getParticleLifetime();
             this.opacities[i] = 1.0 - lifeRatio; // Linear fade
 
             aliveCount++; // This index is still alive

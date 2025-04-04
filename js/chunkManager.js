@@ -195,13 +195,32 @@ export class ChunkManager {
                          UIManager.displayError(new Error(`[ChunkManager] Failed to spawn enemy instance for type ${objectData.type} in chunk ${key}`));
                     }
                 } else if (objectData.type === 'tumbleweed' && objectData.isDynamic) {
-                    // Create a Tumbleweed GameObject instead of a simple mesh
-                    const tumbleweed = new Tumbleweed({
-                        position: objectData.position,
-                        scale: objectData.scale.x, // Use uniform scale
-                        scene: this.scene,
-                        levelConfig: this.levelConfig
-                    });
+                    // Try to get a tumbleweed from the pool first
+                    let tumbleweed = this._getFromPool('tumbleweeds');
+
+                    if (!tumbleweed) {
+                        // Create new tumbleweed if none in pool
+                        tumbleweed = new Tumbleweed({
+                            position: objectData.position || new THREE.Vector3(0, 0, 0),
+                            scale: objectData.scale && objectData.scale.x ? objectData.scale.x : 1, // Use uniform scale with fallback
+                            scene: this.scene,
+                            levelConfig: this.levelConfig
+                        });
+                    } else {
+                        // Reset pooled tumbleweed
+                        if (tumbleweed.object3D) {
+                            if (objectData.position) {
+                                tumbleweed.object3D.position.copy(objectData.position);
+                            }
+                            tumbleweed.object3D.rotation.set(0, 0, 0);
+                            const scale = objectData.scale && objectData.scale.x ? objectData.scale.x : 1;
+                            tumbleweed.object3D.scale.set(scale, scale, scale);
+                            this.scene.add(tumbleweed.object3D);
+                        }
+                        if (typeof tumbleweed.reset === 'function') {
+                            tumbleweed.reset(); // Reset internal state if method exists
+                        }
+                    }
 
                     // Add to scene and store references
                     tumbleweed.object3D.userData.chunkKey = key;
@@ -237,9 +256,17 @@ export class ChunkManager {
                         mesh = createObjectVisual(objectData, this.levelConfig);
                     } else {
                         // Reset/update the pooled object
-                        mesh.position.copy(objectData.position);
-                        mesh.rotation.set(0, objectData.rotation.y, 0);
-                        mesh.scale.set(objectData.scale.x, objectData.scale.y, objectData.scale.z);
+                        if (objectData.position) mesh.position.copy(objectData.position);
+
+                        // Handle rotation safely
+                        const rotationY = objectData.rotation && objectData.rotation.y ? objectData.rotation.y : 0;
+                        mesh.rotation.set(0, rotationY, 0);
+
+                        // Handle scale safely
+                        const scaleX = objectData.scale && objectData.scale.x ? objectData.scale.x : 1;
+                        const scaleY = objectData.scale && objectData.scale.y ? objectData.scale.y : 1;
+                        const scaleZ = objectData.scale && objectData.scale.z ? objectData.scale.z : 1;
+                        mesh.scale.set(scaleX, scaleY, scaleZ);
                         mesh.visible = true;
                     }
 
