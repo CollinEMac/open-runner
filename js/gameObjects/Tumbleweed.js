@@ -32,16 +32,16 @@ export default class Tumbleweed extends GameObject {
         this.scale = options.scale || 1.0;
 
         // Tumbleweed properties
-        this.rollSpeed = 3.0 + Math.random() * 4.0; // Increased random speed between 3-7
+        this.rollSpeed = 4.0 + Math.random() * 5.0; // Further increased random speed between 4-9
         this.rotationSpeed = new THREE.Vector3(
-            (Math.random() - 0.5) * 3.0, // Increased rotation speed
-            (Math.random() - 0.5) * 3.0,
-            (Math.random() - 0.5) * 3.0
+            (Math.random() - 0.5) * 4.0, // Further increased rotation speed
+            (Math.random() - 0.5) * 4.0,
+            (Math.random() - 0.5) * 4.0
         );
         this.targetDirection = new THREE.Vector3();
         this.isActive = false;
-        this.activationDistance = 80; // Increased distance from player to activate
-        this.deactivationDistance = 120; // Increased distance from player to deactivate
+        this.activationDistance = 100; // Further increased distance from player to activate
+        this.deactivationDistance = 150; // Further increased distance from player to deactivate
 
         // Create the visual representation
         this._createVisual();
@@ -150,16 +150,20 @@ export default class Tumbleweed extends GameObject {
             new THREE.Quaternion().setFromEuler(new THREE.Euler(0, playerPosition.y, 0))
         );
 
-        // Calculate a point ahead of the player - increased distance for better intercept path
+        // Calculate a point ahead of the player - significantly increased distance for better intercept path
         const targetPoint = playerPosition.clone().add(
-            playerDirection.clone().multiplyScalar(30 + Math.random() * 20)
+            playerDirection.clone().multiplyScalar(50 + Math.random() * 30)
         );
 
         // Direction from tumbleweed to that point
         this.targetDirection.subVectors(targetPoint, this.object3D.position).normalize();
 
+        // Add some randomness to the initial direction to make movement less predictable
+        this.targetDirection.x += (Math.random() - 0.5) * 0.3;
+        this.targetDirection.normalize();
+
         // Set initial velocity - increased for more dramatic movement
-        const initialSpeed = this.rollSpeed * (0.9 + Math.random() * 0.5);
+        const initialSpeed = this.rollSpeed * (1.0 + Math.random() * 0.6);
         this.physics.setVelocity(
             this.targetDirection.clone().multiplyScalar(initialSpeed)
         );
@@ -191,16 +195,20 @@ export default class Tumbleweed extends GameObject {
                 new THREE.Quaternion().setFromEuler(new THREE.Euler(0, playerPosition.y, 0))
             );
 
-            // Calculate a point ahead of the player
+            // Calculate a point ahead of the player - increased distance for better intercept path
             const targetPoint = playerPosition.clone().add(
-                playerForward.clone().multiplyScalar(20 + Math.random() * 10)
+                playerForward.clone().multiplyScalar(40 + Math.random() * 20)
             );
 
-            // Calculate new direction with some randomness
+            // Calculate new direction with more randomness
             const newDirection = new THREE.Vector3().subVectors(targetPoint, this.object3D.position).normalize();
 
-            // Blend current direction with new direction
-            this.targetDirection.lerp(newDirection, 0.05);
+            // Add some randomness to make movement less predictable
+            newDirection.x += (Math.random() - 0.5) * 0.2;
+            newDirection.normalize();
+
+            // Blend current direction with new direction - slightly faster steering
+            this.targetDirection.lerp(newDirection, 0.08);
 
             // Apply a force in the target direction
             const steeringForce = this.targetDirection.clone().multiplyScalar(this.rollSpeed * 0.5);

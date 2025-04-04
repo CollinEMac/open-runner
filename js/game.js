@@ -21,13 +21,13 @@ import * as AssetManager from './assetManager.js';
 import * as ScoreManager from './scoreManager.js';
 
 // Constants for camera transitions
-const TITLE_TRANSITION_SPEED = 6.0; // Further increased for faster transition
-const TITLE_TRANSITION_THRESHOLD_SQ = 0.03; // Reduced threshold for quicker state change
+const TITLE_TRANSITION_SPEED = 10.0; // Significantly increased for much faster transition
+const TITLE_TRANSITION_THRESHOLD_SQ = 0.01; // Further reduced threshold for quicker state change
 const TITLE_LOOK_AT_TARGET = new THREE.Vector3(0, 0, 0); // Target for camera lookAt during title
 
 // Constants for gameplay camera transition
-const GAMEPLAY_TRANSITION_SPEED = 7.0; // Further increased for faster transition
-const GAMEPLAY_TRANSITION_THRESHOLD_SQ = 0.1; // Further reduced threshold for quicker state change
+const GAMEPLAY_TRANSITION_SPEED = 12.0; // Significantly increased for much faster transition
+const GAMEPLAY_TRANSITION_THRESHOLD_SQ = 0.05; // Further reduced threshold for quicker state change
 
 class Game {
     constructor(canvasElement) {
@@ -934,7 +934,10 @@ class Game {
         // Get elapsed time since transition started
         const elapsedTime = this.clock.getElapsedTime();
         const timeElapsed = elapsedTime - this.cameraTransitionStartTime;
-        const progress = Math.min(timeElapsed / (this.cameraTransitionDuration * 1.5), 1.0);
+
+        // Use a shorter duration for faster transitions
+        const transitionDuration = 0.5; // Reduced from this.cameraTransitionDuration * 1.5
+        const progress = Math.min(timeElapsed / transitionDuration, 1.0);
 
         if (progress < 1.0) {
             // Use smooth easing function for better transition
@@ -962,6 +965,11 @@ class Game {
                 targetQuaternion,
                 easedProgress
             );
+
+            // Force a render to make the transition visible
+            if (this.renderer) {
+                this.renderer.render(this.scene, this.camera);
+            }
         } else {
             // Transition complete
             console.log("[Game] Camera transition to title complete.");
@@ -973,6 +981,11 @@ class Game {
             this.uiManager.populateLevelSelect(availableLevels, this.startGame.bind(this));
 
             this.gameStateManager.setGameState(GameStates.TITLE); // Switch to title state
+
+            // Force a final render
+            if (this.renderer) {
+                this.renderer.render(this.scene, this.camera);
+            }
         }
     }
 
@@ -1024,7 +1037,10 @@ class Game {
 
         // Calculate transition progress (0 to 1)
         const timeElapsed = elapsedTime - this.cameraTransitionStartTime;
-        const progress = Math.min(timeElapsed / this.cameraTransitionDuration, 1.0);
+
+        // Use a shorter duration for faster transitions
+        const transitionDuration = 0.4; // Reduced from this.cameraTransitionDuration
+        const progress = Math.min(timeElapsed / transitionDuration, 1.0);
 
         if (progress < 1.0) {
             // Use smooth easing function
@@ -1048,6 +1064,11 @@ class Game {
                 targetQuaternion,
                 easedProgress
             );
+
+            // Force a render to make the transition visible
+            if (this.renderer) {
+                this.renderer.render(this.activeScene || this.scene, this.camera);
+            }
         } else {
             // Transition complete
             console.log("[Game] Camera transition to player complete.");
@@ -1117,7 +1138,10 @@ class Game {
 
         // Calculate transition progress (0 to 1)
         const timeElapsed = elapsedTime - this.sceneTransitionStartTime;
-        const progress = Math.min(timeElapsed / this.sceneTransitionDuration, 1.0);
+
+        // Use a shorter duration for faster transitions
+        const transitionDuration = 0.3; // Reduced from this.sceneTransitionDuration
+        const progress = Math.min(timeElapsed / transitionDuration, 1.0);
 
         if (progress < 1.0) {
             // Use smooth easing function
@@ -1128,6 +1152,11 @@ class Game {
 
             // Just update the camera position during this time
             // (Camera transition is handled by _updateCameraTransition)
+
+            // Force a render to make the transition visible
+            if (this.renderer) {
+                this.renderer.render(this.activeScene, this.camera);
+            }
         } else {
             // Transition complete
             console.log("[Game] Scene transition complete.");

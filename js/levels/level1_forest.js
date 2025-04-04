@@ -82,14 +82,14 @@ export const level1Config = {
         // --- powerups ---
         {
             type: 'magnet',
-            density: 0.00012, // Increased from 0.0001 but less than 0.00015
-            minDistance: 25.0, // Reduced from 50.0 to make placement easier
+            density: 0.00013, // Set to optimal value between 0.000087 and 0.00015
+            minDistance: 20.0, // Further reduced to make placement easier
             verticalOffset: 1.5,
             scaleRange: [1.2, 1.5],
             randomRotationY: true,
             collidable: false,
             scoreValue: 0,
-            maxPlacementAttempts: 20, // Increased from 10 to give more chances for successful placement
+            maxPlacementAttempts: 25, // Further increased to ensure successful placement
         },
         // --- Obstacles ---
         {

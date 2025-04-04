@@ -616,8 +616,8 @@ export class ChunkManager {
         }
 
         // Magnet effect parameters
-        const magnetRadius = 70; // Radius within which coins are attracted (increased further)
-        const magnetForce = 120; // Force of attraction (significantly increased for faster movement)
+        const magnetRadius = 80; // Radius within which coins are attracted (increased even further)
+        const magnetForce = 150; // Force of attraction (significantly increased for faster movement)
 
         // Debug coin count and collectible types every 5 seconds
         if (Math.floor(elapsedTime) % 5 === 0 && Math.floor(elapsedTime * 10) % 10 === 0) {
@@ -720,7 +720,7 @@ export class ChunkManager {
                                 const normalizedDist = distance / magnetRadius; // 0 to 1 value
                                 // Use a steeper power curve for stronger acceleration as coins get closer
                                 // This creates an exponential increase in speed as coins approach the player
-                                const acceleration = Math.pow(1 - normalizedDist, 3.0); // Steeper exponential curve (was 2.5)
+                                const acceleration = Math.pow(1 - normalizedDist, 4.0); // Even steeper exponential curve for faster collection
                                 const moveSpeed = magnetForce * acceleration * deltaTime;
 
                                 // Debug coin movement occasionally

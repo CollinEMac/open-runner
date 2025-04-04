@@ -44,6 +44,12 @@ function handleGameStateChange(newState) {
     if (loadingScreenElement) loadingScreenElement.style.display = 'none';
     if (levelSelectScreenElement) levelSelectScreenElement.style.display = 'none';
     if (pauseMenuElement) pauseMenuElement.style.display = 'none';
+
+    // Hide high score in non-gameplay states
+    if (highScoreElement && newState !== GameStates.PLAYING) {
+        highScoreElement.style.display = 'none';
+    }
+
     // Keep score display visibility separate (managed below)
 
     switch (newState) {
@@ -399,15 +405,26 @@ export function hideTitleScreen() {
 
 /** Shows the main game UI elements (like score and high score). */
 export function showGameScreen() {
+    // Show score with smooth transition
     if (scoreElement) {
         scoreElement.style.display = 'block';
         scoreElement.style.opacity = '1';
         scoreElement.style.transition = 'opacity 0.3s';
     }
+
+    // Show high score only if it's greater than 0
     if (highScoreElement) {
-        highScoreElement.style.display = 'block';
-        highScoreElement.style.opacity = '1';
-        highScoreElement.style.transition = 'opacity 0.3s';
+        const highScore = ScoreManager.getGlobalHighScore();
+        if (highScore > 0) {
+            highScoreElement.style.display = 'block';
+            highScoreElement.style.opacity = '1';
+            highScoreElement.style.transition = 'opacity 0.3s';
+            // Make sure the display is up to date
+            updateHighScoreDisplay(highScore);
+        } else {
+            // Hide high score if it's 0
+            highScoreElement.style.display = 'none';
+        }
     }
 
     // Show mobile controls only on mobile devices
@@ -457,9 +474,10 @@ function checkForLiveHighScore(data) {
         // Update the high score display in real-time
         updateHighScoreDisplay(score);
 
-        // Show a small visual indicator that this is a new high score
-        // Add a subtle animation to the high score display
+        // Make sure high score is visible during gameplay
         if (highScoreElement) {
+            highScoreElement.style.display = 'block';
+
             // Add a pulse animation class
             highScoreElement.classList.add('high-score-pulse');
 
@@ -469,8 +487,15 @@ function checkForLiveHighScore(data) {
             }, 1000);
         }
 
-        // Note: We don't save to localStorage here - that happens at game over
-        // This is just for visual feedback during gameplay
+        // Update the ScoreManager's in-memory high score (but don't save to localStorage yet)
+        // This ensures consistent high score state across the application
+        if (levelId) {
+            ScoreManager.updateHighScore(score, levelId);
+        } else {
+            ScoreManager.updateHighScore(score);
+        }
+
+        // Note: The actual save to localStorage happens in ScoreManager.updateHighScore
     }
 }
 
@@ -619,14 +644,22 @@ export function hidePauseMenu() {
     } else {
         displayError(new Error("Pause menu element not found when trying to hide it."));
     }
+
     // Immediately show score UI when hiding pause menu - no delay
     if (scoreElement) {
         scoreElement.style.display = 'block';
         scoreElement.style.opacity = '1';
     }
+
+    // Only show high score if it's greater than 0
     if (highScoreElement) {
-        highScoreElement.style.display = 'block';
-        highScoreElement.style.opacity = '1';
+        const highScore = ScoreManager.getGlobalHighScore();
+        if (highScore > 0) {
+            highScoreElement.style.display = 'block';
+            highScoreElement.style.opacity = '1';
+        } else {
+            highScoreElement.style.display = 'none';
+        }
     }
 }
 
@@ -690,9 +723,11 @@ export function setupGameOverButtons(onRestart, onReturnToTitle) {
  */
 export function showNewHighScoreNotification(data) {
     let highScore;
+    let levelId = null;
 
     if (typeof data === 'object') {
         highScore = data.score;
+        levelId = data.levelId; // Get levelId if provided
     } else {
         highScore = data;
     }
@@ -700,11 +735,17 @@ export function showNewHighScoreNotification(data) {
     // Update high score display
     updateHighScoreDisplay(highScore);
 
+    // Make sure high score element is visible
+    if (highScoreElement) {
+        highScoreElement.style.display = 'block';
+        highScoreElement.style.opacity = '1';
+    }
+
     // Save the high score to localStorage via ScoreManager
     // This is a safety measure in case the score wasn't already saved
-    ScoreManager.updateHighScore(highScore);
+    ScoreManager.updateHighScore(highScore, levelId);
 
-    // Show notification
+    // Show notification with improved positioning
     showNotification(`New High Score: ${highScore}!`, 'high-score-notification');
 }
 
@@ -885,8 +926,8 @@ function addCustomStyles() {
 
         .notification {
             position: fixed;
-            top: 40px; /* Moved up further from 60px */
-            right: 40px; /* Moved more to the right on desktop (was 30px) */
+            top: 30px; /* Moved up even further from 40px */
+            right: 50px; /* Moved more to the right on desktop (was 40px) */
             left: auto; /* Override left positioning */
             margin: 0; /* Remove auto margins */
             width: fit-content;
@@ -905,6 +946,7 @@ function addCustomStyles() {
             min-width: 300px;
             max-width: 80%;
             animation: fadeIn 0.3s ease-out;
+            transform: translateY(0); /* Ensure initial position is correct */
         }
 
         /* Center notification on mobile devices */

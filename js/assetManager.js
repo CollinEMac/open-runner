@@ -1638,50 +1638,55 @@ export function createMagnetModel(properties) {
     const size = properties?.size || 0.8;
     const color = properties?.color || 0xF60000; // Default red color
 
-    // Create the magnet material
+    // Create the magnet material with improved metallic look
     const magnetMat = new THREE.MeshStandardMaterial({
         color: color,
         emissive: 0x330000,
-        metalness: 0.8,
-        roughness: 0.10
+        metalness: 0.9, // More metallic
+        roughness: 0.05 // Smoother surface
     });
 
     // Create white tip material with enhanced properties
     const whiteTipMat = new THREE.MeshStandardMaterial({
         color: 0xFFFFFF,
-        emissive: 0x444444,
-        metalness: 0.8,
-        roughness: 0.10
+        emissive: 0x666666, // Brighter emissive for more glow
+        metalness: 0.9,
+        roughness: 0.05
     });
 
-    // Create the horseshoe shape (U-shape)
-    // Base/bottom of the horseshoe
-    const baseWidth = size * 1.5;
+    // Create the horseshoe shape with smoother geometry
+    // Use a curved shape for the base instead of a box
+    const baseWidth = size * 1.6; // Slightly wider
     const baseHeight = size * 0.4;
     const baseDepth = size * 0.4;
-    const baseGeo = new THREE.BoxGeometry(baseWidth, baseHeight, baseDepth);
+
+    // Use a torus for the base (curved bottom of horseshoe)
+    const baseGeo = new THREE.TorusGeometry(baseWidth/2, baseHeight/2, 16, 16, Math.PI);
     const base = new THREE.Mesh(baseGeo, magnetMat);
+    base.rotation.x = Math.PI/2; // Orient correctly
     base.position.set(0, 0, 0);
     group.add(base);
 
-    // Left arm of the horseshoe
+    // Arms of the horseshoe with rounded edges
     const armWidth = size * 0.4;
-    const armHeight = size * 1.5;
+    const armHeight = size * 1.6; // Taller arms
     const armDepth = size * 0.4;
-    const leftArmGeo = new THREE.BoxGeometry(armWidth, armHeight, armDepth);
+
+    // Use cylinder geometry for smoother arms
+    const leftArmGeo = new THREE.CylinderGeometry(armWidth/2, armWidth/2, armHeight, 16);
     const leftArm = new THREE.Mesh(leftArmGeo, magnetMat);
     leftArm.position.set(-baseWidth/2 + armWidth/2, armHeight/2, 0);
     group.add(leftArm);
 
     // Right arm of the horseshoe
-    const rightArmGeo = new THREE.BoxGeometry(armWidth, armHeight, armDepth);
+    const rightArmGeo = new THREE.CylinderGeometry(armWidth/2, armWidth/2, armHeight, 16);
     const rightArm = new THREE.Mesh(rightArmGeo, magnetMat);
     rightArm.position.set(baseWidth/2 - armWidth/2, armHeight/2, 0);
     group.add(rightArm);
 
     // Add white tips to the magnet poles - larger and more prominent
-    const tipRadius = size * 0.3; // Increased from 0.25
-    const tipHeight = size * 0.25; // Increased from 0.2
+    const tipRadius = size * 0.35; // Even larger tips
+    const tipHeight = size * 0.3; // Taller tips
 
     // Left (North) tip - white
     const leftTipGeo = new THREE.CylinderGeometry(tipRadius, tipRadius, tipHeight, 16);
@@ -1705,8 +1710,8 @@ export function createMagnetModel(properties) {
     group.rotation.x = Math.PI/2;
 
     // Add a more pronounced tilt to make the magnet more dynamic
-    tiltedGroup.rotation.z = Math.PI/8; // 22.5-degree tilt (increased from 15 degrees)
-    tiltedGroup.rotation.y = Math.PI/16; // Slight rotation on Y axis for perspective
+    tiltedGroup.rotation.z = Math.PI/6; // 30-degree tilt (increased from 22.5 degrees)
+    tiltedGroup.rotation.y = Math.PI/12; // Slightly more rotation on Y axis for better perspective
 
     // Set shadows
     tiltedGroup.traverse(child => {

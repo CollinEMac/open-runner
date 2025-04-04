@@ -9,24 +9,25 @@ const logger = createLogger('DeviceUtils');
  * @returns {boolean} True if the device is mobile, false otherwise
  */
 export function isMobileDevice() {
-    // Check for mobile user agent
+    // Check for mobile user agent - primary indicator
     const mobileRegex = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i;
     const isMobileByUserAgent = mobileRegex.test(navigator.userAgent);
 
-    // Check for touch capability (more reliable than screen size)
+    // Check for touch capability
     const hasTouchScreen = (
         ('ontouchstart' in window) ||
         (navigator.maxTouchPoints > 0) ||
         (navigator.msMaxTouchPoints > 0)
     );
 
-    // Check for small screen size (but don't rely on this alone)
+    // Check for small screen size
     const isMobileByScreenSize = window.matchMedia && window.matchMedia('(max-width: 768px)').matches;
 
-    // For desktop browsers with small windows, we need to be more careful
-    // Only consider it mobile if it's identified as mobile by user agent OR has touch capability
-    // Do NOT consider it mobile just because of small screen size
-    const result = isMobileByUserAgent || hasTouchScreen;
+    // IMPROVED DETECTION LOGIC:
+    // 1. If user agent indicates mobile -> it's mobile
+    // 2. If screen is small AND has touch capability -> it's mobile
+    // 3. Otherwise, it's desktop (even if it has touch or small screen alone)
+    const result = isMobileByUserAgent || (isMobileByScreenSize && hasTouchScreen);
 
     // Add more detailed logging
     console.log(`DEVICE DETECTION: isMobile=${result}`);
