@@ -8,6 +8,7 @@ import Tumbleweed from './gameObjects/Tumbleweed.js'; // Import Tumbleweed GameO
 import { EnemyManager } from './enemyManager.js'; // Import EnemyManager
 import * as AudioManager from './audioManager.js';
 import * as AssetManager from './assetManager.js'; // Import AssetManager
+import eventBus from './eventBus.js'; // Import event bus for score events
 import {
     CHUNK_SIZE,
     RENDER_DISTANCE_CHUNKS,
@@ -687,21 +688,47 @@ export class ChunkManager {
                                 const newDz = playerPosition.z - newZ;
                                 const newDistanceSq = newDx * newDx + newDy * newDy + newDz * newDz;
 
-                                // Safety check: Don't move the coin if it would end up too close to the player
-                                // This prevents coins from getting stuck inside the player model
-                                // Use a smaller safe distance to ensure coins can be collected
-                                // The value must be smaller than the collection threshold in collisionManager.js
+                                // Get the coin's collision radius
                                 const coinCollisionRadius = collectibleMesh.geometry.parameters.radiusBottom;
+
+                                // Define collection threshold - this should match collisionManager.js
+                                const collectionThresholdSq = (playerCollisionRadius + coinCollisionRadius * 2.0) ** 2;
+
+                                // Define minimum safe distance - coins should never get closer than this
                                 const minSafeDistanceSq = (playerCollisionRadius * 0.2) ** 2;
 
-                                if (newDistanceSq > minSafeDistanceSq) {
+                                // Check if the coin would pass through the collection threshold in this frame
+                                // This handles the case where a coin might "hop over" the collection threshold
+                                const currentDistanceSq = distanceSq;
+                                const wouldPassThreshold =
+                                    (currentDistanceSq > collectionThresholdSq && newDistanceSq < collectionThresholdSq) ||
+                                    (newDistanceSq < minSafeDistanceSq);
+
+                                if (wouldPassThreshold) {
+                                    // The coin would pass through the collection threshold or get too close
+                                    // Force collect it to prevent it from getting stuck
+                                    const { chunkKey, objectIndex, scoreValue } = collectibleMesh.userData;
+
+                                    if (chunkKey !== undefined && objectIndex !== undefined) {
+                                        console.log(`[ChunkManager] Force collecting coin that would pass threshold: distance=${Math.sqrt(newDistanceSq).toFixed(2)}`);
+                                        const collected = this.collectObject(chunkKey, objectIndex);
+
+                                        if (collected) {
+                                            // Emit score change event
+                                            eventBus.emit('scoreChanged', scoreValue || 0);
+                                        }
+                                    }
+                                    // Skip further processing since the coin is now collected
+                                    return;
+                                }
+                                else if (newDistanceSq > minSafeDistanceSq) {
                                     // Only update position if it won't get too close
                                     collectibleMesh.position.x = newX;
                                     collectibleMesh.position.y = newY;
                                     collectibleMesh.position.z = newZ;
 
                                     // Debug logging for coins that are very close but not at safe distance
-                                    if (newDistanceSq < (playerCollisionRadius * 0.5) ** 2 && Math.random() < 0.05) {
+                                    if (newDistanceSq < (playerCollisionRadius * 0.5) ** 2 && Math.random() < 0.01) {
                                         console.log(`[ChunkManager] Coin approaching player: distance=${Math.sqrt(newDistanceSq).toFixed(2)}, safeDistance=${Math.sqrt(minSafeDistanceSq).toFixed(2)}`);
                                     }
                                 } else {
@@ -714,7 +741,7 @@ export class ChunkManager {
                                     collectibleMesh.position.z = playerPosition.z - newDz * safeFactor;
 
                                     // Debug logging for coins at safe distance
-                                    if (Math.random() < 0.05) {
+                                    if (Math.random() < 0.01) {
                                         console.log(`[ChunkManager] Coin at safe distance: ${safeDistance.toFixed(2)}`);
                                     }
                                 }
