@@ -86,7 +86,7 @@ class Game {
         this.cameraStartPosition = null;
         this.cameraStartQuaternion = null;
         this.cameraTransitionStartTime = 0;
-        this.cameraTransitionDuration = 0.4; // seconds - reduced for faster transitions
+        this.cameraTransitionDuration = 0.8; // seconds - increased for smoother transitions between levels
 
         // Title Screen Animation
         this.titleCameraDrift = null;
@@ -447,9 +447,25 @@ class Game {
         if (this.renderer && this.gameplayScene && this.camera) {
             // Ensure player is visible before rendering
             if (this.player && this.player.model) {
+                // Force player visibility
                 this.player.model.visible = true;
+
+                // Make sure player is in the gameplay scene
+                if (this.player.model.parent !== this.gameplayScene) {
+                    console.log("[Game] Adding player to gameplay scene before first render.");
+                    // Remove from current parent if any
+                    if (this.player.model.parent) {
+                        this.player.model.parent.remove(this.player.model);
+                    }
+                    this.gameplayScene.add(this.player.model);
+                }
+
                 console.log("[Game] Ensuring player is visible before first render.");
+            } else {
+                console.warn("[Game] Player or player model is null before first render.");
             }
+
+            // Force a render of the gameplay scene
             this.renderer.render(this.gameplayScene, this.camera);
         }
 
@@ -529,9 +545,19 @@ class Game {
 
             // Add player to scene - ensure it's visible during transitions
             this.scene.add(this.player.model);
-            // Make sure the player is visible
+
+            // Force player visibility - critical for level transitions
             this.player.model.visible = true;
+
+            // Force a render to ensure player is visible in the new scene
+            if (this.renderer) {
+                console.log("[Game] Forcing a render after adding player to new level scene.");
+                this.renderer.render(this.scene, this.camera);
+            }
+
             console.log("[Game] Player model reset and added to scene. Visibility:", this.player.model.visible);
+        } else {
+            console.error("[Game] Player model is null when trying to reset for new level.");
         }
         const scoreToReset = this.score;
         this.score = 0;
@@ -899,12 +925,22 @@ class Game {
 
     // Update camera transition during gameplay
     _updateCameraTransition(deltaTime, elapsedTime) {
-        if (!this.camera || !this.player || !this.player.model) return;
+        if (!this.camera || !this.player || !this.player.model) {
+            console.log("[Game] Missing camera or player model during camera transition.");
+            return;
+        }
 
-        // Ensure player is visible during camera transitions
+        // Force player visibility during camera transitions
+        // This is critical for level transitions, especially to level 2
         if (!this.player.model.visible) {
             console.log("[Game] Player was invisible during camera transition, making visible.");
             this.player.model.visible = true;
+        }
+
+        // Double check that the player is in the scene
+        if (!this.player.model.parent) {
+            console.log("[Game] Player model not in scene during camera transition, adding to scene.");
+            this.scene.add(this.player.model);
         }
 
         // Get the player position
@@ -965,6 +1001,18 @@ class Game {
                 this.player.model.visible = true;
             }
 
+            // Ensure player is in the scene
+            if (!this.player.model.parent) {
+                console.log("[Game] Player model not in scene after transition, adding to scene.");
+                this.scene.add(this.player.model);
+            }
+
+            // Force a render to ensure player is visible
+            if (this.renderer) {
+                console.log("[Game] Forcing a render after camera transition to ensure player visibility.");
+                this.renderer.render(this.scene, this.camera);
+            }
+
             // From now on, use normal camera follow
             this.updateCameraFollow(this.player, deltaTime);
         }
@@ -1004,9 +1052,25 @@ class Game {
             this.isSceneTransitioning = false;
 
             // Double-check player visibility after scene transition
-            if (this.player && this.player.model && !this.player.model.visible) {
-                console.log("[Game] Player still invisible after scene transition, forcing visibility.");
-                this.player.model.visible = true;
+            if (this.player && this.player.model) {
+                if (!this.player.model.visible) {
+                    console.log("[Game] Player still invisible after scene transition, forcing visibility.");
+                    this.player.model.visible = true;
+                }
+
+                // Ensure player is in the scene
+                if (!this.player.model.parent) {
+                    console.log("[Game] Player model not in scene after scene transition, adding to scene.");
+                    this.scene.add(this.player.model);
+                }
+
+                // Force a render to ensure player is visible
+                if (this.renderer) {
+                    console.log("[Game] Forcing a render after scene transition to ensure player visibility.");
+                    this.renderer.render(this.scene, this.camera);
+                }
+            } else {
+                console.log("[Game] Player or player model is null after scene transition.");
             }
         }
     }
