@@ -456,15 +456,12 @@ export function disposeObjectVisual(objectData, scene, spatialGrid, levelConfig)
 
 
     // --- Resource Disposal ---
-    // Dispose geometry ONLY if it's not a shared asset.
+    // We no longer dispose tree geometries here since trees are now pooled
+    // This prevents the issue where tree tops were missing after chunk reloading
     if (objectData.type === 'tree_pine' && mesh instanceof THREE.Group) {
-        // Tree is a group with unique geometries for trunk/foliage
-        mesh.traverse((child) => {
-            if (child instanceof THREE.Mesh && child.geometry) {
-                child.geometry.dispose();
-                // console.log(`[disposeObjectVisual] Disposed geometry for tree part: ${child.name}`);
-            }
-        });
+        // Log that we're skipping disposal for trees
+        console.log(`[disposeObjectVisual] Skipping disposal for tree_pine - trees should be pooled instead`);
+        // We don't dispose tree geometries anymore since they're pooled
         // Materials are shared via AssetManager, so DO NOT dispose them here.
     }
     // For other types (coin, rock, log, cabin), geometry and material are shared

@@ -350,7 +350,14 @@ export class ChunkManager {
                         if (objectData.mesh.userData.objectType === 'coin') {
                             this._addToPool('collectibles', objectData.mesh);
                         } else if (objectData.collidable) {
-                            this._addToPool('obstacles', objectData.mesh);
+                            // Always pool tree_pine objects to preserve their structure
+                            if (objectData.type === 'tree_pine') {
+                                console.log(`[ChunkManager] Adding tree to obstacles pool from chunk ${key}`);
+                                // Make sure we're not disposing tree geometries
+                                this._addToPool('obstacles', objectData.mesh);
+                            } else {
+                                this._addToPool('obstacles', objectData.mesh);
+                            }
                         } else {
                             // For any other types, dispose normally
                             disposeObjectVisual(objectData, this.scene, this.spatialGrid, this.levelConfig);
