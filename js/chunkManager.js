@@ -503,20 +503,48 @@ export class ChunkManager {
         // Check if magnet powerup is active
         const magnetActive = playerPowerup === 'magnet';
 
+        // Debug magnet status once per second
+        if (Math.floor(elapsedTime) % 5 === 0 && Math.floor(elapsedTime * 10) % 10 === 0) {
+            console.log(`[ChunkManager] Magnet active: ${magnetActive}, Powerup: ${playerPowerup}`);
+        }
+
         // Magnet effect parameters
-        const magnetRadius = 30; // Radius within which coins are attracted
-        const magnetForce = 15; // Force of attraction
+        const magnetRadius = 50; // Radius within which coins are attracted (increased)
+        const magnetForce = 30; // Force of attraction (increased)
+
+        // Debug coin count every 5 seconds
+        if (Math.floor(elapsedTime) % 5 === 0 && Math.floor(elapsedTime * 10) % 10 === 0) {
+            let totalCoins = 0;
+            let coinsWithType = 0;
+            for (const [key, chunkData] of this.loadedChunks.entries()) {
+                if (chunkData.collectibles) {
+                    totalCoins += chunkData.collectibles.length;
+                    chunkData.collectibles.forEach(mesh => {
+                        if (mesh?.userData?.objectType === 'coin') {
+                            coinsWithType++;
+                        }
+                    });
+                }
+            }
+            console.log(`[ChunkManager] Total collectibles: ${totalCoins}, Coins with correct type: ${coinsWithType}`);
+        }
 
         // Iterate through all loaded chunks
         for (const [key, chunkData] of this.loadedChunks.entries()) {
             // Update all collectible coins in this chunk
             if (chunkData.collectibles && chunkData.collectibles.length > 0) {
                 chunkData.collectibles.forEach(collectibleMesh => {
-                    if (collectibleMesh?.userData.collidable === false && collectibleMesh?.userData.objectType === 'coin') {
-                        // Rotate the object around its Y axis
+                    // First, ensure all coins have the correct objectType
+                    if (collectibleMesh?.userData?.collidable === false) {
+                        // If objectType is missing but it's a coin (has cylinder geometry), set it
+                        if (!collectibleMesh.userData.objectType && collectibleMesh.geometry?.type === 'CylinderGeometry') {
+                            collectibleMesh.userData.objectType = 'coin';
+                        }
+
+                        // Rotate all collectibles around Y axis
                         collectibleMesh.rotation.y += spinSpeed * deltaTime;
 
-                        // Apply magnet effect if active
+                        // Apply magnet effect if active - to ALL collectibles for now
                         if (magnetActive && playerPosition) {
                             // Calculate distance to player
                             const dx = playerPosition.x - collectibleMesh.position.x;
@@ -536,6 +564,11 @@ export class ChunkManager {
                                 // Coins closer to the player move faster
                                 const acceleration = 1 - (distance / magnetRadius); // 0 to 1 value
                                 const moveSpeed = magnetForce * acceleration * deltaTime;
+
+                                // Debug coin movement occasionally
+                                if (Math.random() < 0.001) {
+                                    console.log(`[ChunkManager] Moving coin: distance=${distance.toFixed(2)}, speed=${moveSpeed.toFixed(2)}`);
+                                }
 
                                 collectibleMesh.position.x += dirX * moveSpeed;
                                 collectibleMesh.position.y += dirY * moveSpeed;
