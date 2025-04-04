@@ -10,7 +10,9 @@ import * as AudioManager from './audioManager.js';
 import * as AssetManager from './assetManager.js'; // Import AssetManager
 import {
     CHUNK_SIZE,
-    RENDER_DISTANCE_CHUNKS
+    RENDER_DISTANCE_CHUNKS,
+    RENDERING,
+    performanceManager
     // Global config constants
 } from './config.js'; // Renamed to GlobalConfig implicitly by usage below
 
@@ -37,6 +39,13 @@ export class ChunkManager {
         this.loadedChunks = new Map();
         this.lastCameraChunkX = null;
         this.lastCameraChunkZ = null;
+
+        // --- Object Pooling ---
+        this.objectPools = {
+            collectibles: [],  // Pool of inactive collectible meshes
+            obstacles: [],    // Pool of inactive obstacle meshes
+            tumbleweeds: []   // Pool of inactive tumbleweed instances
+        };
 
         // --- Async Loading Queues ---
         this.chunksToLoadQueue = new Set(); // Set of chunk keys "x,z" to load
@@ -211,27 +220,47 @@ export class ChunkManager {
                     objectData.gameObject = tumbleweed;
                     objectData.mesh = tumbleweed.object3D; // For compatibility with existing code
                 } else {
-                    // For non-enemies and non-tumbleweeds, delegate visual creation to objectGenerator
-                    // Pass levelConfig to createObjectVisual
-                    const mesh = createObjectVisual(objectData, this.levelConfig);
+                    // For non-enemies and non-tumbleweeds, use object pooling if available
+                    let mesh;
+
+                    // Check if we can reuse an object from the pool
+                    if (objectData.collidable) {
+                        // Try to get an obstacle from the pool
+                        mesh = this._getFromPool('obstacles', objectData.type);
+                    } else {
+                        // Try to get a collectible from the pool
+                        mesh = this._getFromPool('collectibles', objectData.type);
+                    }
+
+                    // If no pooled object available, create a new one
+                    if (!mesh) {
+                        mesh = createObjectVisual(objectData, this.levelConfig);
+                    } else {
+                        // Reset/update the pooled object
+                        mesh.position.copy(objectData.position);
+                        mesh.rotation.set(0, objectData.rotation.y, 0);
+                        mesh.scale.set(objectData.scale.x, objectData.scale.y, objectData.scale.z);
+                        mesh.visible = true;
+                    }
 
                     if (mesh) {
-                         // Add chunk-specific info to userData
-                         mesh.userData.chunkKey = key;
-                         mesh.userData.objectIndex = index;
-                         mesh.name = `${objectData.type}_${key}_${index}`; // More specific name
+                        // Add chunk-specific info to userData
+                        mesh.userData.chunkKey = key;
+                        mesh.userData.objectIndex = index;
+                        mesh.userData.objectType = objectData.type; // Store type for pooling
+                        mesh.name = `${objectData.type}_${key}_${index}`; // More specific name
 
-                         this.scene.add(mesh);
-                         objectData.mesh = mesh; // Store mesh reference back in the raw data
+                        this.scene.add(mesh);
+                        objectData.mesh = mesh; // Store mesh reference back in the raw data
 
-                         // Add mesh to appropriate list and spatial grid
-                         if (objectData.collidable) {
-                             collidableMeshes.push(mesh);
-                             this.spatialGrid.add(mesh);
-                         } else {
-                             collectibleMeshes.push(mesh);
-                             this.spatialGrid.add(mesh);
-                         }
+                        // Add mesh to appropriate list and spatial grid
+                        if (objectData.collidable) {
+                            collidableMeshes.push(mesh);
+                            this.spatialGrid.add(mesh);
+                        } else {
+                            collectibleMeshes.push(mesh);
+                            this.spatialGrid.add(mesh);
+                        }
                     }
                 }
             });
@@ -275,22 +304,32 @@ export class ChunkManager {
                 // console.log(`Disposed terrain resources for chunk ${key}`); // Removed duplicate log
             }
 
-            // Unload All Non-Enemy Object Visuals using objectGenerator
+            // Unload All Non-Enemy Object Visuals using object pooling
             let disposedVisuals = 0;
             if (chunkData.objects) {
                 chunkData.objects.forEach(objectData => {
-                    // disposeObjectVisual handles checks for enemyInstance and null mesh
-                    // Pass levelConfig to disposeObjectVisual
-                    disposeObjectVisual(objectData, this.scene, this.spatialGrid, this.levelConfig);
-                    // We only count if a mesh *was* present before disposal attempt
-                    if (!objectData.enemyInstance && objectData.mesh === null) { // Check if mesh is now null
-                       // This check might be slightly inaccurate if mesh was already null,
-                       // but good enough for a debug count. A better way would be for
-                       // disposeObjectVisual to return true/false if it did something.
-                       disposedVisuals++;
+                    // Handle pooling for non-enemy objects
+                    if (!objectData.enemyInstance && objectData.mesh) {
+                        // Remove from scene and spatial grid
+                        this.scene.remove(objectData.mesh);
+                        this.spatialGrid.remove(objectData.mesh);
+
+                        // Add to appropriate pool instead of disposing
+                        if (objectData.mesh.userData.objectType === 'coin') {
+                            this._addToPool('collectibles', objectData.mesh);
+                        } else if (objectData.collidable) {
+                            this._addToPool('obstacles', objectData.mesh);
+                        } else {
+                            // For any other types, dispose normally
+                            disposeObjectVisual(objectData, this.scene, this.spatialGrid, this.levelConfig);
+                        }
+
+                        // Clear reference in object data
+                        objectData.mesh = null;
+                        disposedVisuals++;
                     }
                 });
-                 // console.log(`[DEBUG] Disposed visuals for ${disposedVisuals} non-enemy objects in chunk ${key}.`);
+                // console.log(`[DEBUG] Processed ${disposedVisuals} non-enemy objects in chunk ${key}.`);
             }
 
             // Unload Enemies using EnemyManager
@@ -303,13 +342,17 @@ export class ChunkManager {
                 // console.log(`[DEBUG] Removed ${unloadedEnemies} enemies for chunk ${key}`);
             }
 
-            // Unload Tumbleweeds
+            // Unload Tumbleweeds with pooling
             let unloadedTumbleweeds = 0;
             if (chunkData.tumbleweeds) {
                 chunkData.tumbleweeds.forEach(tumbleweed => {
                     // Remove from scene and spatial grid
                     this.scene.remove(tumbleweed.object3D);
                     this.spatialGrid.remove(tumbleweed.object3D);
+
+                    // Add to pool instead of disposing
+                    this._addToPool('tumbleweeds', tumbleweed);
+
                     unloadedTumbleweeds++;
                 });
                 // console.log(`[DEBUG] Unloaded ${unloadedTumbleweeds} tumbleweeds from chunk ${key}.`);
@@ -372,6 +415,9 @@ export class ChunkManager {
 
                 // Remove from scene
                 this.scene.remove(object.mesh);
+
+                // Add to object pool instead of disposing
+                this._addToPool('collectibles', object.mesh);
 
                 // Remove from the chunk's active collectibles list
                 const collectibleIndex = chunkData.collectibles.indexOf(object.mesh);
@@ -599,8 +645,117 @@ export class ChunkManager {
                     if (tumbleweed) {
                         // Update the tumbleweed GameObject
                         tumbleweed.update(deltaTime, elapsedTime, playerPosition);
+
+                        // Update spatial grid position
+                        this.spatialGrid.update(tumbleweed.object3D);
                     }
                 });
+            }
+        }
+    }
+
+    /**
+     * Gets an object from the specified pool.
+     * @param {string} poolName - The name of the pool to get from.
+     * @param {string} objectType - Optional object type to match.
+     * @returns {Object|null} The object from the pool, or null if none available.
+     * @private
+     */
+    _getFromPool(poolName, objectType = null) {
+        if (!this.objectPools[poolName] || this.objectPools[poolName].length === 0) {
+            return null;
+        }
+
+        // If object type specified, find matching object
+        if (objectType) {
+            const index = this.objectPools[poolName].findIndex(obj =>
+                obj.userData && obj.userData.objectType === objectType);
+
+            if (index !== -1) {
+                return this.objectPools[poolName].splice(index, 1)[0];
+            }
+        }
+
+        // Otherwise, just get the last object
+        return this.objectPools[poolName].pop();
+    }
+
+    /**
+     * Adds an object to the specified pool.
+     * @param {string} poolName - The name of the pool to add to.
+     * @param {Object} object - The object to add to the pool.
+     * @private
+     */
+    _addToPool(poolName, object) {
+        if (!this.objectPools[poolName]) {
+            this.objectPools[poolName] = [];
+        }
+
+        // Limit pool size based on performance settings
+        const maxPoolSize = RENDERING.MAX_OBJECTS_PER_CHUNK * 2;
+        if (this.objectPools[poolName].length >= maxPoolSize) {
+            // If pool is full, dispose the oldest object
+            const oldestObject = this.objectPools[poolName].shift();
+
+            // Dispose based on object type
+            if (poolName === 'tumbleweeds' && oldestObject.dispose) {
+                oldestObject.dispose();
+            } else if (oldestObject.geometry) {
+                oldestObject.geometry.dispose();
+                if (oldestObject.material) {
+                    if (Array.isArray(oldestObject.material)) {
+                        oldestObject.material.forEach(mat => mat.dispose());
+                    } else {
+                        oldestObject.material.dispose();
+                    }
+                }
+            }
+        }
+
+        // Hide the object but keep it in memory
+        if (object.visible !== undefined) {
+            object.visible = false;
+        } else if (object.object3D && object.object3D.visible !== undefined) {
+            object.object3D.visible = false;
+        }
+
+        // Add to pool
+        this.objectPools[poolName].push(object);
+    }
+
+    /**
+     * Gets the current pool sizes for debugging.
+     * @returns {Object} Object with pool sizes.
+     */
+    getPoolSizes() {
+        return {
+            collectibles: this.objectPools.collectibles.length,
+            obstacles: this.objectPools.obstacles.length,
+            tumbleweeds: this.objectPools.tumbleweeds.length
+        };
+    }
+
+    /**
+     * Clears all object pools.
+     */
+    clearPools() {
+        for (const poolName in this.objectPools) {
+            while (this.objectPools[poolName].length > 0) {
+                const object = this.objectPools[poolName].pop();
+
+                // Dispose based on object type
+                if (poolName === 'tumbleweeds' && object.dispose) {
+                    object.dispose();
+                } else if (object.geometry) {
+                    object.geometry.dispose();
+                    if (object.material) {
+                        if (Array.isArray(object.material)) {
+                            object.material.forEach(mat => mat.dispose());
+                        } else {
+                            object.material.dispose();
+                        }
+                    }
+                }
             }
         }
     }

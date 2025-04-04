@@ -8,8 +8,9 @@ import { ParticleManager } from './particleManager.js';
 import { setupPlayerControls, initInputStateManager, resetInputStates } from './controlsSetup.js';
 import { grayMaterial, createPlayerCharacter } from './playerCharacter.js';
 import * as GlobalConfig from './config.js';
+import { performanceManager } from './config.js';
 import * as AudioManager from './audioManager.js';
-import { initScene, handleResize } from './sceneSetup.js';
+import { initScene, handleResize, createFpsCounter, updateFpsCounter } from './sceneSetup.js';
 import * as LevelManager from './levelManager.js';
 import { GameStates, getCurrentState, setGameState } from './gameStateManager.js';
 import { initPlayerController, updatePlayer as updatePlayerController } from './playerController.js';
@@ -42,6 +43,10 @@ class Game {
         this.renderer = null;
         this.clock = new THREE.Clock();
         this.initialCameraPosition = new THREE.Vector3();
+
+        // Performance monitoring
+        this.fpsCounter = null;
+        this.showFps = GlobalConfig.SHOW_FPS;
 
         // Scene transition properties
         this.isSceneTransitioning = false;
@@ -88,11 +93,27 @@ class Game {
         // Event Bus
         this.eventBus = eventBus;
 
+        // Set up FPS toggle
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'f' || event.key === 'F') {
+                GlobalConfig.updateConfig('', { SHOW_FPS: !GlobalConfig.getConfig('SHOW_FPS', false) });
+                if (this.fpsCounter) {
+                    this.fpsCounter.style.display = GlobalConfig.getConfig('SHOW_FPS', false) ? 'block' : 'none';
+                }
+            }
+        });
+
         console.log("Game class instantiated");
     }
 
     async init() {
         console.log("Game initialization started...");
+
+        // --- Initialize Performance Manager ---
+        performanceManager.init();
+
+        // --- Initialize FPS Counter ---
+        this.fpsCounter = createFpsCounter();
 
         // Initialize UI Manager first
         if (!this.uiManager.initUIManager()) {
@@ -312,6 +333,12 @@ class Game {
         const elapsedTime = this.clock.getElapsedTime();
         const currentState = this.gameStateManager.getCurrentState();
 
+        // Update performance monitoring
+        performanceManager.updateFps();
+        if (this.fpsCounter) {
+            updateFpsCounter(this.fpsCounter, performanceManager.getCurrentFps());
+        }
+
         if (currentState === GameStates.PLAYING) {
             this.playerAnimationTime += deltaTime;
 
@@ -362,6 +389,8 @@ class Game {
         if (this.renderer && this.activeScene && this.camera) {
             this.renderer.render(this.activeScene, this.camera);
         }
+
+
     }
 
     // --- Game State/Flow Methods ---

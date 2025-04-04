@@ -5,7 +5,8 @@ import {
     WORLD_SEED,
     CHUNK_SIZE, // Use CHUNK_SIZE instead of TERRAIN_WIDTH/HEIGHT
     TERRAIN_SEGMENTS_X,
-    TERRAIN_SEGMENTS_Y
+    TERRAIN_SEGMENTS_Y,
+    performanceManager // Import performance manager for LOD
     // NOISE_FREQUENCY, NOISE_AMPLITUDE removed, will come from levelConfig
 } from './config.js';
 
@@ -31,11 +32,32 @@ export function createTerrainChunk(chunkX, chunkZ, levelConfig) { // Added level
     const offsetX = chunkX * CHUNK_SIZE;
     const offsetZ = chunkZ * CHUNK_SIZE;
 
+    // Calculate distance from player's current chunk (assumed to be at 0,0 if not provided)
+    // This is used for level of detail (LOD) - further chunks get less detail
+    const distanceFromPlayer = Math.sqrt(chunkX * chunkX + chunkZ * chunkZ);
+
+    // Apply level of detail based on distance and performance settings
+    // Chunks further away get progressively less detail
+    let segmentsX = TERRAIN_SEGMENTS_X;
+    let segmentsY = TERRAIN_SEGMENTS_Y;
+
+    // Apply distance-based LOD only if not in ultra quality mode
+    if (performanceManager.currentQuality !== 'ultra') {
+        // Reduce detail for distant chunks
+        if (distanceFromPlayer > 3) {
+            segmentsX = Math.max(10, Math.floor(segmentsX * 0.5));
+            segmentsY = Math.max(10, Math.floor(segmentsY * 0.5));
+        } else if (distanceFromPlayer > 1) {
+            segmentsX = Math.max(15, Math.floor(segmentsX * 0.75));
+            segmentsY = Math.max(15, Math.floor(segmentsY * 0.75));
+        }
+    }
+
     const geometry = new THREE.PlaneGeometry(
         CHUNK_SIZE, // Use CHUNK_SIZE for geometry dimensions
         CHUNK_SIZE,
-        TERRAIN_SEGMENTS_X,
-        TERRAIN_SEGMENTS_Y
+        segmentsX,
+        segmentsY
     );
 
     // Rotate the plane to be horizontal (XZ plane)

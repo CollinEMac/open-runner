@@ -1,14 +1,35 @@
 import * as THREE from 'three';
-import * as Config from './config.js'; // Assuming particle config might go here later
+import * as Config from './config.js'; // Import config for performance settings
+import { performanceManager } from './config.js';
 
-const MAX_PARTICLES = 500; // Max dust particles at once
-const PARTICLE_LIFETIME = 0.8; // Seconds
-const PARTICLES_PER_SECOND = 150; // How many particles to emit
+// Base particle settings
+const BASE_MAX_PARTICLES = 500; // Max dust particles at once
+const BASE_PARTICLE_LIFETIME = 0.8; // Seconds
+const BASE_PARTICLES_PER_SECOND = 150; // How many particles to emit
 const PARTICLE_INITIAL_SPEED_MIN = 0.5;
 const PARTICLE_INITIAL_SPEED_MAX = 1.5;
 const PARTICLE_DRIFT_VELOCITY = new THREE.Vector3(0, 0.8, -0.5); // Slight upward and backward drift
 const PARTICLE_SIZE = 0.3;
 const PARTICLE_COLOR = 0xAAAAAA; // Light gray dust
+
+// Get actual particle count based on performance settings
+function getMaxParticles() {
+    const density = Config.RENDERING.PARTICLE_DENSITY || 1.0;
+    return Math.floor(BASE_MAX_PARTICLES * density);
+}
+
+function getParticlesPerSecond() {
+    const density = Config.RENDERING.PARTICLE_DENSITY || 1.0;
+    return Math.floor(BASE_PARTICLES_PER_SECOND * density);
+}
+
+function getParticleLifetime() {
+    // Lower quality = shorter lifetime for better performance
+    if (performanceManager.currentQuality === 'low') {
+        return BASE_PARTICLE_LIFETIME * 0.7;
+    }
+    return BASE_PARTICLE_LIFETIME;
+}
 
 // Simple circular texture for particles
 function createParticleTexture() {
@@ -38,14 +59,15 @@ function createParticleTexture() {
 export class ParticleManager {
     constructor(scene) {
         this.scene = scene;
-        this.particles = []; // Array to hold active particle data { mesh, velocity, age }
-        this.particlePool = []; // Pool of inactive particle meshes for reuse
+        this.particles = []; // Array to hold active particle data { velocity, age }
         this.timeToEmit = 0; // Accumulator for emission rate
+        this.activeParticleCount = 0; // Track how many particles are active
+        this.maxParticles = getMaxParticles(); // Get max particles based on performance
 
         // Geometry: We'll manage positions manually
         this.particleGeometry = new THREE.BufferGeometry();
-        this.positions = new Float32Array(MAX_PARTICLES * 3);
-        this.opacities = new Float32Array(MAX_PARTICLES); // For fading
+        this.positions = new Float32Array(this.maxParticles * 3);
+        this.opacities = new Float32Array(this.maxParticles); // For fading
 
         this.particleGeometry.setAttribute('position', new THREE.BufferAttribute(this.positions, 3));
         this.particleGeometry.setAttribute('opacity', new THREE.BufferAttribute(this.opacities, 1));
@@ -60,7 +82,7 @@ export class ParticleManager {
             vertexColors: false, // Using uniform color for now
             color: PARTICLE_COLOR,
             opacity: 1.0, // We'll control via attribute/shader later if needed, for now uniform
-            sizeAttenuation: true,
+            sizeAttenuation: performanceManager.currentQuality !== 'low' // Disable size attenuation on low quality
         });
 
         // The Points object
@@ -109,26 +131,31 @@ export class ParticleManager {
     update(deltaTime, playerPosition) {
         // --- Emission ---
         this.timeToEmit += deltaTime;
-        const particlesToEmit = Math.floor(this.timeToEmit * PARTICLES_PER_SECOND);
-        if (particlesToEmit > 0) {
-            this.timeToEmit -= particlesToEmit / PARTICLES_PER_SECOND; // Reduce accumulator
+        const particlesPerSecond = getParticlesPerSecond();
+        const particlesToEmit = Math.floor(this.timeToEmit * particlesPerSecond);
+
+        if (particlesToEmit > 0 && this.activeParticleCount < this.maxParticles) {
+            this.timeToEmit -= particlesToEmit / particlesPerSecond; // Reduce accumulator
             const emitOrigin = playerPosition.clone();
             // Adjust emit origin slightly behind and below the player model center if needed
             emitOrigin.y -= Config.PLAYER_HEIGHT_OFFSET * 0.8; // Emit near feet
             // emitOrigin.z += 0.5; // Slightly behind player center
 
-            for (let i = 0; i < particlesToEmit; i++) {
+            // Only emit as many particles as we have room for
+            const actualParticlesToEmit = Math.min(particlesToEmit, this.maxParticles - this.activeParticleCount);
+            for (let i = 0; i < actualParticlesToEmit; i++) {
                 this.emitParticle(emitOrigin);
             }
         }
 
         // --- Update Existing Particles ---
+        const particleLifetime = getParticleLifetime();
         let aliveCount = 0;
         for (let i = 0; i < this.activeParticleCount; i++) {
             const particle = this.particles[i];
             particle.age += deltaTime;
 
-            if (particle.age >= PARTICLE_LIFETIME) {
+            if (particle.age >= particleLifetime) {
                 // Particle died, swap with the last active particle
                 const lastIndex = this.activeParticleCount - 1;
                 if (i !== lastIndex) {

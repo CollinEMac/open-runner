@@ -3,6 +3,7 @@
 
 import configManager from './utils/configManager.js';
 import { createLogger } from './utils/logger.js';
+import performanceManager from './utils/performanceManager.js';
 
 const logger = createLogger('Config');
 
@@ -14,29 +15,31 @@ const SECTIONS = {
     CAMERA: 'camera',
     CONTROLS: 'controls',
     PHYSICS: 'physics',
-    RENDERING: 'rendering'
+    RENDERING: 'rendering',
+    PERFORMANCE: 'performance'
 };
 
 // Initialize default configuration
 const defaultConfig = {
     // Default values that don't fit into specific sections
     DEBUG_MODE: false,
-    MAX_DELTA_TIME: 1 / 15 // Max time step allowed (prevents physics explosion after pause)
+    MAX_DELTA_TIME: 1 / 15, // Max time step allowed (prevents physics explosion after pause)
+    SHOW_FPS: false // Whether to show FPS counter
 };
 
 // World generation configuration
 const worldConfig = {
     SEED: 'open-runner-seed', // Fixed seed for consistent world generation
     CHUNK_SIZE: 100, // Width and depth of a single terrain chunk
-    RENDER_DISTANCE_CHUNKS: 5, // Render distance in chunks
+    RENDER_DISTANCE_CHUNKS: performanceManager.getSettings().renderDistance, // Render distance in chunks (from performance settings)
     GRID_CELL_SIZE: 25, // Size of cells in the spatial grid for collision detection
     PLAYER_SPAWN_SAFE_RADIUS: 50 // Increased minimum distance objects can spawn from player's spawn point
 };
 
 // Terrain configuration
 const terrainConfig = {
-    SEGMENTS_X: 50, // Number of segments in the plane geometry per chunk
-    SEGMENTS_Y: 50  // Higher means more detail but less performance
+    SEGMENTS_X: performanceManager.getSettings().terrainSegments, // Number of segments in the plane geometry per chunk
+    SEGMENTS_Y: performanceManager.getSettings().terrainSegments  // Higher means more detail but less performance
 };
 
 // Player configuration
@@ -93,6 +96,15 @@ const controlsConfig = {
     KEY_TURN_SPEED: Math.PI / 1.5
 };
 
+// Rendering configuration
+const renderingConfig = {
+    SHADOWS_ENABLED: performanceManager.getSettings().shadowsEnabled,
+    PIXEL_RATIO: performanceManager.getSettings().pixelRatio,
+    ANTIALIAS: performanceManager.getSettings().antialias,
+    PARTICLE_DENSITY: performanceManager.getSettings().particleDensity,
+    MAX_OBJECTS_PER_CHUNK: performanceManager.getSettings().maxObjectsPerChunk
+};
+
 // Register all configurations
 configManager.setDefaults(defaultConfig);
 configManager.registerConfig(SECTIONS.WORLD, worldConfig);
@@ -100,6 +112,7 @@ configManager.registerConfig(SECTIONS.TERRAIN, terrainConfig);
 configManager.registerConfig(SECTIONS.PLAYER, playerConfig);
 configManager.registerConfig(SECTIONS.CAMERA, cameraConfig);
 configManager.registerConfig(SECTIONS.CONTROLS, controlsConfig);
+configManager.registerConfig(SECTIONS.RENDERING, renderingConfig);
 
 logger.debug('Game configuration initialized');
 
@@ -132,12 +145,38 @@ export function updateConfig(section, updates) {
     return configManager.updateConfig(section, updates);
 }
 
+// Set up performance manager callback to update config when settings change
+performanceManager.setOnSettingsChanged((settings) => {
+    // Update terrain settings
+    configManager.updateConfig(SECTIONS.TERRAIN, {
+        SEGMENTS_X: settings.terrainSegments,
+        SEGMENTS_Y: settings.terrainSegments
+    });
+
+    // Update world settings
+    configManager.updateConfig(SECTIONS.WORLD, {
+        RENDER_DISTANCE_CHUNKS: settings.renderDistance
+    });
+
+    // Update rendering settings
+    configManager.updateConfig(SECTIONS.RENDERING, {
+        SHADOWS_ENABLED: settings.shadowsEnabled,
+        PIXEL_RATIO: settings.pixelRatio,
+        ANTIALIAS: settings.antialias,
+        PARTICLE_DENSITY: settings.particleDensity,
+        MAX_OBJECTS_PER_CHUNK: settings.maxObjectsPerChunk
+    });
+
+    logger.debug('Updated configuration based on performance settings');
+});
+
 // Export configuration sections for direct access
 export const WORLD = configManager.getSection(SECTIONS.WORLD);
 export const TERRAIN = configManager.getSection(SECTIONS.TERRAIN);
 export const PLAYER = configManager.getSection(SECTIONS.PLAYER);
 export const CAMERA = configManager.getSection(SECTIONS.CAMERA);
 export const CONTROLS = configManager.getSection(SECTIONS.CONTROLS);
+export const RENDERING = configManager.getSection(SECTIONS.RENDERING);
 
 // Export individual constants for backward compatibility
 // World
@@ -199,6 +238,9 @@ export const MAX_DELTA_TIME = getConfig('MAX_DELTA_TIME');
 
 // Powerups
 export const POWERUP_DURATION = 10;
+
+// Export performance manager
+export { performanceManager };
 
 // Export the config manager for advanced usage
 export default configManager;
