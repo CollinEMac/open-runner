@@ -58,9 +58,14 @@ export function initCollisionManager(spatialGridInstance, chunkManagerInstance) 
 
 /**
  * Checks for collisions between the player and nearby objects.
- * @param {THREE.Vector3} playerPosition - The player's current position.
+ * @param {Object} player - The player object containing position data.
  */
-export function checkCollisions(playerPosition) {
+export function checkCollisions(player) {
+    if (!player || !player.model) {
+        console.warn('Player or player model is undefined in checkCollisions');
+        return;
+    }
+    const playerPosition = player.model.position;
     // Removed checks for callbacks, only check for core dependencies and game state
     if (getCurrentState() !== GameStates.PLAYING || !_spatialGrid || !_chunkManager) {
         // Only check collisions during 'playing' state and if initialized
@@ -77,13 +82,18 @@ export function checkCollisions(playerPosition) {
     for (let i = nearbyArray.length - 1; i >= 0; i--) {
         const mesh = nearbyArray[i];
         if (!mesh || !mesh.userData) continue;
+        if (!mesh.position) continue; 
 
+        // handle coins
         if (mesh.userData.objectType === 'coin' && !mesh.userData.collidable) {
             const dx = playerPosition.x - mesh.position.x;
             const dz = playerPosition.z - mesh.position.z;
             const distanceSq = dx * dx + dz * dz;
             const coinCollisionRadius = mesh.geometry.parameters.radiusBottom;
-            const collisionThresholdSq = (playerCollisionRadius + coinCollisionRadius) ** 2;
+            let collisionThresholdSq = (playerCollisionRadius + coinCollisionRadius) ** 2;
+            if (player.powerup === 'magnet') {
+                collisionThresholdSq = collisionThresholdSq * 50;
+            }
 
             if (distanceSq < collisionThresholdSq) {
                 const { chunkKey, objectIndex, scoreValue } = mesh.userData;
@@ -92,6 +102,31 @@ export function checkCollisions(playerPosition) {
                 if (collected) {
                     // Emit score change event instead of calling callback
                     eventBus.emit('scoreChanged', scoreValue || 0);
+                    // console.log(`Collectible collected!`);
+                    nearbyArray.splice(i, 1); // Remove from local array for this check
+                }
+            }
+        }
+
+        // handle powerups
+        if (mesh.userData.objectType === 'magnet' && !mesh.userData.collidable) {
+            if (!mesh.position) {
+                console.warn('Mesh missing position:', mesh);
+                continue;
+            }
+            const dx = playerPosition.x - mesh.position.x;
+            const dz = playerPosition.z - mesh.position.z;
+            const distanceSq = dx * dx + dz * dz;
+            const magnetCollisionRadius = mesh.geometry.parameters.radiusBottom;
+            const collisionThresholdSq = (playerCollisionRadius + magnetCollisionRadius) ** 2;
+
+            if (distanceSq < collisionThresholdSq) {
+                const { chunkKey, objectIndex, scoreValue } = mesh.userData;
+                const collected = _chunkManager.collectObject(chunkKey, objectIndex);
+
+                if (collected) {
+                    // Emit score change event instead of calling callback
+                    eventBus.emit('powerupActivated', 'magnet');
                     // console.log(`Collectible collected!`);
                     nearbyArray.splice(i, 1); // Remove from local array for this check
                 }

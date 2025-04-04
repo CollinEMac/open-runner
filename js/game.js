@@ -6,7 +6,7 @@ import { EnemyManager } from './enemyManager.js';
 import { SpatialGrid } from './spatialGrid.js';
 import { ParticleManager } from './particleManager.js';
 import { setupPlayerControls, initInputStateManager, resetInputStates } from './controlsSetup.js';
-import { createPlayerCharacter } from './playerCharacter.js';
+import { grayMaterial, createPlayerCharacter } from './playerCharacter.js';
 import * as GlobalConfig from './config.js';
 import * as AudioManager from './audioManager.js';
 import { initScene, handleResize } from './sceneSetup.js';
@@ -61,12 +61,18 @@ class Game {
         this.uiManager = UIManager;
 
         // Game state
-        this.player = { model: null, modelParts: null, currentSpeed: 0 };
+        this.player = {
+            model: null,
+            modelParts: null,
+            currentSpeed: 0,
+            powerup: '',
+        };
         this.score = 0;
         this.currentLevelConfig = null;
         this.playerAnimationTime = 0;
         this.atmosphericElements = [];
         this.isTransitioning = false;
+        this.powerupTimer = null;
 
         // Camera transition properties
         this.isCameraTransitioning = false;
@@ -137,6 +143,7 @@ class Game {
             model: playerModelData.characterGroup,
             modelParts: playerModelData,
             currentSpeed: GlobalConfig.PLAYER_SPEED,
+            powerup: '',
         };
         this.player.model.position.set(0, 10, 5);
 
@@ -192,6 +199,44 @@ class Game {
                  this.eventBus.emit('requestLevelTransition', 'level2');
                  console.log("[Game] Requesting level transition to level2");
              }
+        });
+
+        this.eventBus.subscribe('powerupActivated', (powerupType) => {
+            this.player.powerup = powerupType;
+            console.log(`${powerupType} powerup started!`);
+
+            // give the player some visual indication of the powerup
+            const magnetMaterial = new THREE.MeshStandardMaterial({
+                color: 0xff0000,      // Bright red
+                emissive: 0x330000,   // Subtle red glow
+                metalness: 0.9,       // More metallic
+                roughness: 0.1        // More shiny
+            });
+            
+            // Apply to all player meshes
+            this.player.modelParts.characterGroup.traverse(child => {
+                if (child instanceof THREE.Mesh) {
+                    child.material = magnetMaterial;
+                }
+            });
+
+            // Set a timer to clear the powerup
+            if (this.powerupTimer) {
+                clearTimeout(this.powerupTimer);
+            }
+            
+            this.powerupTimer = setTimeout(() => {
+                this.player.powerup = '';
+                console.log(`${powerupType} powerup expired!`);
+
+                // return the character to their original visual style
+                this.player.modelParts.characterGroup.traverse(child => {
+                    if (child instanceof THREE.Mesh) {
+                        child.material = grayMaterial;
+                    }
+                });
+
+            }, GlobalConfig.POWERUP_DURATION * 1000); // Convert seconds to milliseconds
         });
 
         this.eventBus.subscribe('playerDied', () => this.handleGameOver());
@@ -259,7 +304,7 @@ class Game {
             if (this.chunkManager && this.player.model) {
                 this.chunkManager.update(this.player.model.position);
                 // Update coins to make them spin
-                this.chunkManager.updateCoins(deltaTime, elapsedTime);
+                this.chunkManager.updateCollectibles(deltaTime, elapsedTime);
                 // Update tumbleweeds
                 this.chunkManager.updateTumbleweeds(deltaTime, elapsedTime, this.player.model.position);
             }
@@ -270,7 +315,7 @@ class Game {
                 this.particleManager.update(deltaTime, this.player.model.position);
             }
             if (this.collisionChecker && this.player.model) {
-                this.collisionChecker(this.player.model.position);
+                this.collisionChecker(this.player);
             }
             this._updateAtmosphericElements(deltaTime, elapsedTime);
 

@@ -32,6 +32,18 @@ export function initLevelAssets(levelConfig) { // Renamed and added levelConfig
     levelAssets.coinGeometry.rotateX(Math.PI / 2); // Orient coin flat
     levelAssets.coinMaterial = new THREE.MeshStandardMaterial({ color: coinVis.color, metalness: 0.3, roughness: 0.4 });
 
+    // --- Powerups ---
+    // --- Magnet ---
+    const magnetVis = levelConfig.MAGNET_VISUALS || { radius: 0.8, height: 0.5, color: 0xF60000 };
+    levelAssets.magnetGeometry = new THREE.CylinderGeometry(magnetVis.radius, magnetVis.radius, magnetVis.height, 16, 1, false);
+    levelAssets.magnetGeometry.rotateX(Math.PI / 2);
+    levelAssets.magnetMaterial = new THREE.MeshStandardMaterial({ 
+      color: magnetVis.color, 
+      emissive: 0x330000,
+      metalness: 0.5, 
+      roughness: 0.10 
+    });
+
     // --- Obstacles ---
     // --- Obstacles (Initialize based on levelConfig.OBJECT_TYPES) ---
     // Generic materials first (can be overridden if needed)
