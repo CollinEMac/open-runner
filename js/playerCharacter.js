@@ -32,16 +32,16 @@ import * as Config from './config.js'; // Import config constants
  *                       leftKneeGroup: THREE.Group, rightKneeGroup: THREE.Group    // Groups containing calf+knee, pivot at knee
  *                   }
  */
+// Material - Standard material to interact with light
+export const grayMaterial = new THREE.MeshStandardMaterial({
+    color: 0x808080, // Gray
+    roughness: 0.7, // Less shiny
+    metalness: 0.1  // Slightly metallic
+});
+
 export function createPlayerCharacter() {
 
     const characterGroup = new THREE.Group(); // Overall group for the character model
-
-    // Material - Standard material to interact with light
-    const grayMaterial = new THREE.MeshStandardMaterial({
-        color: 0x808080, // Gray
-        roughness: 0.7, // Less shiny
-        metalness: 0.1  // Slightly metallic
-    });
 
     // Dimensions from Config
     const headSize = Config.PLAYER_HEAD_SIZE;

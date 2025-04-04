@@ -6,7 +6,7 @@ import { EnemyManager } from './enemyManager.js';
 import { SpatialGrid } from './spatialGrid.js';
 import { ParticleManager } from './particleManager.js';
 import { setupPlayerControls, initInputStateManager, resetInputStates } from './controlsSetup.js';
-import { createPlayerCharacter } from './playerCharacter.js';
+import { grayMaterial, createPlayerCharacter } from './playerCharacter.js';
 import * as GlobalConfig from './config.js';
 import * as AudioManager from './audioManager.js';
 import { initScene, handleResize } from './sceneSetup.js';
@@ -72,6 +72,7 @@ class Game {
         this.playerAnimationTime = 0;
         this.atmosphericElements = [];
         this.isTransitioning = false;
+        this.powerupTimer = null;
 
         // Camera transition properties
         this.isCameraTransitioning = false;
@@ -200,7 +201,43 @@ class Game {
              }
         });
 
-        this.eventBus.subscribe('powerupActivated', () => this.player.powerup = 'magnet');
+        this.eventBus.subscribe('powerupActivated', (powerupType) => {
+            this.player.powerup = powerupType;
+            console.log(`${powerupType} powerup started!`);
+
+            // give the player some visual indication of the powerup
+            const magnetMaterial = new THREE.MeshStandardMaterial({
+                color: 0xff0000,      // Bright red
+                emissive: 0x330000,   // Subtle red glow
+                metalness: 0.9,       // More metallic
+                roughness: 0.1        // More shiny
+            });
+            
+            // Apply to all player meshes
+            this.player.modelParts.characterGroup.traverse(child => {
+                if (child instanceof THREE.Mesh) {
+                    child.material = magnetMaterial;
+                }
+            });
+
+            // Set a timer to clear the powerup
+            if (this.powerupTimer) {
+                clearTimeout(this.powerupTimer);
+            }
+            
+            this.powerupTimer = setTimeout(() => {
+                this.player.powerup = '';
+                console.log(`${powerupType} powerup expired!`);
+
+                // return the character to their original visual style
+                this.player.modelParts.characterGroup.traverse(child => {
+                    if (child instanceof THREE.Mesh) {
+                        child.material = grayMaterial;
+                    }
+                });
+
+            }, GlobalConfig.POWERUP_DURATION * 1000); // Convert seconds to milliseconds
+        });
 
         this.eventBus.subscribe('playerDied', () => this.handleGameOver());
 

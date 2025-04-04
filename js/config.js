@@ -197,5 +197,8 @@ export const CAMERA_SMOOTHING_FACTOR = CAMERA.SMOOTHING_FACTOR;
 // Timing
 export const MAX_DELTA_TIME = getConfig('MAX_DELTA_TIME');
 
+// Powerups
+export const POWERUP_DURATION = 10;
+
 // Export the config manager for advanced usage
 export default configManager;
