@@ -202,9 +202,14 @@ export function checkCollisions(player) {
                     // Tree trunk height is 4 units (from createTreeMesh in assetManager.js)
                     const trunkHeight = 4 * mesh.scale.y;
 
-                    // Only trigger collision if player is at trunk level
-                    // Allow a small buffer (0.5) for player to walk under foliage
-                    if (dy < trunkHeight + 0.5) {
+                    // Calculate player's feet position by subtracting the height offset
+                    // PLAYER_HEIGHT_OFFSET is the distance from player origin to feet
+                    const playerFeetY = playerPosition.y - Config.PLAYER_HEIGHT_OFFSET;
+                    const playerFeetToTreeBase = playerFeetY - mesh.position.y;
+
+                    // Only trigger collision if player's feet are below the top of the trunk
+                    // This allows the player to run under the foliage when their feet are above the trunk
+                    if (playerFeetToTreeBase < trunkHeight) {
                         // console.log(`Collision detected with tree trunk`);
                         eventBus.emit('playerDied'); // Emit player death event
                         return; // Stop checking
