@@ -689,13 +689,21 @@ export class ChunkManager {
 
                                 // Safety check: Don't move the coin if it would end up too close to the player
                                 // This prevents coins from getting stuck inside the player model
-                                const minSafeDistanceSq = (playerCollisionRadius * 0.4) ** 2;
+                                // Use a smaller safe distance to ensure coins can be collected
+                                // The value must be smaller than the collection threshold in collisionManager.js
+                                const coinCollisionRadius = collectibleMesh.geometry.parameters.radiusBottom;
+                                const minSafeDistanceSq = (playerCollisionRadius * 0.2) ** 2;
 
                                 if (newDistanceSq > minSafeDistanceSq) {
                                     // Only update position if it won't get too close
                                     collectibleMesh.position.x = newX;
                                     collectibleMesh.position.y = newY;
                                     collectibleMesh.position.z = newZ;
+
+                                    // Debug logging for coins that are very close but not at safe distance
+                                    if (newDistanceSq < (playerCollisionRadius * 0.5) ** 2 && Math.random() < 0.05) {
+                                        console.log(`[ChunkManager] Coin approaching player: distance=${Math.sqrt(newDistanceSq).toFixed(2)}, safeDistance=${Math.sqrt(minSafeDistanceSq).toFixed(2)}`);
+                                    }
                                 } else {
                                     // If it would get too close, move it to the safe distance boundary
                                     // This ensures coins don't get stuck inside the player
@@ -704,6 +712,11 @@ export class ChunkManager {
                                     collectibleMesh.position.x = playerPosition.x - newDx * safeFactor;
                                     collectibleMesh.position.y = playerPosition.y - newDy * safeFactor;
                                     collectibleMesh.position.z = playerPosition.z - newDz * safeFactor;
+
+                                    // Debug logging for coins at safe distance
+                                    if (Math.random() < 0.05) {
+                                        console.log(`[ChunkManager] Coin at safe distance: ${safeDistance.toFixed(2)}`);
+                                    }
                                 }
                             }
                         }

@@ -96,9 +96,15 @@ export function checkCollisions(player) {
             // and don't get stuck inside the player model
             let collisionThresholdSq;
             if (player.powerup === 'magnet') {
-                // Use a slightly larger collection radius when magnet is active
+                // Use a much larger collection radius when magnet is active
                 // This ensures coins don't get stuck inside the player model
-                collisionThresholdSq = (playerCollisionRadius + coinCollisionRadius * 1.2) ** 2;
+                // This must be larger than the minSafeDistanceSq in chunkManager.js
+                collisionThresholdSq = (playerCollisionRadius + coinCollisionRadius * 2.0) ** 2;
+
+                // Debug logging to help diagnose collection issues
+                if (distanceSq < (playerCollisionRadius * 0.5) ** 2) {
+                    console.log(`[CollisionManager] Coin very close to player: distance=${Math.sqrt(distanceSq).toFixed(2)}, threshold=${Math.sqrt(collisionThresholdSq).toFixed(2)}`);
+                }
             } else {
                 // Normal collection radius when magnet is not active
                 collisionThresholdSq = (playerCollisionRadius + coinCollisionRadius) ** 2;
