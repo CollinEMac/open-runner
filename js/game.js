@@ -678,7 +678,7 @@ class Game {
          this.eventBus.emit('uiButtonClicked');
 
          // Hide mobile controls when returning to title
-         updateMobileControlsVisibility(false);
+         updateMobileControlsVisibility(false, true); // Force hide
 
          // Don't unload level, remove player/atmospheric elements
          this._clearAtmosphericElements();

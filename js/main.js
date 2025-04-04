@@ -1,10 +1,19 @@
 // js/main.js
 import { Game } from './game.js';
 import * as UIManager from './uiManager.js'; // Keep for potential initial error display
+import { isMobileDevice } from './utils/deviceUtils.js';
 
 // Wait for the DOM to be fully loaded
 document.addEventListener('DOMContentLoaded', async () => {
     console.log("DOM fully loaded and parsed");
+
+    // Directly hide mobile controls on desktop
+    const mobileControls = document.getElementById('mobileControls');
+    if (mobileControls && !isMobileDevice()) {
+        mobileControls.style.display = 'none';
+        mobileControls.style.opacity = '0';
+        console.log("Mobile controls forcibly hidden on desktop");
+    }
 
     const canvas = document.getElementById('gameCanvas');
     if (!canvas) {

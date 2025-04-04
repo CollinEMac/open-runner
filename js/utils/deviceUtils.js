@@ -52,16 +52,28 @@ window.addEventListener('resize', () => {
 /**
  * Updates the mobile controls visibility based on device type
  * @param {boolean} [forceShow] - Optional parameter to force showing mobile controls regardless of device
+ * @param {boolean} [forceHide] - Optional parameter to force hiding mobile controls regardless of device
  */
-export function updateMobileControlsVisibility(forceShow = false) {
+export function updateMobileControlsVisibility(forceShow = false, forceHide = false) {
     // First ensure the device class is set
     setDeviceClass();
 
-    if (forceShow || isMobileDevice()) {
-        document.body.classList.add('show-mobile-controls');
-        logger.debug('Mobile controls enabled');
-    } else {
+    if (forceHide) {
+        // Force hide mobile controls
         document.body.classList.remove('show-mobile-controls');
-        logger.debug('Mobile controls disabled');
+        logger.debug('Mobile controls forcibly hidden');
+    } else if (forceShow) {
+        // Force show mobile controls
+        document.body.classList.add('show-mobile-controls');
+        logger.debug('Mobile controls forcibly shown');
+    } else {
+        // Normal behavior - only show on mobile
+        if (isMobileDevice()) {
+            document.body.classList.add('show-mobile-controls');
+            logger.debug('Mobile controls enabled for mobile device');
+        } else {
+            document.body.classList.remove('show-mobile-controls');
+            logger.debug('Mobile controls disabled for desktop device');
+        }
     }
 }
