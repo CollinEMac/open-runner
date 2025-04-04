@@ -148,19 +148,48 @@ export function createTreeMesh(levelConfig) { // Accept levelConfig (though not 
     const foliageHeight = 12;
     const foliageRadius = 3.5;
 
+    // Get materials with error checking
+    const trunkMaterial = getAsset('treeTrunkMaterial');
+    const foliageMaterial = getAsset('treeFoliageMaterial');
+
+    // Check if materials are available
+    if (!trunkMaterial || !foliageMaterial) {
+        console.error('[AssetManager] Missing tree materials:',
+                     !trunkMaterial ? 'treeTrunkMaterial' : '',
+                     !foliageMaterial ? 'treeFoliageMaterial' : '');
+        // Create fallback materials if needed
+        if (!trunkMaterial) {
+            console.warn('[AssetManager] Creating fallback trunk material');
+            levelAssets.treeTrunkMaterial = new THREE.MeshStandardMaterial({ color: 0x8B4513, roughness: 0.9 });
+        }
+        if (!foliageMaterial) {
+            console.warn('[AssetManager] Creating fallback foliage material');
+            levelAssets.treeFoliageMaterial = new THREE.MeshStandardMaterial({ color: 0x228B22, roughness: 0.7 });
+        }
+    }
+
+    // Create trunk
     const trunkGeometry = new THREE.CylinderGeometry(trunkRadius, trunkRadius, trunkHeight, 8);
     const trunkMesh = new THREE.Mesh(trunkGeometry, getAsset('treeTrunkMaterial'));
     trunkMesh.position.y = trunkHeight / 2;
     trunkMesh.castShadow = true;
     trunkMesh.receiveShadow = true;
+    trunkMesh.name = 'treeTrunk'; // Add name for debugging
     treeGroup.add(trunkMesh);
 
+    // Create foliage
     const foliageGeometry = new THREE.ConeGeometry(foliageRadius, foliageHeight, 8);
     const foliageMesh = new THREE.Mesh(foliageGeometry, getAsset('treeFoliageMaterial'));
     foliageMesh.position.y = trunkHeight + foliageHeight / 2;
     foliageMesh.castShadow = true;
     foliageMesh.receiveShadow = true;
+    foliageMesh.name = 'treeFoliage'; // Add name for debugging
     treeGroup.add(foliageMesh);
+
+    // Verify that both parts were added
+    if (treeGroup.children.length !== 2) {
+        console.warn(`[AssetManager] Tree has ${treeGroup.children.length} parts instead of 2`);
+    }
 
     return treeGroup;
 }

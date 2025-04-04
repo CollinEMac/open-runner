@@ -117,13 +117,13 @@ export const level1Config = {
         {
             type: 'tree_pine',
             density: 0.000375,
-            minDistance: 4.0,
+            minDistance: 8.0, // Increased from 4.0 to prevent trees from clipping into each other
             verticalOffset: 0,
             scaleRange: [1.5, 3.0],
             randomRotationY: true,
             collidable: true,
             scoreValue: 0,
-            maxPlacementAttempts: 10,
+            maxPlacementAttempts: 15, // Increased to give more chances for successful placement
         },
         {
             type: 'log_fallen',
