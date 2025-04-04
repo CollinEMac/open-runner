@@ -488,11 +488,11 @@ export class ChunkManager {
     }
 
     /**
-     * Updates all coins in loaded chunks to make them spin.
+     * Updates all collectibles in loaded chunks to make them spin.
      * @param {number} deltaTime - Time since last update in seconds.
      * @param {number} elapsedTime - Total elapsed time in seconds.
      */
-    updateCoins(deltaTime, elapsedTime) {
+    updateCollectibles(deltaTime, elapsedTime) {
         if (!this.levelConfig || !this.levelConfig.COIN_VISUALS) return;
 
         // Get the spin speed from level config
@@ -502,10 +502,10 @@ export class ChunkManager {
         for (const [key, chunkData] of this.loadedChunks.entries()) {
             // Update all collectible coins in this chunk
             if (chunkData.collectibles && chunkData.collectibles.length > 0) {
-                chunkData.collectibles.forEach(coinMesh => {
-                    if (coinMesh?.userData.collidable === false) {
-                        // Rotate the coin around its Y axis
-                        coinMesh.rotation.y += spinSpeed * deltaTime;
+                chunkData.collectibles.forEach(collectibleMesh => {
+                    if (collectibleMesh?.userData.collidable === false) {
+                        // Rotate the object around its Y axis
+                        collectibleMesh.rotation.y += spinSpeed * deltaTime;
                     }
                 });
             }

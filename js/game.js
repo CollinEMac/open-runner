@@ -304,7 +304,7 @@ class Game {
             if (this.chunkManager && this.player.model) {
                 this.chunkManager.update(this.player.model.position);
                 // Update coins to make them spin
-                this.chunkManager.updateCoins(deltaTime, elapsedTime);
+                this.chunkManager.updateCollectibles(deltaTime, elapsedTime);
                 // Update tumbleweeds
                 this.chunkManager.updateTumbleweeds(deltaTime, elapsedTime, this.player.model.position);
             }
