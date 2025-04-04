@@ -110,16 +110,12 @@ export function initLevelAssets(levelConfig) { // Renamed and added levelConfig
     });
 
     // --- Tree Components ---
-    // Create shared tree materials and template
+    // Note: Tree geometry/mesh creation might be better suited for a factory function
+    // if trees become more complex, but materials can be shared.
+    // --- Tree Components (Only if 'tree_pine' is in OBJECT_TYPES) ---
     if (objectTypes.some(t => t.type === 'tree_pine')) {
-        // Create materials
         levelAssets.treeFoliageMaterial = new THREE.MeshStandardMaterial({ color: 0x228B22, roughness: 0.7 }); // Forest green
         levelAssets.treeTrunkMaterial = new THREE.MeshStandardMaterial({ color: 0x8B4513, roughness: 0.9 }); // Saddle brown
-
-        // Create a template tree that will be cloned for each instance
-        // This ensures we always have a complete tree to clone from
-        console.log('[AssetManager] Creating tree template');
-        levelAssets.treeTemplate = createTreeTemplate();
     }
 
     console.log("[AssetManager] Level assets initialized:", Object.keys(levelAssets));
@@ -141,86 +137,12 @@ export function getAsset(key) {
 // --- Optional: Factory Functions for Complex Objects ---
 // Example for creating a tree mesh - could be expanded
 /**
- * Creates a template tree that will be cloned for all tree instances.
- * This is only called once during initialization.
- * @returns {THREE.Group} The template tree group
- * @private
+ * Creates a simple pine tree mesh group.
+ * @returns {THREE.Group}
  */
-function createTreeTemplate() {
+export function createTreeMesh(levelConfig) { // Accept levelConfig (though not strictly needed if materials are preloaded)
     const treeGroup = new THREE.Group();
-    treeGroup.name = 'tree_pine_template';
-
-    const trunkHeight = 4;
-    const trunkRadius = 0.5;
-    const foliageHeight = 12;
-    const foliageRadius = 3.5;
-
-    // Get materials
-    const trunkMaterial = levelAssets.treeTrunkMaterial;
-    const foliageMaterial = levelAssets.treeFoliageMaterial;
-
-    // Create trunk
-    const trunkGeometry = new THREE.CylinderGeometry(trunkRadius, trunkRadius, trunkHeight, 8);
-    const trunkMesh = new THREE.Mesh(trunkGeometry, trunkMaterial);
-    trunkMesh.position.y = trunkHeight / 2;
-    trunkMesh.castShadow = true;
-    trunkMesh.receiveShadow = true;
-    trunkMesh.name = 'treeTrunk';
-    treeGroup.add(trunkMesh);
-
-    // Create foliage
-    const foliageGeometry = new THREE.ConeGeometry(foliageRadius, foliageHeight, 8);
-    const foliageMesh = new THREE.Mesh(foliageGeometry, foliageMaterial);
-    foliageMesh.position.y = trunkHeight + foliageHeight / 2;
-    foliageMesh.castShadow = true;
-    foliageMesh.receiveShadow = true;
-    foliageMesh.name = 'treeFoliage';
-    treeGroup.add(foliageMesh);
-
-    // Add metadata
-    treeGroup.userData.isCompleteTree = true;
-    treeGroup.userData.objectType = 'tree_pine';
-
-    console.log('[AssetManager] Created tree template with trunk and foliage');
-    return treeGroup;
-}
-
-/**
- * Creates a tree mesh by cloning the template.
- * @returns {THREE.Group} A new tree instance
- */
-export function createTreeMesh(levelConfig) {
-    // Check if we have a template to clone from
-    const treeTemplate = getAsset('treeTemplate');
-
-    if (treeTemplate) {
-        // Clone the template (this preserves the structure with all children)
-        const treeClone = treeTemplate.clone();
-        treeClone.name = 'tree_pine_instance';
-
-        // Verify the clone has all parts
-        let hasTrunk = false;
-        let hasFoliage = false;
-
-        treeClone.traverse((child) => {
-            if (child.name === 'treeTrunk') hasTrunk = true;
-            if (child.name === 'treeFoliage') hasFoliage = true;
-        });
-
-        if (!hasTrunk || !hasFoliage) {
-            console.error(`[AssetManager] Cloned tree missing parts (trunk: ${hasTrunk}, foliage: ${hasFoliage})`);
-        } else {
-            // Tree is complete
-            return treeClone;
-        }
-    }
-
-    // If we get here, either there was no template or the clone was incomplete
-    // Fall back to creating a new tree from scratch
-    console.warn('[AssetManager] Creating tree from scratch (template unavailable or clone failed)');
-
-    const treeGroup = new THREE.Group();
-    treeGroup.name = 'tree_pine_fallback';
+    treeGroup.name = 'tree_pine_group';
 
     const trunkHeight = 4;
     const trunkRadius = 0.5;
@@ -231,15 +153,22 @@ export function createTreeMesh(levelConfig) {
     let trunkMaterial = getAsset('treeTrunkMaterial');
     let foliageMaterial = getAsset('treeFoliageMaterial');
 
-    // Create fallback materials if needed
-    if (!trunkMaterial) {
-        console.warn('[AssetManager] Creating fallback trunk material');
-        trunkMaterial = new THREE.MeshStandardMaterial({ color: 0x8B4513, roughness: 0.9 });
-    }
-
-    if (!foliageMaterial) {
-        console.warn('[AssetManager] Creating fallback foliage material');
-        foliageMaterial = new THREE.MeshStandardMaterial({ color: 0x228B22, roughness: 0.7 });
+    // Check if materials are available
+    if (!trunkMaterial || !foliageMaterial) {
+        console.error('[AssetManager] Missing tree materials:',
+                     !trunkMaterial ? 'treeTrunkMaterial' : '',
+                     !foliageMaterial ? 'treeFoliageMaterial' : '');
+        // Create fallback materials if needed
+        if (!trunkMaterial) {
+            console.warn('[AssetManager] Creating fallback trunk material');
+            levelAssets.treeTrunkMaterial = new THREE.MeshStandardMaterial({ color: 0x8B4513, roughness: 0.9 });
+            trunkMaterial = levelAssets.treeTrunkMaterial;
+        }
+        if (!foliageMaterial) {
+            console.warn('[AssetManager] Creating fallback foliage material');
+            levelAssets.treeFoliageMaterial = new THREE.MeshStandardMaterial({ color: 0x228B22, roughness: 0.7 });
+            foliageMaterial = levelAssets.treeFoliageMaterial;
+        }
     }
 
     // Create trunk
@@ -248,7 +177,7 @@ export function createTreeMesh(levelConfig) {
     trunkMesh.position.y = trunkHeight / 2;
     trunkMesh.castShadow = true;
     trunkMesh.receiveShadow = true;
-    trunkMesh.name = 'treeTrunk';
+    trunkMesh.name = 'treeTrunk'; // Add name for debugging
     treeGroup.add(trunkMesh);
 
     // Create foliage
@@ -257,13 +186,19 @@ export function createTreeMesh(levelConfig) {
     foliageMesh.position.y = trunkHeight + foliageHeight / 2;
     foliageMesh.castShadow = true;
     foliageMesh.receiveShadow = true;
-    foliageMesh.name = 'treeFoliage';
+    foliageMesh.name = 'treeFoliage'; // Add name for debugging
     treeGroup.add(foliageMesh);
 
-    // Add metadata
+    // Verify that both parts were added
+    if (treeGroup.children.length !== 2) {
+        console.warn(`[AssetManager] Tree has ${treeGroup.children.length} parts instead of 2`);
+    }
+
+    // Add a userData flag to indicate this is a complete tree
     treeGroup.userData.isCompleteTree = true;
     treeGroup.userData.objectType = 'tree_pine';
 
+    console.log('[AssetManager] Created new tree mesh with trunk and foliage');
     return treeGroup;
 }
 
