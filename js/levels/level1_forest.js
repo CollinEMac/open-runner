@@ -82,7 +82,7 @@ export const level1Config = {
         // --- powerups ---
         {
             type: 'magnet',
-            density: 0.00015,
+            density: 0.0001,
             minDistance: 50.0,
             verticalOffset: 1.5,
             scaleRange: [1.2, 1.5],
