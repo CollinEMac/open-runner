@@ -403,6 +403,18 @@ export function showGameScreen() {
         highScoreElement.style.opacity = '1';
         highScoreElement.style.transition = 'opacity 0.3s';
     }
+
+    // Show mobile controls only on mobile devices
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+                    (window.matchMedia && window.matchMedia('(max-width: 768px)').matches);
+
+    // Add or remove the class that controls mobile controls visibility
+    if (isMobile) {
+        document.body.classList.add('show-mobile-controls');
+    } else {
+        document.body.classList.remove('show-mobile-controls');
+    }
+
     // Ensure conflicting overlays are hidden (handled by gameStateChanged)
 }
 

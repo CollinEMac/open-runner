@@ -499,6 +499,12 @@ html, body {
     transition: opacity 0.3s ease; /* Smooth transition */
 }
 
+/* Only show mobile controls when the class is present (for mobile devices) */
+.show-mobile-controls #mobileControls {
+    display: flex;
+    opacity: 1;
+}
+
 .mobile-steering-controls {
     display: flex;
     justify-content: space-between;

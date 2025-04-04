@@ -42,15 +42,26 @@ export function createTerrainChunk(chunkX, chunkZ, levelConfig) { // Added level
     let segmentsY = TERRAIN_SEGMENTS_Y;
 
     // Apply distance-based LOD only if not in ultra quality mode
+    // IMPORTANT: To avoid visible seams, we use a step function instead of continuous LOD
+    // This ensures adjacent chunks have the same LOD level
     if (performanceManager.currentQuality !== 'ultra') {
-        // Reduce detail for distant chunks
-        if (distanceFromPlayer > 3) {
-            segmentsX = Math.max(10, Math.floor(segmentsX * 0.5));
-            segmentsY = Math.max(10, Math.floor(segmentsY * 0.5));
-        } else if (distanceFromPlayer > 1) {
-            segmentsX = Math.max(15, Math.floor(segmentsX * 0.75));
-            segmentsY = Math.max(15, Math.floor(segmentsY * 0.75));
+        // Use distance bands to ensure adjacent chunks have the same LOD
+        // Round to the nearest band to avoid seams between chunks
+        const lodBand = Math.floor(distanceFromPlayer / 2) * 2;
+
+        if (lodBand >= 4) {
+            // Far chunks (band 4+) - lowest detail
+            segmentsX = Math.max(20, Math.floor(TERRAIN_SEGMENTS_X * 0.5));
+            segmentsY = Math.max(20, Math.floor(TERRAIN_SEGMENTS_Y * 0.5));
+        } else if (lodBand >= 2) {
+            // Medium distance chunks (band 2-3) - medium detail
+            segmentsX = Math.max(30, Math.floor(TERRAIN_SEGMENTS_X * 0.75));
+            segmentsY = Math.max(30, Math.floor(TERRAIN_SEGMENTS_Y * 0.75));
         }
+
+        // Ensure segments are even numbers to avoid seams
+        segmentsX = Math.floor(segmentsX / 2) * 2;
+        segmentsY = Math.floor(segmentsY / 2) * 2;
     }
 
     const geometry = new THREE.PlaneGeometry(
