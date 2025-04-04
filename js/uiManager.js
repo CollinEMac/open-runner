@@ -850,9 +850,9 @@ function addCustomStyles() {
         .notification {
             position: fixed;
             top: 80px;
-            left: 0;
-            right: 0;
-            margin: 0 auto;
+            right: 15px; /* Position to the right on desktop */
+            left: auto; /* Override left positioning */
+            margin: 0; /* Remove auto margins */
             width: fit-content;
             background: linear-gradient(135deg, rgba(40, 40, 40, 0.9), rgba(20, 20, 20, 0.9));
             color: var(--text-light);
@@ -869,6 +869,15 @@ function addCustomStyles() {
             min-width: 300px;
             max-width: 80%;
             animation: fadeIn 0.3s ease-out;
+        }
+
+        /* Center notification on mobile devices */
+        @media (max-width: 768px), (pointer: coarse) {
+            .notification {
+                right: 0;
+                left: 0;
+                margin: 0 auto; /* Center horizontally */
+            }
         }
 
         @keyframes fadeIn {
