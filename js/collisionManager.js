@@ -167,6 +167,29 @@ export function checkCollisions(player) {
                      return; // Stop checking
                  }
             }
+            // Special check for trees to allow walking under foliage
+            else if (objectType === 'tree_pine') {
+                const obstacleRadius = (obstacleRadii[objectType] || 1.5) * mesh.scale.x;
+                const collisionThresholdSqObstacle = (playerCollisionRadius + obstacleRadius) ** 2;
+
+                // Only check for collision with the trunk
+                if (distanceSq < collisionThresholdSqObstacle) {
+                    // Get the height difference between player and tree base
+                    const dy = playerPosition.y - mesh.position.y;
+
+                    // Tree trunk height is 4 units (from createTreeMesh in assetManager.js)
+                    const trunkHeight = 4 * mesh.scale.y;
+
+                    // Only trigger collision if player is at trunk level
+                    // Allow a small buffer (0.5) for player to walk under foliage
+                    if (dy < trunkHeight + 0.5) {
+                        // console.log(`Collision detected with tree trunk`);
+                        eventBus.emit('playerDied'); // Emit player death event
+                        return; // Stop checking
+                    }
+                    // Otherwise player is above trunk height and can walk under foliage
+                }
+            }
             // Check for other static obstacles
             else {
                 const obstacleRadius = (obstacleRadii[objectType] || 1.0) * mesh.scale.x;
