@@ -304,13 +304,9 @@ export function createObjectVisual(objectData, levelConfig) { // Added levelConf
             break;
         case 'magnet':
             // Use the magnet model group instead of a simple geometry
+            // Clone the entire model with its materials intact
             mesh = AssetManager.getAsset('magnetGroup').clone();
-            // Apply the magnet material to all meshes in the group
-            mesh.traverse(child => {
-                if (child.isMesh) {
-                    child.material = AssetManager.getAsset('magnetMaterial');
-                }
-            });
+            // No need to override materials as they're already set in createMagnetModel
             geometry = null;
             material = null;
             break;
