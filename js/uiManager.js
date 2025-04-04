@@ -1,6 +1,7 @@
 // js/uiManager.js
 import eventBus from './eventBus.js';
 import { GameStates, getPreviousState } from './gameStateManager.js'; // Import states and functions
+import * as ScoreManager from './scoreManager.js';
 
 // --- Element References ---
 let scoreElement;
@@ -112,21 +113,28 @@ function handleGameStateChange(newState) {
  */
 function showGameOverScreenWithScore(scoreData) {
     // Handle both old and new formats
-    let finalScore, highScore, levelId;
+    let finalScore, highScore, levelId, isNewHighScore;
 
     if (typeof scoreData === 'object') {
         finalScore = scoreData.score;
         highScore = scoreData.highScore;
         levelId = scoreData.levelId;
+        isNewHighScore = scoreData.isNewHighScore;
     } else {
         // Legacy support for when finalScore was passed directly
         finalScore = scoreData;
-        highScore = currentHighScore;
+        highScore = ScoreManager.getGlobalHighScore();
+        isNewHighScore = ScoreManager.isNewGlobalHighScore(finalScore);
     }
 
     // Update internal score
     currentScore = finalScore;
     currentHighScore = highScore;
+
+    // If this is a new high score, show the notification
+    if (isNewHighScore) {
+        showNewHighScoreNotification(highScore);
+    }
 
     // Update game over screen
     if (gameOverElement) {
@@ -247,6 +255,7 @@ export function initUIManager() {
         eventBus.subscribe('gameStateChanged', handleGameStateChange);
         eventBus.subscribe('gameOverInfo', showGameOverScreenWithScore); // Listen for score info
         eventBus.subscribe('newHighScore', showNewHighScoreNotification); // Listen for new high scores
+        eventBus.subscribe('currentScoreUpdated', checkForLiveHighScore); // Listen for live score updates
         eventBus.subscribe('levelUnlockSaved', (levelId) => {
             showLevelUnlockedNotification(`Level ${levelId} Unlocked!`);
         });
@@ -264,7 +273,10 @@ export function initUIManager() {
     // We can set a default safe state here before the first gameStateChanged event fires
     handleGameStateChange(GameStates.LOADING); // Assume initial state is LOADING
     updateScore(0); // Initialize score display to 0
-    updateHighScoreDisplay(0); // Initialize high score display to 0
+
+    // Load high score from ScoreManager
+    const highScore = ScoreManager.getGlobalHighScore();
+    updateHighScoreDisplay(highScore); // Initialize high score display with saved value
 
     return true;
 }
@@ -374,6 +386,36 @@ export function updateScore(scoreIncrement) {
 }
 
 /**
+ * Checks if the current score exceeds the high score and updates the display in real-time.
+ * Triggered by 'currentScoreUpdated' event.
+ * @param {Object} data - Object containing score and levelId.
+ */
+function checkForLiveHighScore(data) {
+    const { score, levelId } = data;
+
+    // Get the appropriate high score based on level
+    let currentHighScoreValue;
+    if (levelId) {
+        currentHighScoreValue = ScoreManager.getLevelHighScore(levelId);
+    } else {
+        currentHighScoreValue = ScoreManager.getGlobalHighScore();
+    }
+
+    // Check if current score exceeds high score
+    if (score > currentHighScoreValue) {
+        // Update the high score display in real-time
+        updateHighScoreDisplay(score);
+
+        // Only show notification for the first time we exceed the high score
+        // We can't easily detect this without storing state, so we'll skip the notification
+        // during gameplay and only show it at game over
+
+        // Note: We don't save to localStorage here - that happens at game over
+        // This is just for visual feedback during gameplay
+    }
+}
+
+/**
  * Updates the score display with a specific value
  * @param {number} score - The score value to display
  */
@@ -392,6 +434,11 @@ export function updateHighScoreDisplay(highScore) {
     currentHighScore = highScore;
     if (highScoreElement) {
         highScoreElement.textContent = `High Score: ${currentHighScore}`;
+    }
+
+    // Also update the game over high score element if it exists
+    if (gameOverHighScoreElement) {
+        gameOverHighScoreElement.textContent = `High Score: ${currentHighScore}`;
     }
 }
 
@@ -561,6 +608,10 @@ export function showNewHighScoreNotification(data) {
 
     // Update high score display
     updateHighScoreDisplay(highScore);
+
+    // Save the high score to localStorage via ScoreManager
+    // This is a safety measure in case the score wasn't already saved
+    ScoreManager.updateHighScore(highScore);
 
     // Show notification
     showNotification(`New High Score: ${highScore}!`, 'high-score-notification');

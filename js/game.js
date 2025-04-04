@@ -16,6 +16,7 @@ import { initPlayerController, updatePlayer as updatePlayerController } from './
 import { initCollisionManager, checkCollisions as checkCollisionsController } from './collisionManager.js';
 import * as UIManager from './uiManager.js';
 import * as AssetManager from './assetManager.js';
+import * as ScoreManager from './scoreManager.js';
 
 // Constants for camera transitions
 const TITLE_TRANSITION_SPEED = 2.5; // Increased for faster transition
@@ -195,10 +196,21 @@ class Game {
                  this.score += scoreIncrement;
             }
             console.log(`[Game] Score updated to: ${this.score}`);
-             if (this.levelManager.getCurrentLevelId() === 'level1' && this.score >= 300 && this.gameStateManager.getCurrentState() === GameStates.PLAYING) {
+
+            // Get current level ID for high score tracking
+            const currentLevelId = this.levelManager.getCurrentLevelId();
+
+            // Emit an event with the current score and level ID for UI updates
+            this.eventBus.emit('currentScoreUpdated', {
+                score: this.score,
+                levelId: currentLevelId
+            });
+
+            // Check for level transition
+            if (currentLevelId === 'level1' && this.score >= 300 && this.gameStateManager.getCurrentState() === GameStates.PLAYING) {
                  this.eventBus.emit('requestLevelTransition', 'level2');
                  console.log("[Game] Requesting level transition to level2");
-             }
+            }
         });
 
         this.eventBus.subscribe('powerupActivated', (powerupType) => {
@@ -653,8 +665,26 @@ class Game {
     handleGameOver() {
         if (this.gameStateManager.getCurrentState() !== GameStates.PLAYING) return;
         console.log("[Game] Handling Game Over");
+
+        // Get the current level ID
+        const currentLevelId = this.levelManager.getCurrentLevelId();
+
+        // Check if this is a new high score
+        const isNewHighScore = ScoreManager.updateHighScore(this.score, currentLevelId);
+
+        // Get the current high score
+        const highScore = ScoreManager.getLevelHighScore(currentLevelId);
+
+        // Set game state to GAME_OVER
         this.gameStateManager.setGameState(GameStates.GAME_OVER);
-        this.eventBus.emit('gameOverInfo', this.score);
+
+        // Emit gameOverInfo event with score and high score
+        this.eventBus.emit('gameOverInfo', {
+            score: this.score,
+            highScore: highScore,
+            levelId: currentLevelId,
+            isNewHighScore: isNewHighScore
+        });
     }
 
      // --- Input Handling ---
