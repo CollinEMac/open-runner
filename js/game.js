@@ -389,6 +389,25 @@ class Game {
             this._updateSceneTransition(deltaTime, elapsedTime);
         }
 
+        // Ensure player is in the active scene and visible before rendering
+        if (this.player && this.player.model && this.activeScene &&
+            this.player.model.parent !== this.activeScene &&
+            this.gameStateManager.getCurrentState() === GameStates.PLAYING) {
+
+            console.log("[Game] Player not in active scene before render, fixing...");
+
+            // Remove from current parent if any
+            if (this.player.model.parent) {
+                this.player.model.parent.remove(this.player.model);
+            }
+
+            // Add to active scene
+            this.activeScene.add(this.player.model);
+
+            // Force visibility
+            this.player.model.visible = true;
+        }
+
         // Render the active scene
         if (this.renderer && this.activeScene && this.camera) {
             this.renderer.render(this.activeScene, this.camera);
@@ -494,6 +513,13 @@ class Game {
         // Store the player's current scene parent before removing it
         const playerCurrentParent = this.player.model?.parent;
 
+        // Log player state before transition
+        if (this.player.model) {
+            console.log(`[Game] Player state before level transition: visible=${this.player.model.visible}, parent=${playerCurrentParent ? 'exists' : 'null'}`);
+        } else {
+            console.warn("[Game] Player model is null before level transition.");
+        }
+
         // 2. Unload Current Level Assets & State (if necessary)
         console.log("[Game] Unloading current level (if necessary)...");
         if (this.levelManager.getCurrentLevelId()) {
@@ -543,19 +569,31 @@ class Game {
             this.player.model.rotation.set(0, 0, 0);
             this.player.currentSpeed = GlobalConfig.PLAYER_SPEED;
 
-            // Add player to scene - ensure it's visible during transitions
-            this.scene.add(this.player.model);
+            // CRITICAL FIX: Make sure we're adding the player to the ACTIVE scene
+            // This is crucial for level transitions, especially to level 2
+            // The activeScene should be the gameplayScene during level transitions
+            if (this.activeScene) {
+                console.log("[Game] Adding player to the active scene.");
+                this.activeScene.add(this.player.model);
+            } else {
+                console.log("[Game] No active scene, adding player to the current scene.");
+                this.scene.add(this.player.model);
+            }
 
             // Force player visibility - critical for level transitions
             this.player.model.visible = true;
 
             // Force a render to ensure player is visible in the new scene
-            if (this.renderer) {
-                console.log("[Game] Forcing a render after adding player to new level scene.");
+            if (this.renderer && this.activeScene) {
+                console.log("[Game] Forcing a render of the active scene after adding player.");
+                this.renderer.render(this.activeScene, this.camera);
+            } else if (this.renderer) {
+                console.log("[Game] Forcing a render of the current scene after adding player.");
                 this.renderer.render(this.scene, this.camera);
             }
 
-            console.log("[Game] Player model reset and added to scene. Visibility:", this.player.model.visible);
+            // Log the player's current state for debugging
+            console.log(`[Game] Player model reset and added to scene. Visibility: ${this.player.model.visible}, Parent: ${this.player.model.parent ? 'exists' : 'null'}`);
         } else {
             console.error("[Game] Player model is null when trying to reset for new level.");
         }
@@ -1027,10 +1065,28 @@ class Game {
     _updateSceneTransition(deltaTime, elapsedTime) {
         if (!this.gameplayScene || !this.scene) return;
 
-        // Ensure player is visible during scene transitions
-        if (this.player && this.player.model && !this.player.model.visible) {
-            console.log("[Game] Player was invisible during scene transition, making visible.");
-            this.player.model.visible = true;
+        // Ensure player is visible and in the correct scene during transitions
+        if (this.player && this.player.model) {
+            // Force visibility
+            if (!this.player.model.visible) {
+                console.log("[Game] Player was invisible during scene transition, making visible.");
+                this.player.model.visible = true;
+            }
+
+            // CRITICAL FIX: Ensure player is in the active scene during transitions
+            // This is especially important for level 2 transitions
+            if (this.activeScene && this.player.model.parent !== this.activeScene) {
+                console.log("[Game] Player not in active scene during transition, fixing...");
+
+                // Remove from current parent if any
+                if (this.player.model.parent) {
+                    this.player.model.parent.remove(this.player.model);
+                }
+
+                // Add to active scene
+                this.activeScene.add(this.player.model);
+                console.log(`[Game] Player added to active scene. Parent exists: ${this.player.model.parent !== null}`);
+            }
         }
 
         // Calculate transition progress (0 to 1)
@@ -1058,16 +1114,38 @@ class Game {
                     this.player.model.visible = true;
                 }
 
-                // Ensure player is in the scene
-                if (!this.player.model.parent) {
-                    console.log("[Game] Player model not in scene after scene transition, adding to scene.");
-                    this.scene.add(this.player.model);
-                }
+                // CRITICAL FIX: Ensure player is in the ACTIVE scene after transition
+                // This is crucial for level 2 visibility
+                if (this.activeScene) {
+                    if (this.player.model.parent !== this.activeScene) {
+                        console.log("[Game] Player not in active scene after transition, fixing...");
 
-                // Force a render to ensure player is visible
-                if (this.renderer) {
-                    console.log("[Game] Forcing a render after scene transition to ensure player visibility.");
-                    this.renderer.render(this.scene, this.camera);
+                        // Remove from current parent if any
+                        if (this.player.model.parent) {
+                            this.player.model.parent.remove(this.player.model);
+                        }
+
+                        // Add to active scene
+                        this.activeScene.add(this.player.model);
+                    }
+
+                    // Force a render of the ACTIVE scene to ensure player visibility
+                    if (this.renderer) {
+                        console.log("[Game] Forcing a render of active scene after transition.");
+                        this.renderer.render(this.activeScene, this.camera);
+                    }
+                } else {
+                    // Fallback to current scene if no active scene
+                    if (!this.player.model.parent) {
+                        console.log("[Game] Player model not in any scene after transition, adding to current scene.");
+                        this.scene.add(this.player.model);
+                    }
+
+                    // Force a render of the current scene
+                    if (this.renderer) {
+                        console.log("[Game] Forcing a render of current scene after transition.");
+                        this.renderer.render(this.scene, this.camera);
+                    }
                 }
             } else {
                 console.log("[Game] Player or player model is null after scene transition.");
