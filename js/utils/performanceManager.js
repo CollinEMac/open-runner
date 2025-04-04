@@ -81,15 +81,15 @@ class PerformanceManager {
      */
     init() {
         logger.debug('Initializing performance manager');
-        
+
         // Detect device capabilities and set initial quality
         if (this.currentQuality === QualityPresets.AUTO) {
             this.detectDeviceCapabilities();
         }
-        
+
         // Initialize FPS monitoring
         this.initFpsMonitoring();
-        
+
         logger.debug(`Initial quality set to ${this.currentQuality}`);
         return this;
     }
@@ -98,26 +98,26 @@ class PerformanceManager {
      * Detect device capabilities and set appropriate quality preset
      */
     detectDeviceCapabilities() {
-        // Check if running on mobile
-        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
-                         (window.matchMedia && window.matchMedia('(max-width: 768px)').matches);
-        
+        // Check if running on mobile - only use user agent and touch capability
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+                         ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (navigator.msMaxTouchPoints > 0);
+
         // Check GPU capabilities via WebGL
         const canvas = document.createElement('canvas');
         const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-        
+
         if (!gl) {
             logger.warn('WebGL not supported, defaulting to LOW quality');
             this.setQuality(QualityPresets.LOW);
             return;
         }
-        
+
         // Get WebGL info
         const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
         const renderer = debugInfo ? gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) : '';
-        
+
         logger.debug(`Detected renderer: ${renderer}`);
-        
+
         // Determine quality based on device and renderer
         if (isMobile) {
             // Mobile devices
@@ -153,23 +153,23 @@ class PerformanceManager {
      */
     updateFps() {
         this.frameCount++;
-        
+
         const now = performance.now();
         const elapsed = now - this.lastFpsUpdate;
-        
+
         if (elapsed >= this.fpsUpdateInterval) {
             const fps = (this.frameCount * 1000) / elapsed;
             this.fpsHistory.push(fps);
-            
+
             // Keep history limited to last 10 readings
             if (this.fpsHistory.length > 10) {
                 this.fpsHistory.shift();
             }
-            
+
             // Reset counters
             this.lastFpsUpdate = now;
             this.frameCount = 0;
-            
+
             // Check if we need to adapt quality
             if (this.adaptiveQualityEnabled) {
                 this.checkAdaptiveQuality();
@@ -183,7 +183,7 @@ class PerformanceManager {
      */
     getCurrentFps() {
         if (this.fpsHistory.length === 0) return 60;
-        
+
         const sum = this.fpsHistory.reduce((a, b) => a + b, 0);
         return sum / this.fpsHistory.length;
     }
@@ -196,9 +196,9 @@ class PerformanceManager {
         if (now - this.lastQualityChange < this.adaptiveQualityCooldown) {
             return; // Still in cooldown period
         }
-        
+
         const currentFps = this.getCurrentFps();
-        
+
         // If FPS is too low, decrease quality
         if (currentFps < this.targetFps - this.adaptiveQualityThreshold) {
             this.decreaseQuality();
@@ -217,7 +217,7 @@ class PerformanceManager {
     decreaseQuality() {
         const qualityLevels = [QualityPresets.LOW, QualityPresets.MEDIUM, QualityPresets.HIGH, QualityPresets.ULTRA];
         const currentIndex = qualityLevels.indexOf(this.currentQuality);
-        
+
         if (currentIndex > 0) {
             const newQuality = qualityLevels[currentIndex - 1];
             logger.debug(`Decreasing quality from ${this.currentQuality} to ${newQuality} due to low FPS`);
@@ -231,7 +231,7 @@ class PerformanceManager {
     increaseQuality() {
         const qualityLevels = [QualityPresets.LOW, QualityPresets.MEDIUM, QualityPresets.HIGH, QualityPresets.ULTRA];
         const currentIndex = qualityLevels.indexOf(this.currentQuality);
-        
+
         if (currentIndex < qualityLevels.length - 1) {
             const newQuality = qualityLevels[currentIndex + 1];
             logger.debug(`Increasing quality from ${this.currentQuality} to ${newQuality} due to high FPS`);
@@ -248,12 +248,12 @@ class PerformanceManager {
             logger.error(`Invalid quality preset: ${quality}`);
             return;
         }
-        
+
         this.currentQuality = quality;
         this.settings = { ...qualitySettings[quality] };
-        
+
         logger.debug(`Quality set to ${quality}`, this.settings);
-        
+
         // Notify listeners
         if (this.onSettingsChanged) {
             this.onSettingsChanged(this.settings);
@@ -276,10 +276,10 @@ class PerformanceManager {
     setSetting(key, value) {
         if (this.settings[key] !== undefined) {
             this.settings[key] = value;
-            
+
             // Custom quality when manually changing settings
             this.currentQuality = 'custom';
-            
+
             // Notify listeners
             if (this.onSettingsChanged) {
                 this.onSettingsChanged(this.settings);

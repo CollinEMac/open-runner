@@ -24,8 +24,9 @@ export function isMobileDevice() {
     const isMobileByScreenSize = window.matchMedia && window.matchMedia('(max-width: 768px)').matches;
 
     // For desktop browsers with small windows, we need to be more careful
-    // Only consider it mobile if it has touch capability OR it's identified as mobile by user agent
-    const result = isMobileByUserAgent || (hasTouchScreen && isMobileByScreenSize);
+    // Only consider it mobile if it's identified as mobile by user agent OR has touch capability
+    // Do NOT consider it mobile just because of small screen size
+    const result = isMobileByUserAgent || hasTouchScreen;
 
     // Add more detailed logging
     console.log(`DEVICE DETECTION: isMobile=${result}`);
