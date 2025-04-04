@@ -46,7 +46,7 @@ class Enemy {
         this.currentGroundY = initialData.position.y; // Current smoothed ground Y position
         this.roamingTarget = null; // Target position for roaming
         this.roamingWaitTimer = 0; // Timer for pausing during roaming
-        this.positionSmoothingFactor = 0.85; // Default position smoothing factor (0-1, higher = smoother)
+        this.positionSmoothingFactor = 0.3; // Default position smoothing factor (0-1, lower = smoother)
         this.lastPosition = initialData.position.clone(); // Store last position for smoothing
 
         // Create and position the mesh AFTER super() call allows access to subclass methods
@@ -123,11 +123,13 @@ class Enemy {
         const legHeight = this.mesh.userData.legHeight || 0.5;
 
         // Smooth the ground height transition using smoothDamp
+        // Use a fixed deltaTime and a smaller smoothing factor for ground height
+        const groundSmoothingFactor = 0.2; // Lower value = smoother but faster transitions
         this.currentGroundY = smoothDamp(
             this.currentGroundY,
             this.lastGroundY,
             0.016, // Use a fixed deltaTime for consistent smoothing
-            this.positionSmoothingFactor
+            groundSmoothingFactor
         );
 
         // Apply the smoothed ground height
@@ -222,10 +224,13 @@ class Enemy {
                      const newPosition = new THREE.Vector3();
                      newPosition.copy(this.mesh.position).addScaledVector(moveDirection, moveDistance);
 
-                     // Apply smoothing to the horizontal movement (x and z)
+                     // Apply limited smoothing to the horizontal movement (x and z)
+                     // Use a much smaller smoothing factor to ensure movement happens
                      const smoothedPosition = new THREE.Vector3();
-                     smoothedPosition.x = smoothDamp(this.mesh.position.x, newPosition.x, deltaTime, this.positionSmoothingFactor);
-                     smoothedPosition.z = smoothDamp(this.mesh.position.z, newPosition.z, deltaTime, this.positionSmoothingFactor);
+                     // Move at least 70% of the way to the target position each frame
+                     const moveFactor = Math.min(0.7, 1.0 - Math.pow(this.positionSmoothingFactor, deltaTime));
+                     smoothedPosition.x = this.mesh.position.x + (newPosition.x - this.mesh.position.x) * moveFactor;
+                     smoothedPosition.z = this.mesh.position.z + (newPosition.z - this.mesh.position.z) * moveFactor;
                      smoothedPosition.y = this.mesh.position.y; // Keep current Y (handled by grounding)
 
                      // Apply the smoothed position
@@ -394,11 +399,13 @@ export class Rattlesnake extends Enemy {
         }
 
         // Smooth the ground height transition
+        // Use a fixed deltaTime and a smaller smoothing factor for ground height
+        const groundSmoothingFactor = 0.2; // Lower value = smoother but faster transitions
         this.currentGroundY = smoothDamp(
             this.currentGroundY,
             this.lastGroundY,
             0.016, // Use a fixed deltaTime for consistent smoothing
-            this.positionSmoothingFactor
+            groundSmoothingFactor
         );
 
         // Offset based on model height (very small for snake)
@@ -439,11 +446,13 @@ export class Scorpion extends Enemy {
         }
 
         // Smooth the ground height transition
+        // Use a fixed deltaTime and a smaller smoothing factor for ground height
+        const groundSmoothingFactor = 0.2; // Lower value = smoother but faster transitions
         this.currentGroundY = smoothDamp(
             this.currentGroundY,
             this.lastGroundY,
             0.016, // Use a fixed deltaTime for consistent smoothing
-            this.positionSmoothingFactor
+            groundSmoothingFactor
         );
 
         // Offset based on model height (very small for scorpion)
