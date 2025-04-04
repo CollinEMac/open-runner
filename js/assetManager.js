@@ -1544,6 +1544,14 @@ export function createMagnetModel(properties) {
         roughness: 0.10
     });
 
+    // Create white tip material
+    const whiteTipMat = new THREE.MeshStandardMaterial({
+        color: 0xFFFFFF,
+        emissive: 0x333333,
+        metalness: 0.7,
+        roughness: 0.15
+    });
+
     // Create the horseshoe shape (U-shape)
     // Base/bottom of the horseshoe
     const baseWidth = size * 1.5;
@@ -1569,48 +1577,44 @@ export function createMagnetModel(properties) {
     rightArm.position.set(baseWidth/2 - armWidth/2, armHeight/2, 0);
     group.add(rightArm);
 
-    // Add pole indicators (red/blue ends)
-    const poleRadius = size * 0.2;
-    const poleHeight = size * 0.1;
+    // Add white tips to the magnet poles
+    const tipRadius = size * 0.25;
+    const tipHeight = size * 0.2;
 
-    // North pole (red)
-    const northPoleMat = new THREE.MeshStandardMaterial({
-        color: 0xFF0000,
-        emissive: 0x330000,
-        metalness: 0.5,
-        roughness: 0.2
-    });
-    const northPoleGeo = new THREE.CylinderGeometry(poleRadius, poleRadius, poleHeight, 16);
-    const northPole = new THREE.Mesh(northPoleGeo, northPoleMat);
-    northPole.rotation.x = Math.PI/2;
-    northPole.position.set(-baseWidth/2 + armWidth/2, armHeight, 0);
-    group.add(northPole);
+    // Left (North) tip - white
+    const leftTipGeo = new THREE.CylinderGeometry(tipRadius, tipRadius, tipHeight, 16);
+    const leftTip = new THREE.Mesh(leftTipGeo, whiteTipMat);
+    leftTip.rotation.x = Math.PI/2;
+    leftTip.position.set(-baseWidth/2 + armWidth/2, armHeight + tipHeight/2, 0);
+    group.add(leftTip);
 
-    // South pole (blue)
-    const southPoleMat = new THREE.MeshStandardMaterial({
-        color: 0x0000FF,
-        emissive: 0x000033,
-        metalness: 0.5,
-        roughness: 0.2
-    });
-    const southPoleGeo = new THREE.CylinderGeometry(poleRadius, poleRadius, poleHeight, 16);
-    const southPole = new THREE.Mesh(southPoleGeo, southPoleMat);
-    southPole.rotation.x = Math.PI/2;
-    southPole.position.set(baseWidth/2 - armWidth/2, armHeight, 0);
-    group.add(southPole);
+    // Right (South) tip - white
+    const rightTipGeo = new THREE.CylinderGeometry(tipRadius, tipRadius, tipHeight, 16);
+    const rightTip = new THREE.Mesh(rightTipGeo, whiteTipMat);
+    rightTip.rotation.x = Math.PI/2;
+    rightTip.position.set(baseWidth/2 - armWidth/2, armHeight + tipHeight/2, 0);
+    group.add(rightTip);
 
-    // Rotate the entire magnet to face forward
+    // Create a container group to apply additional rotation for tilt
+    const tiltedGroup = new THREE.Group();
+    tiltedGroup.add(group);
+
+    // Rotate the magnet to face forward
     group.rotation.x = Math.PI/2;
 
+    // Add a tilt to make the magnet more dynamic
+    tiltedGroup.rotation.z = Math.PI/12; // 15-degree tilt
+    tiltedGroup.rotation.y = Math.PI/24; // Slight rotation on Y axis for perspective
+
     // Set shadows
-    group.traverse(child => {
+    tiltedGroup.traverse(child => {
         if (child.isMesh) {
             child.castShadow = true;
             child.receiveShadow = true;
         }
     });
 
-    return group;
+    return tiltedGroup;
 }
 
 /**
