@@ -61,7 +61,12 @@ class Game {
         this.uiManager = UIManager;
 
         // Game state
-        this.player = { model: null, modelParts: null, currentSpeed: 0 };
+        this.player = {
+            model: null,
+            modelParts: null,
+            currentSpeed: 0,
+            powerup: '',
+        };
         this.score = 0;
         this.currentLevelConfig = null;
         this.playerAnimationTime = 0;
@@ -137,6 +142,7 @@ class Game {
             model: playerModelData.characterGroup,
             modelParts: playerModelData,
             currentSpeed: GlobalConfig.PLAYER_SPEED,
+            powerup: '',
         };
         this.player.model.position.set(0, 10, 5);
 
@@ -193,6 +199,8 @@ class Game {
                  console.log("[Game] Requesting level transition to level2");
              }
         });
+
+        this.eventBus.subscribe('powerupActivated', () => this.player.powerup = 'magnet');
 
         this.eventBus.subscribe('playerDied', () => this.handleGameOver());
 
@@ -270,7 +278,7 @@ class Game {
                 this.particleManager.update(deltaTime, this.player.model.position);
             }
             if (this.collisionChecker && this.player.model) {
-                this.collisionChecker(this.player.model.position);
+                this.collisionChecker(this.player);
             }
             this._updateAtmosphericElements(deltaTime, elapsedTime);
 

@@ -79,6 +79,18 @@ export const level1Config = {
             scoreValue: 10,
             maxPlacementAttempts: 10,
         },
+        // --- powerups ---
+        {
+            type: 'magnet',
+            density: 0.000087,
+            minDistance: 50.0,
+            verticalOffset: 1.5,
+            scaleRange: [1.2, 1.5],
+            randomRotationY: true,
+            collidable: false,
+            scoreValue: 0,
+            maxPlacementAttempts: 10,
+        },
         // --- Obstacles ---
         {
             type: 'rock_small',

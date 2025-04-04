@@ -302,6 +302,10 @@ export function createObjectVisual(objectData, levelConfig) { // Added levelConf
             geometry = AssetManager.getAsset('coinGeometry');
             material = AssetManager.getAsset('coinMaterial');
             break;
+        case 'magnet':
+            geometry = AssetManager.getAsset('magnetGeometry');
+            material = AssetManager.getAsset('magnetMaterial');
+            break;
         case 'rock_small':
             geometry = AssetManager.getAsset('rockSmallGeo');
             material = AssetManager.getAsset('rockMaterial');
