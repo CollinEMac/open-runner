@@ -34,13 +34,14 @@ export function initLevelAssets(levelConfig) { // Renamed and added levelConfig
 
     // --- Powerups ---
     // --- Magnet ---
-    const magnetVis = levelConfig.MAGNET_VISUALS || { radius: 0.8, height: 0.5, color: 0xF60000 };
-    levelAssets.magnetGeometry = new THREE.CylinderGeometry(magnetVis.radius, magnetVis.radius, magnetVis.height, 16, 1, false);
-    levelAssets.magnetGeometry.rotateX(Math.PI / 2);
+    const magnetVis = levelConfig.MAGNET_VISUALS || { size: 0.8, color: 0xF60000 };
+    // Create a horseshoe magnet model instead of using a simple cylinder
+    levelAssets.magnetGroup = createMagnetModel(magnetVis);
+    // Create a material for the magnet
     levelAssets.magnetMaterial = new THREE.MeshStandardMaterial({
       color: magnetVis.color,
       emissive: 0x330000,
-      metalness: 0.5,
+      metalness: 0.8,
       roughness: 0.10
     });
 
@@ -1524,6 +1525,93 @@ export function createBuzzardModel(properties) {
 
 
 // TODO: Add factory functions for other desert objects/enemies in Phase 2
+
+/**
+ * Creates a horseshoe magnet model.
+ * @param {object} properties - Properties for the magnet (size, color).
+ * @returns {THREE.Group} A group containing the magnet model.
+ */
+export function createMagnetModel(properties) {
+    const group = new THREE.Group();
+    const size = properties?.size || 0.8;
+    const color = properties?.color || 0xF60000; // Default red color
+
+    // Create the magnet material
+    const magnetMat = new THREE.MeshStandardMaterial({
+        color: color,
+        emissive: 0x330000,
+        metalness: 0.8,
+        roughness: 0.10
+    });
+
+    // Create the horseshoe shape (U-shape)
+    // Base/bottom of the horseshoe
+    const baseWidth = size * 1.5;
+    const baseHeight = size * 0.4;
+    const baseDepth = size * 0.4;
+    const baseGeo = new THREE.BoxGeometry(baseWidth, baseHeight, baseDepth);
+    const base = new THREE.Mesh(baseGeo, magnetMat);
+    base.position.set(0, 0, 0);
+    group.add(base);
+
+    // Left arm of the horseshoe
+    const armWidth = size * 0.4;
+    const armHeight = size * 1.5;
+    const armDepth = size * 0.4;
+    const leftArmGeo = new THREE.BoxGeometry(armWidth, armHeight, armDepth);
+    const leftArm = new THREE.Mesh(leftArmGeo, magnetMat);
+    leftArm.position.set(-baseWidth/2 + armWidth/2, armHeight/2, 0);
+    group.add(leftArm);
+
+    // Right arm of the horseshoe
+    const rightArmGeo = new THREE.BoxGeometry(armWidth, armHeight, armDepth);
+    const rightArm = new THREE.Mesh(rightArmGeo, magnetMat);
+    rightArm.position.set(baseWidth/2 - armWidth/2, armHeight/2, 0);
+    group.add(rightArm);
+
+    // Add pole indicators (red/blue ends)
+    const poleRadius = size * 0.2;
+    const poleHeight = size * 0.1;
+
+    // North pole (red)
+    const northPoleMat = new THREE.MeshStandardMaterial({
+        color: 0xFF0000,
+        emissive: 0x330000,
+        metalness: 0.5,
+        roughness: 0.2
+    });
+    const northPoleGeo = new THREE.CylinderGeometry(poleRadius, poleRadius, poleHeight, 16);
+    const northPole = new THREE.Mesh(northPoleGeo, northPoleMat);
+    northPole.rotation.x = Math.PI/2;
+    northPole.position.set(-baseWidth/2 + armWidth/2, armHeight, 0);
+    group.add(northPole);
+
+    // South pole (blue)
+    const southPoleMat = new THREE.MeshStandardMaterial({
+        color: 0x0000FF,
+        emissive: 0x000033,
+        metalness: 0.5,
+        roughness: 0.2
+    });
+    const southPoleGeo = new THREE.CylinderGeometry(poleRadius, poleRadius, poleHeight, 16);
+    const southPole = new THREE.Mesh(southPoleGeo, southPoleMat);
+    southPole.rotation.x = Math.PI/2;
+    southPole.position.set(baseWidth/2 - armWidth/2, armHeight, 0);
+    group.add(southPole);
+
+    // Rotate the entire magnet to face forward
+    group.rotation.x = Math.PI/2;
+
+    // Set shadows
+    group.traverse(child => {
+        if (child.isMesh) {
+            child.castShadow = true;
+            child.receiveShadow = true;
+        }
+    });
+
+    return group;
+}
 
 /**
  * Disposes of assets loaded for the current level.

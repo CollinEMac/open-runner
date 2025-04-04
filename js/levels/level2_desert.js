@@ -248,5 +248,11 @@ export const level2Config = {
         height: 0.2,
         color: 0xFFFF00, // Yellow
         spinSpeed: 1.0, // Radians per second
+    },
+
+    // --- Magnet Powerup Visuals ---
+    MAGNET_VISUALS: {
+        size: 0.8,
+        color: 0xF60000, // Red
     }
 };

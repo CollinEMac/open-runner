@@ -303,8 +303,16 @@ export function createObjectVisual(objectData, levelConfig) { // Added levelConf
             material = AssetManager.getAsset('coinMaterial');
             break;
         case 'magnet':
-            geometry = AssetManager.getAsset('magnetGeometry');
-            material = AssetManager.getAsset('magnetMaterial');
+            // Use the magnet model group instead of a simple geometry
+            mesh = AssetManager.getAsset('magnetGroup').clone();
+            // Apply the magnet material to all meshes in the group
+            mesh.traverse(child => {
+                if (child.isMesh) {
+                    child.material = AssetManager.getAsset('magnetMaterial');
+                }
+            });
+            geometry = null;
+            material = null;
             break;
         case 'rock_small':
             geometry = AssetManager.getAsset('rockSmallGeo');

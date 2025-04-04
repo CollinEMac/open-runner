@@ -126,7 +126,8 @@ export function checkCollisions(player) {
             const dx = playerPosition.x - mesh.position.x;
             const dz = playerPosition.z - mesh.position.z;
             const distanceSq = dx * dx + dz * dz;
-            const magnetCollisionRadius = mesh.geometry.parameters.radiusBottom;
+            // Use a fixed collision radius for the magnet since it's now a group of meshes
+            const magnetCollisionRadius = 1.0; // Approximate size of the horseshoe magnet
             const collisionThresholdSq = (playerCollisionRadius + magnetCollisionRadius) ** 2;
 
             if (distanceSq < collisionThresholdSq) {
