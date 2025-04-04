@@ -92,13 +92,13 @@ export function checkCollisions(player) {
             const distanceSq = dx * dx + dy * dy + dz * dz;
             const coinCollisionRadius = mesh.geometry.parameters.radiusBottom;
 
-            // When magnet is active, we want coins to get very close to the player before collection
-            // This creates the visual effect of coins fully magnetizing to the player
+            // When magnet is active, we need to ensure coins are collected properly
+            // and don't get stuck inside the player model
             let collisionThresholdSq;
             if (player.powerup === 'magnet') {
-                // Use a much smaller collection radius when magnet is active
-                // This ensures coins get very close to the player before being collected
-                collisionThresholdSq = (playerCollisionRadius * 0.5) ** 2;
+                // Use a slightly larger collection radius when magnet is active
+                // This ensures coins don't get stuck inside the player model
+                collisionThresholdSq = (playerCollisionRadius + coinCollisionRadius * 1.2) ** 2;
             } else {
                 // Normal collection radius when magnet is not active
                 collisionThresholdSq = (playerCollisionRadius + coinCollisionRadius) ** 2;

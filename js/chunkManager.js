@@ -12,9 +12,13 @@ import {
     CHUNK_SIZE,
     RENDER_DISTANCE_CHUNKS,
     RENDERING,
-    performanceManager
+    performanceManager,
+    PLAYER_TORSO_WIDTH
     // Global config constants
 } from './config.js'; // Renamed to GlobalConfig implicitly by usage below
+
+// Collision constants
+const playerCollisionRadius = PLAYER_TORSO_WIDTH; // Same as in collisionManager.js
 
 // --- Shared Object Resources moved to assetManager.js ---
 
@@ -632,8 +636,16 @@ export class ChunkManager {
                             }
                         }
 
-                        // Rotate all collectibles around Y axis
-                        collectibleMesh.rotation.y += spinSpeed * deltaTime;
+                        // Only rotate coins and magnets, not other objects that might be incorrectly marked as collectible
+                        if (collectibleMesh.userData.objectType === 'coin' || collectibleMesh.userData.objectType === 'magnet') {
+                            // Rotate collectibles around Y axis
+                            collectibleMesh.rotation.y += spinSpeed * deltaTime;
+                        } else {
+                            // Log warning for non-coin/magnet objects in collectibles array
+                            if (Math.random() < 0.001) { // Limit logging frequency
+                                console.warn(`[ChunkManager] Non-collectible object in collectibles array: ${collectibleMesh.userData.objectType}`);
+                            }
+                        }
 
                         // Apply magnet effect if active - ONLY to coins, not other collectibles like magnets
                         if (magnetActive && playerPosition && collectibleMesh.userData.objectType === 'coin') {
@@ -664,9 +676,35 @@ export class ChunkManager {
                                     console.log(`[ChunkManager] Moving coin: distance=${distance.toFixed(2)}, speed=${moveSpeed.toFixed(2)}`);
                                 }
 
-                                collectibleMesh.position.x += dirX * moveSpeed;
-                                collectibleMesh.position.y += dirY * moveSpeed;
-                                collectibleMesh.position.z += dirZ * moveSpeed;
+                                // Calculate the new position
+                                const newX = collectibleMesh.position.x + dirX * moveSpeed;
+                                const newY = collectibleMesh.position.y + dirY * moveSpeed;
+                                const newZ = collectibleMesh.position.z + dirZ * moveSpeed;
+
+                                // Calculate the new distance to player after this movement
+                                const newDx = playerPosition.x - newX;
+                                const newDy = playerPosition.y - newY;
+                                const newDz = playerPosition.z - newZ;
+                                const newDistanceSq = newDx * newDx + newDy * newDy + newDz * newDz;
+
+                                // Safety check: Don't move the coin if it would end up too close to the player
+                                // This prevents coins from getting stuck inside the player model
+                                const minSafeDistanceSq = (playerCollisionRadius * 0.4) ** 2;
+
+                                if (newDistanceSq > minSafeDistanceSq) {
+                                    // Only update position if it won't get too close
+                                    collectibleMesh.position.x = newX;
+                                    collectibleMesh.position.y = newY;
+                                    collectibleMesh.position.z = newZ;
+                                } else {
+                                    // If it would get too close, move it to the safe distance boundary
+                                    // This ensures coins don't get stuck inside the player
+                                    const safeDistance = Math.sqrt(minSafeDistanceSq);
+                                    const safeFactor = safeDistance / Math.sqrt(newDistanceSq);
+                                    collectibleMesh.position.x = playerPosition.x - newDx * safeFactor;
+                                    collectibleMesh.position.y = playerPosition.y - newDy * safeFactor;
+                                    collectibleMesh.position.z = playerPosition.z - newDz * safeFactor;
+                                }
                             }
                         }
                     }
