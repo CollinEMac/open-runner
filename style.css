@@ -499,9 +499,16 @@ html, body {
     transition: opacity 0.3s ease; /* Smooth transition */
 }
 
-/* Only show mobile controls on actual mobile devices */
-@media (max-width: 768px), (pointer: coarse) {
-    /* Even on mobile, only show when the class is present */
+/* Only show mobile controls when the class is present */
+.show-mobile-controls #mobileControls {
+    /* Still hidden by default, even with the class */
+    display: none;
+    opacity: 0;
+}
+
+/* Only show mobile controls on actual mobile devices with touch capability */
+@media (pointer: coarse) {
+    /* On touch devices, show when the class is present */
     .show-mobile-controls #mobileControls {
         display: flex !important; /* Override the default with !important */
         opacity: 1;
