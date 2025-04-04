@@ -42,7 +42,20 @@
     <div id="gameOverDisplay" class="ui-overlay">
         <h2>GAME OVER!</h2>
         <!-- Score elements will be added dynamically -->
+        <div class="menu-buttons">
+            <button id="gameOverRestartButton">Restart Level</button>
+            <button id="gameOverTitleButton">Return to Title</button>
+        </div>
     </div> <!-- Game Over Display -->
+
+    <!-- Mobile Controls -->
+    <div id="mobileControls">
+        <button id="mobilePauseBtn" class="mobile-button mobile-pause">⏸️</button>
+        <div class="mobile-steering-controls">
+            <button id="mobileLeftBtn" class="mobile-button">◀</button>
+            <button id="mobileRightBtn" class="mobile-button">▶</button>
+        </div>
+    </div>
 
     <!-- Pause Menu -->
     <div id="pauseMenu" class="ui-overlay" style="display: none;">

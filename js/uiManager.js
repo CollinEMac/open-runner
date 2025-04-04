@@ -9,6 +9,8 @@ let highScoreElement;
 let gameOverElement;
 let gameOverScoreElement;
 let gameOverHighScoreElement;
+let gameOverRestartButtonElement;
+let gameOverTitleButtonElement;
 let titleScreenElement;
 let startButtonElement;
 let levelSelectButtonElement;
@@ -138,35 +140,69 @@ function showGameOverScreenWithScore(scoreData) {
 
     // Update game over screen
     if (gameOverElement) {
-        // Clear previous content
-        gameOverElement.innerHTML = '<h2>GAME OVER!</h2>';
+        // Keep the h2 and buttons, but clear any dynamically added score elements
+        const h2 = gameOverElement.querySelector('h2');
+        const buttonsDiv = gameOverElement.querySelector('.menu-buttons');
 
-        // Add score elements if they don't exist
-        if (gameOverScoreElement) {
-            gameOverScoreElement.textContent = `Score: ${finalScore}`;
-        } else {
+        if (h2 && buttonsDiv) {
+            // Clear everything except the h2 and buttons
+            gameOverElement.innerHTML = '';
+            gameOverElement.appendChild(h2);
+
+            // Add score elements
             const scoreEl = document.createElement('div');
             scoreEl.id = 'gameOverScore';
             scoreEl.className = 'game-over-score';
             scoreEl.textContent = `Score: ${finalScore}`;
             gameOverElement.appendChild(scoreEl);
-        }
+            gameOverScoreElement = scoreEl;
 
-        if (gameOverHighScoreElement) {
-            gameOverHighScoreElement.textContent = `High Score: ${highScore}`;
-        } else {
             const highScoreEl = document.createElement('div');
             highScoreEl.id = 'gameOverHighScore';
             highScoreEl.className = 'game-over-high-score';
             highScoreEl.textContent = `High Score: ${highScore}`;
             gameOverElement.appendChild(highScoreEl);
-        }
+            gameOverHighScoreElement = highScoreEl;
 
-        // Add restart instruction
-        const restartInstr = document.createElement('div');
-        restartInstr.className = 'game-over-instruction';
-        restartInstr.textContent = 'Press R to Restart';
-        gameOverElement.appendChild(restartInstr);
+            // Re-add the buttons
+            gameOverElement.appendChild(buttonsDiv);
+        } else {
+            // Fallback if structure is not as expected
+            console.warn("Game over screen structure not as expected, rebuilding...");
+            gameOverElement.innerHTML = '<h2>GAME OVER!</h2>';
+
+            const scoreEl = document.createElement('div');
+            scoreEl.id = 'gameOverScore';
+            scoreEl.className = 'game-over-score';
+            scoreEl.textContent = `Score: ${finalScore}`;
+            gameOverElement.appendChild(scoreEl);
+            gameOverScoreElement = scoreEl;
+
+            const highScoreEl = document.createElement('div');
+            highScoreEl.id = 'gameOverHighScore';
+            highScoreEl.className = 'game-over-high-score';
+            highScoreEl.textContent = `High Score: ${highScore}`;
+            gameOverElement.appendChild(highScoreEl);
+            gameOverHighScoreElement = highScoreEl;
+
+            // Create buttons container
+            const buttonsDiv = document.createElement('div');
+            buttonsDiv.className = 'menu-buttons';
+
+            // Create restart button
+            const restartBtn = document.createElement('button');
+            restartBtn.id = 'gameOverRestartButton';
+            restartBtn.textContent = 'Restart Level';
+            buttonsDiv.appendChild(restartBtn);
+
+            // Create return to title button
+            const titleBtn = document.createElement('button');
+            titleBtn.id = 'gameOverTitleButton';
+            titleBtn.textContent = 'Return to Title';
+            buttonsDiv.appendChild(titleBtn);
+
+            gameOverElement.appendChild(buttonsDiv);
+        }
 
         // Show the game over screen
         gameOverElement.style.display = 'flex';
@@ -188,6 +224,8 @@ export function initUIManager() {
     // Get existing UI elements
     scoreElement = document.getElementById('scoreDisplay');
     gameOverElement = document.getElementById('gameOverDisplay');
+    gameOverRestartButtonElement = document.getElementById('gameOverRestartButton');
+    gameOverTitleButtonElement = document.getElementById('gameOverTitleButton');
     titleScreenElement = document.getElementById('titleScreen');
     startButtonElement = document.getElementById('startButton');
     levelSelectButtonElement = document.getElementById('levelSelectButton');
@@ -273,6 +311,9 @@ export function initUIManager() {
     // We can set a default safe state here before the first gameStateChanged event fires
     handleGameStateChange(GameStates.LOADING); // Assume initial state is LOADING
     updateScore(0); // Initialize score display to 0
+
+    // Make sure score is hidden during loading
+    if (scoreElement) scoreElement.style.display = 'none';
 
     // Load high score from ScoreManager
     const highScore = ScoreManager.getGlobalHighScore();
@@ -594,6 +635,32 @@ export function setupPauseMenuButtons(onResume, onRestart, onReturnToTitle) {
 }
 
 /**
+ * Sets up the game over screen button event handlers.
+ * @param {function} onRestart - Function to call when Restart button is clicked.
+ * @param {function} onReturnToTitle - Function to call when Return to Title button is clicked.
+ */
+export function setupGameOverButtons(onRestart, onReturnToTitle) {
+    // Use helper to avoid repetition
+    const setupButton = (buttonElement, id, callback) => {
+        let element = buttonElement; // Use local variable
+        if (element && callback) {
+            element.replaceWith(element.cloneNode(true));
+            element = document.getElementById(id); // Re-fetch by ID
+            if (element) {
+                 element.addEventListener('click', callback);
+            } else {
+                 displayError(new Error(`Game over button #${id} not found after clone.`));
+            }
+            return element; // Return the potentially new element reference
+        }
+        return buttonElement; // Return original if no setup happened
+    };
+
+    gameOverRestartButtonElement = setupButton(gameOverRestartButtonElement, 'gameOverRestartButton', onRestart);
+    gameOverTitleButtonElement = setupButton(gameOverTitleButtonElement, 'gameOverTitleButton', onReturnToTitle);
+}
+
+/**
  * Shows a notification for a new high score
  * @param {Object|number} data - Either the high score value or an object with score property
  */
@@ -647,27 +714,26 @@ function showNotification(message, className = '', duration = 3000) {
     }
     notificationElement.style.display = 'block';
 
-    // Animate in
-    notificationElement.style.opacity = '0';
-    notificationElement.style.transform = 'translateY(20px)';
-
-    // Force reflow
-    void notificationElement.offsetWidth;
-
-    // Animate in
-    notificationElement.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
-    notificationElement.style.opacity = '1';
-    notificationElement.style.transform = 'translateY(0)';
+    // Let the CSS animation handle the appearance
+    // Reset animation by removing and re-adding the class
+    notificationElement.style.animation = 'none';
+    void notificationElement.offsetWidth; // Force reflow
+    notificationElement.style.animation = 'fadeIn 0.3s ease-out';
 
     // Set timeout to hide notification
     notificationTimeout = setTimeout(() => {
-        // Animate out
+        // Fade out
         notificationElement.style.opacity = '0';
         notificationElement.style.transform = 'translateY(-20px)';
+        notificationElement.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
 
         // Hide after animation
         setTimeout(() => {
             notificationElement.style.display = 'none';
+            // Reset for next time
+            notificationElement.style.opacity = '';
+            notificationElement.style.transform = '';
+            notificationElement.style.transition = '';
         }, 300);
     }, duration);
 }
@@ -784,8 +850,10 @@ function addCustomStyles() {
         .notification {
             position: fixed;
             top: 80px;
-            left: 50%;
-            transform: translateX(-50%);
+            left: 0;
+            right: 0;
+            margin: 0 auto;
+            width: fit-content;
             background: linear-gradient(135deg, rgba(40, 40, 40, 0.9), rgba(20, 20, 20, 0.9));
             color: var(--text-light);
             padding: 15px 25px;
@@ -800,12 +868,12 @@ function addCustomStyles() {
             border-bottom: 3px solid var(--primary-color);
             min-width: 300px;
             max-width: 80%;
-            animation: slideDown 0.3s ease-out;
+            animation: fadeIn 0.3s ease-out;
         }
 
-        @keyframes slideDown {
-            from { transform: translateX(-50%) translateY(-20px); opacity: 0; }
-            to { transform: translateX(-50%) translateY(0); opacity: 1; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         .high-score-notification {

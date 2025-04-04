@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import * as Config from './config.js';
 import * as AudioManager from './audioManager.js';
 import { animatePlayerCharacter } from './playerCharacter.js';
-import { keyLeftPressed, keyRightPressed, mouseLeftPressed, mouseRightPressed } from './controlsSetup.js';
+import { keyLeftPressed, keyRightPressed, mouseLeftPressed, mouseRightPressed, touchLeftPressed, touchRightPressed } from './controlsSetup.js';
 
 // Helper vectors (consider making these local if not needed elsewhere)
 const forwardVector = new THREE.Vector3(0, 0, -1);
@@ -43,19 +43,13 @@ export function updatePlayer(playerObj, deltaTime, animationTime, chunkManager, 
     // --- Update Speed (Uncapped) ---
     playerObj.currentSpeed += Config.PLAYER_SPEED_INCREASE_RATE * deltaTime;
 
-    // 1. Calculate Rotation Deltas based on combined keyboard and mouse input
+    // 1. Calculate Rotation Deltas based on combined keyboard, mouse, and touch input
     let rotationInput = 0; // -1 for right, 0 for none, 1 for left
-    if (keyLeftPressed) {
-        rotationInput += 1;
-    } else if (mouseLeftPressed) {
-        // console.log("Steering Left (Mouse)"); // Debug log removed
+    if (keyLeftPressed || mouseLeftPressed || touchLeftPressed) {
         rotationInput += 1;
     }
 
-    if (keyRightPressed) {
-        rotationInput -= 1;
-    } else if (mouseRightPressed) {
-        // console.log("Steering Right (Mouse)"); // Debug log removed
+    if (keyRightPressed || mouseRightPressed || touchRightPressed) {
         rotationInput -= 1;
     }
 

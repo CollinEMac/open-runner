@@ -170,16 +170,34 @@ html, body {
 
 #gameOverDisplay {
     /* Inherits base styles from .ui-overlay */
-    font-size: 2em;
+    font-size: 1.5em; /* Reduced from 2em */
 }
 
 #gameOverDisplay h2 {
     font-family: var(--title-font);
-    font-size: 3em;
-    margin-bottom: 20px;
+    font-size: 2.5em; /* Reduced from 3em */
+    margin-bottom: 15px; /* Reduced from 20px */
     color: var(--danger-color);
     text-shadow: var(--text-shadow), 0 0 10px rgba(244, 67, 54, 0.5);
     animation: pulse 2s infinite;
+}
+
+#gameOverDisplay .game-over-score,
+#gameOverDisplay .game-over-high-score {
+    margin-bottom: 10px; /* Reduced from 15px */
+    font-size: 0.7em; /* Reduced from 0.8em */
+}
+
+#gameOverDisplay .menu-buttons {
+    margin-top: 20px; /* Reduced from 30px */
+    width: 80%; /* Limit width of buttons */
+    max-width: 300px;
+}
+
+/* Make game over buttons smaller */
+#gameOverDisplay .menu-buttons button {
+    padding: 10px 15px; /* Smaller padding */
+    font-size: 0.8em; /* Smaller font */
 }
 
 @keyframes pulse {
@@ -263,7 +281,7 @@ html, body {
     /* Uses .ui-overlay for base positioning and background */
     /* Ensure it's displayed initially (overrides .ui-overlay display: none) */
     display: flex;
-    z-index: 30; /* Highest z-index */
+    z-index: 100; /* Highest z-index, ensure it's above everything */
     transition: opacity 0.4s ease; /* Smoother fade out */
 }
 
@@ -465,6 +483,70 @@ html, body {
     box-shadow: var(--box-shadow);
     border-left: 4px solid var(--primary-color);
     text-align: left;
+}
+
+/* --- Mobile Controls --- */
+#mobileControls {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    padding: 15px;
+    display: none; /* Hidden by default */
+    z-index: 15;
+    pointer-events: none; /* Allow clicks to pass through the container */
+    opacity: 0; /* Start fully transparent */
+    transition: opacity 0.3s ease; /* Smooth transition */
+}
+
+.mobile-steering-controls {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    padding: 0 10%;
+    margin-top: 10px;
+}
+
+.mobile-button {
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.6);
+    border: 2px solid var(--primary-color);
+    color: white;
+    font-size: 24px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent; /* Remove tap highlight on mobile */
+    pointer-events: auto; /* Make buttons clickable */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+    transition: background-color 0.2s, transform 0.1s;
+}
+
+.mobile-button:active {
+    background-color: rgba(76, 175, 80, 0.4);
+    transform: scale(0.95);
+}
+
+.mobile-pause {
+    position: absolute;
+    top: 15px; /* Position at top */
+    left: 50%; /* Center horizontally */
+    transform: translateX(-50%); /* Center adjustment */
+    width: 60px; /* Slightly larger */
+    height: 60px;
+    font-size: 24px;
+    z-index: 16; /* Ensure it's above other mobile controls */
+}
+
+/* Only show mobile controls on small screens or touch devices when playing */
+@media (max-width: 768px), (pointer: coarse) {
+    .show-mobile-controls #mobileControls {
+        display: block;
+        opacity: 1; /* Make fully visible */
+    }
 }
 
 .level-button:hover {

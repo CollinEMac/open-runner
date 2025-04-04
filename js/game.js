@@ -172,6 +172,10 @@ class Game {
             () => this.restartLevel(),
             () => this.returnToTitle()
         );
+        this.uiManager.setupGameOverButtons(
+            () => this.restartLevel(),
+            () => this.returnToTitle()
+        );
 
         // Setup global event listeners
         window.addEventListener('resize', this.onWindowResize.bind(this), false);
@@ -282,6 +286,17 @@ class Game {
             this._loadLevel(levelId);
         });
 
+        // Subscribe to pause/resume events from mobile controls
+        this.eventBus.subscribe('requestPause', () => {
+            console.log("[Game] Received requestPause event from mobile controls");
+            this.pauseGame();
+        });
+
+        this.eventBus.subscribe('requestResume', () => {
+            console.log("[Game] Received requestResume event from mobile controls");
+            this.resumeGame();
+        });
+
         console.log("[Game] Event subscriptions set up.");
     }
 
@@ -358,6 +373,9 @@ class Game {
         // Reset input states to prevent any stuck inputs when starting a new game
         resetInputStates();
         console.log("[Game] Input states reset before starting game");
+
+        // Show mobile controls when game starts
+        document.body.classList.add('show-mobile-controls');
 
         // 1. Create a new scene for gameplay
         const gameplaySceneComponents = initScene(this.canvas, this.currentLevelConfig);
@@ -606,6 +624,9 @@ class Game {
              resetInputStates();
              console.log("[Game] Input states reset before restart");
 
+             // Make sure mobile controls stay visible when restarting
+             document.body.classList.add('show-mobile-controls');
+
              this.eventBus.emit('uiButtonClicked');
              this.startGame(currentLevelId);
         } else if (this.isTransitioning) {
@@ -622,6 +643,9 @@ class Game {
          }
          console.log("[Game] Returning to Title Screen.");
          this.eventBus.emit('uiButtonClicked');
+
+         // Hide mobile controls when returning to title
+         document.body.classList.remove('show-mobile-controls');
 
          // Don't unload level, remove player/atmospheric elements
          this._clearAtmosphericElements();
@@ -675,6 +699,10 @@ class Game {
         // Get the current high score
         const highScore = ScoreManager.getLevelHighScore(currentLevelId);
 
+        // Make sure mobile controls stay visible during game over
+        // This prevents the brief disappearance of controls
+        document.body.classList.add('show-mobile-controls');
+
         // Set game state to GAME_OVER
         this.gameStateManager.setGameState(GameStates.GAME_OVER);
 
@@ -685,6 +713,12 @@ class Game {
             levelId: currentLevelId,
             isNewHighScore: isNewHighScore
         });
+
+        // Set up game over buttons again to ensure they work
+        this.uiManager.setupGameOverButtons(
+            () => this.restartLevel(),
+            () => this.returnToTitle()
+        );
     }
 
      // --- Input Handling ---
