@@ -330,8 +330,8 @@ class Game {
 
             if (this.chunkManager && this.player.model) {
                 this.chunkManager.update(this.player.model.position);
-                // Update coins to make them spin
-                this.chunkManager.updateCollectibles(deltaTime, elapsedTime);
+                // Update coins to make them spin and move toward player if magnet powerup is active
+                this.chunkManager.updateCollectibles(deltaTime, elapsedTime, this.player.model.position, this.player.powerup);
                 // Update tumbleweeds
                 this.chunkManager.updateTumbleweeds(deltaTime, elapsedTime, this.player.model.position);
             }

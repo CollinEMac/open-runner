@@ -488,24 +488,60 @@ export class ChunkManager {
     }
 
     /**
-     * Updates all collectibles in loaded chunks to make them spin.
+     * Updates all collectibles in loaded chunks to make them spin and move toward player if magnet powerup is active.
      * @param {number} deltaTime - Time since last update in seconds.
      * @param {number} elapsedTime - Total elapsed time in seconds.
+     * @param {THREE.Vector3} playerPosition - Current player position.
+     * @param {string} playerPowerup - Current player powerup.
      */
-    updateCollectibles(deltaTime, elapsedTime) {
+    updateCollectibles(deltaTime, elapsedTime, playerPosition, playerPowerup) {
         if (!this.levelConfig || !this.levelConfig.COIN_VISUALS) return;
 
         // Get the spin speed from level config
         const spinSpeed = this.levelConfig.COIN_VISUALS.spinSpeed || 1.0;
+
+        // Check if magnet powerup is active
+        const magnetActive = playerPowerup === 'magnet';
+
+        // Magnet effect parameters
+        const magnetRadius = 30; // Radius within which coins are attracted
+        const magnetForce = 15; // Force of attraction
 
         // Iterate through all loaded chunks
         for (const [key, chunkData] of this.loadedChunks.entries()) {
             // Update all collectible coins in this chunk
             if (chunkData.collectibles && chunkData.collectibles.length > 0) {
                 chunkData.collectibles.forEach(collectibleMesh => {
-                    if (collectibleMesh?.userData.collidable === false) {
+                    if (collectibleMesh?.userData.collidable === false && collectibleMesh?.userData.objectType === 'coin') {
                         // Rotate the object around its Y axis
                         collectibleMesh.rotation.y += spinSpeed * deltaTime;
+
+                        // Apply magnet effect if active
+                        if (magnetActive && playerPosition) {
+                            // Calculate distance to player
+                            const dx = playerPosition.x - collectibleMesh.position.x;
+                            const dy = playerPosition.y - collectibleMesh.position.y;
+                            const dz = playerPosition.z - collectibleMesh.position.z;
+                            const distanceSq = dx * dx + dy * dy + dz * dz;
+
+                            // If within magnet radius, move toward player
+                            if (distanceSq < magnetRadius * magnetRadius) {
+                                // Calculate direction to player
+                                const distance = Math.sqrt(distanceSq);
+                                const dirX = dx / distance;
+                                const dirY = dy / distance;
+                                const dirZ = dz / distance;
+
+                                // Move coin toward player with acceleration based on distance
+                                // Coins closer to the player move faster
+                                const acceleration = 1 - (distance / magnetRadius); // 0 to 1 value
+                                const moveSpeed = magnetForce * acceleration * deltaTime;
+
+                                collectibleMesh.position.x += dirX * moveSpeed;
+                                collectibleMesh.position.y += dirY * moveSpeed;
+                                collectibleMesh.position.z += dirZ * moveSpeed;
+                            }
+                        }
                     }
                 });
             }
