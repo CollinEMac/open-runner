@@ -256,6 +256,28 @@ export class ChunkManager {
                         mesh = this._getFromPool('collectibles', objectData.type);
                     }
 
+                    // Special handling for tree_pine objects to ensure they have all parts
+                    if (objectData.type === 'tree_pine' && mesh) {
+                        // Check if the tree has both trunk and foliage
+                        let hasTrunk = false;
+                        let hasFoliage = false;
+
+                        // Verify tree has all required parts
+                        mesh.traverse((child) => {
+                            if (child.name === 'treeTrunk') hasTrunk = true;
+                            if (child.name === 'treeFoliage') hasFoliage = true;
+                        });
+
+                        // If tree is missing parts, don't use it from pool
+                        if (!hasTrunk || !hasFoliage) {
+                            console.warn(`[ChunkManager] Pooled tree missing parts (trunk: ${hasTrunk}, foliage: ${hasFoliage}). Creating new tree.`);
+                            // Put the incomplete tree back in the pool for proper disposal later
+                            this._addToPool('obstacles', mesh);
+                            // Force creation of a new tree
+                            mesh = null;
+                        }
+                    }
+
                     // If no pooled object available, create a new one
                     if (!mesh) {
                         mesh = createObjectVisual(objectData, this.levelConfig);
@@ -264,7 +286,7 @@ export class ChunkManager {
                         if (objectData.position) mesh.position.copy(objectData.position);
 
                         // Handle rotation safely
-                        const rotationY = objectData.rotation && objectData.rotation.y ? objectData.rotation.y : 0;
+                        const rotationY = objectData.rotationY !== undefined ? objectData.rotationY : 0;
                         mesh.rotation.set(0, rotationY, 0);
 
                         // Handle scale safely
@@ -843,6 +865,22 @@ export class ChunkManager {
             this.objectPools[poolName] = [];
         }
 
+        // Special handling for tree_pine objects to ensure they're properly preserved
+        if (object.userData && object.userData.objectType === 'tree_pine') {
+            // Check if the tree has both trunk and foliage
+            let hasTrunk = false;
+            let hasFoliage = false;
+
+            // Verify tree has all required parts
+            object.traverse((child) => {
+                if (child.name === 'treeTrunk') hasTrunk = true;
+                if (child.name === 'treeFoliage') hasFoliage = true;
+            });
+
+            // Log tree state for debugging
+            console.log(`[ChunkManager] Adding tree to pool (trunk: ${hasTrunk}, foliage: ${hasFoliage})`);
+        }
+
         // Limit pool size based on performance settings
         const maxPoolSize = RENDERING.MAX_OBJECTS_PER_CHUNK * 2;
         if (this.objectPools[poolName].length >= maxPoolSize) {
@@ -852,6 +890,9 @@ export class ChunkManager {
             // Dispose based on object type
             if (poolName === 'tumbleweeds' && oldestObject.dispose) {
                 oldestObject.dispose();
+            } else if (oldestObject.userData && oldestObject.userData.objectType === 'tree_pine') {
+                // Special handling for trees - don't dispose their geometries
+                console.log(`[ChunkManager] Removing oldest tree from pool without disposing geometries`);
             } else if (oldestObject.geometry) {
                 oldestObject.geometry.dispose();
                 if (oldestObject.material) {

@@ -142,6 +142,7 @@ export function getAsset(key) {
  */
 export function createTreeMesh(levelConfig) { // Accept levelConfig (though not strictly needed if materials are preloaded)
     const treeGroup = new THREE.Group();
+    treeGroup.name = 'tree_pine_group';
 
     const trunkHeight = 4;
     const trunkRadius = 0.5;
@@ -149,8 +150,8 @@ export function createTreeMesh(levelConfig) { // Accept levelConfig (though not 
     const foliageRadius = 3.5;
 
     // Get materials with error checking
-    const trunkMaterial = getAsset('treeTrunkMaterial');
-    const foliageMaterial = getAsset('treeFoliageMaterial');
+    let trunkMaterial = getAsset('treeTrunkMaterial');
+    let foliageMaterial = getAsset('treeFoliageMaterial');
 
     // Check if materials are available
     if (!trunkMaterial || !foliageMaterial) {
@@ -161,16 +162,18 @@ export function createTreeMesh(levelConfig) { // Accept levelConfig (though not 
         if (!trunkMaterial) {
             console.warn('[AssetManager] Creating fallback trunk material');
             levelAssets.treeTrunkMaterial = new THREE.MeshStandardMaterial({ color: 0x8B4513, roughness: 0.9 });
+            trunkMaterial = levelAssets.treeTrunkMaterial;
         }
         if (!foliageMaterial) {
             console.warn('[AssetManager] Creating fallback foliage material');
             levelAssets.treeFoliageMaterial = new THREE.MeshStandardMaterial({ color: 0x228B22, roughness: 0.7 });
+            foliageMaterial = levelAssets.treeFoliageMaterial;
         }
     }
 
     // Create trunk
     const trunkGeometry = new THREE.CylinderGeometry(trunkRadius, trunkRadius, trunkHeight, 8);
-    const trunkMesh = new THREE.Mesh(trunkGeometry, getAsset('treeTrunkMaterial'));
+    const trunkMesh = new THREE.Mesh(trunkGeometry, trunkMaterial);
     trunkMesh.position.y = trunkHeight / 2;
     trunkMesh.castShadow = true;
     trunkMesh.receiveShadow = true;
@@ -179,7 +182,7 @@ export function createTreeMesh(levelConfig) { // Accept levelConfig (though not 
 
     // Create foliage
     const foliageGeometry = new THREE.ConeGeometry(foliageRadius, foliageHeight, 8);
-    const foliageMesh = new THREE.Mesh(foliageGeometry, getAsset('treeFoliageMaterial'));
+    const foliageMesh = new THREE.Mesh(foliageGeometry, foliageMaterial);
     foliageMesh.position.y = trunkHeight + foliageHeight / 2;
     foliageMesh.castShadow = true;
     foliageMesh.receiveShadow = true;
@@ -191,6 +194,11 @@ export function createTreeMesh(levelConfig) { // Accept levelConfig (though not 
         console.warn(`[AssetManager] Tree has ${treeGroup.children.length} parts instead of 2`);
     }
 
+    // Add a userData flag to indicate this is a complete tree
+    treeGroup.userData.isCompleteTree = true;
+    treeGroup.userData.objectType = 'tree_pine';
+
+    console.log('[AssetManager] Created new tree mesh with trunk and foliage');
     return treeGroup;
 }
 
