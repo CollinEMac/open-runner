@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import * as GlobalConfig from './config.js'; // Keep for global settings if any are used later
 import * as AssetManager from './assetManager.js'; // Import AssetManager
 import * as UIManager from './uiManager.js'; // Import UI Manager for error display
+import { smoothDamp } from './utils/mathUtils.js'; // Import smoothing function
 
 // Model Creation Functions moved to assetManager.js
 
@@ -42,8 +43,11 @@ class Enemy {
         this.mesh = null; // Initialize mesh as null
         this.groundCheckCounter = Math.floor(Math.random() * 5); // Stagger initial checks
         this.lastGroundY = initialData.position.y; // Initialize with spawn height
+        this.currentGroundY = initialData.position.y; // Current smoothed ground Y position
         this.roamingTarget = null; // Target position for roaming
         this.roamingWaitTimer = 0; // Timer for pausing during roaming
+        this.positionSmoothingFactor = 0.85; // Default position smoothing factor (0-1, higher = smoother)
+        this.lastPosition = initialData.position.clone(); // Store last position for smoothing
 
         // Create and position the mesh AFTER super() call allows access to subclass methods
         this.mesh = this.createMesh(); // Calls subclass specific createMesh
@@ -103,7 +107,8 @@ class Enemy {
         this.groundCheckCounter++;
         const currentPosition = this.mesh.position;
 
-        if (this.groundCheckCounter % 5 === 0) {
+        // Perform ground check more frequently (every 2 frames instead of 5)
+        if (this.groundCheckCounter % 2 === 0) {
             const rayOrigin = new THREE.Vector3(currentPosition.x, currentPosition.y + 2, currentPosition.z);
             groundRaycaster.set(rayOrigin, downVector);
             const nearbyTerrain = this.chunkManager.getTerrainMeshesNear(currentPosition);
@@ -116,7 +121,17 @@ class Enemy {
         }
 
         const legHeight = this.mesh.userData.legHeight || 0.5;
-        this.mesh.position.y = this.lastGroundY + legHeight / 2;
+
+        // Smooth the ground height transition using smoothDamp
+        this.currentGroundY = smoothDamp(
+            this.currentGroundY,
+            this.lastGroundY,
+            0.016, // Use a fixed deltaTime for consistent smoothing
+            this.positionSmoothingFactor
+        );
+
+        // Apply the smoothed ground height
+        this.mesh.position.y = this.currentGroundY + legHeight / 2;
     }
 
     _updateState(playerPos, deltaTime) {
@@ -166,6 +181,9 @@ class Enemy {
         let isMoving = false;
         let currentSpeed = this.speed;
 
+        // Store the previous position for smoothing
+        this.lastPosition.copy(this.mesh.position);
+
         // Determine target based on state
         if (this.state === ENEMY_STATE.CHASING) {
             targetPosition = playerPos;
@@ -183,22 +201,45 @@ class Enemy {
             moveDirection.y = 0;
             const distanceToTarget = moveDirection.length();
 
-            if (distanceToTarget > 0.01) { // Avoid normalizing zero vector
+            // Add a small deadzone to prevent tiny jittery movements
+            if (distanceToTarget > 0.05) { // Increased from 0.01 to 0.05 to reduce jitter
                  moveDirection.normalize();
                  const moveDistance = currentSpeed * deltaTime;
 
                  if (moveDistance >= distanceToTarget) {
-                     this.mesh.position.copy(targetPosition); // Snap to target
-                     if (this.state === ENEMY_STATE.ROAMING) {
+                     // Don't snap to target immediately, smooth the final approach
+                     const newPosition = new THREE.Vector3();
+                     newPosition.lerpVectors(this.mesh.position, targetPosition, 0.5);
+                     this.mesh.position.copy(newPosition);
+
+                     if (this.state === ENEMY_STATE.ROAMING && distanceToTarget < 0.5) {
                          this.roamingTarget = null;
                          this.setRoamingWaitTimer();
                          isMoving = false; // Stop moving this frame
                      }
                  } else {
-                     this.mesh.position.addScaledVector(moveDirection, moveDistance);
-                     // Orientation
+                     // Calculate the new position with movement
+                     const newPosition = new THREE.Vector3();
+                     newPosition.copy(this.mesh.position).addScaledVector(moveDirection, moveDistance);
+
+                     // Apply smoothing to the horizontal movement (x and z)
+                     const smoothedPosition = new THREE.Vector3();
+                     smoothedPosition.x = smoothDamp(this.mesh.position.x, newPosition.x, deltaTime, this.positionSmoothingFactor);
+                     smoothedPosition.z = smoothDamp(this.mesh.position.z, newPosition.z, deltaTime, this.positionSmoothingFactor);
+                     smoothedPosition.y = this.mesh.position.y; // Keep current Y (handled by grounding)
+
+                     // Apply the smoothed position
+                     this.mesh.position.copy(smoothedPosition);
+
+                     // Orientation - smooth the rotation as well
                      const lookAwayPos = this.mesh.position.clone().sub(moveDirection);
-                     this.mesh.lookAt(lookAwayPos);
+                     // Create a temporary object to calculate the target rotation
+                     const tempObj = new THREE.Object3D();
+                     tempObj.position.copy(this.mesh.position);
+                     tempObj.lookAt(lookAwayPos);
+
+                     // Smoothly interpolate the rotation
+                     this.mesh.quaternion.slerp(tempObj.quaternion, 0.1);
                  }
             } else {
                  // Already at target (or very close)
@@ -341,7 +382,7 @@ export class Rattlesnake extends Enemy {
         this.groundCheckCounter++;
         const currentPosition = this.mesh.position;
 
-        if (this.groundCheckCounter % 5 === 0) {
+        if (this.groundCheckCounter % 2 === 0) { // More frequent checks (every 2 frames)
             const rayOrigin = new THREE.Vector3(currentPosition.x, currentPosition.y + 0.5, currentPosition.z); // Lower origin
             groundRaycaster.set(rayOrigin, downVector);
             const nearbyTerrain = this.chunkManager.getTerrainMeshesNear(currentPosition);
@@ -351,9 +392,18 @@ export class Rattlesnake extends Enemy {
                 this.lastGroundY = intersects[0].point.y;
             }
         }
+
+        // Smooth the ground height transition
+        this.currentGroundY = smoothDamp(
+            this.currentGroundY,
+            this.lastGroundY,
+            0.016, // Use a fixed deltaTime for consistent smoothing
+            this.positionSmoothingFactor
+        );
+
         // Offset based on model height (very small for snake)
         const modelHeight = 0.3; // Approximate height of the snake model
-        this.mesh.position.y = this.lastGroundY + modelHeight / 2;
+        this.mesh.position.y = this.currentGroundY + modelHeight / 2;
     }
 }
 
@@ -377,7 +427,7 @@ export class Scorpion extends Enemy {
         this.groundCheckCounter++;
         const currentPosition = this.mesh.position;
 
-        if (this.groundCheckCounter % 5 === 0) {
+        if (this.groundCheckCounter % 2 === 0) { // More frequent checks (every 2 frames)
             const rayOrigin = new THREE.Vector3(currentPosition.x, currentPosition.y + 0.5, currentPosition.z); // Lower origin
             groundRaycaster.set(rayOrigin, downVector);
             const nearbyTerrain = this.chunkManager.getTerrainMeshesNear(currentPosition);
@@ -387,9 +437,18 @@ export class Scorpion extends Enemy {
                 this.lastGroundY = intersects[0].point.y;
             }
         }
-         // Offset based on model height (very small for scorpion)
+
+        // Smooth the ground height transition
+        this.currentGroundY = smoothDamp(
+            this.currentGroundY,
+            this.lastGroundY,
+            0.016, // Use a fixed deltaTime for consistent smoothing
+            this.positionSmoothingFactor
+        );
+
+        // Offset based on model height (very small for scorpion)
         const modelHeight = 0.3; // Approximate height of the scorpion model
-        this.mesh.position.y = this.lastGroundY + modelHeight / 2;
+        this.mesh.position.y = this.currentGroundY + modelHeight / 2;
     }
 }
 
