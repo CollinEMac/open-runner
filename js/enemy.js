@@ -107,33 +107,22 @@ class Enemy {
         this.groundCheckCounter++;
         const currentPosition = this.mesh.position;
 
-        // Perform ground check more frequently (every 2 frames instead of 5)
-        if (this.groundCheckCounter % 2 === 0) {
-            const rayOrigin = new THREE.Vector3(currentPosition.x, currentPosition.y + 2, currentPosition.z);
-            groundRaycaster.set(rayOrigin, downVector);
-            const nearbyTerrain = this.chunkManager.getTerrainMeshesNear(currentPosition);
-            const intersects = groundRaycaster.intersectObjects(nearbyTerrain);
+        // Perform ground check every frame
+        const rayOrigin = new THREE.Vector3(currentPosition.x, currentPosition.y + 2, currentPosition.z);
+        groundRaycaster.set(rayOrigin, downVector);
+        const nearbyTerrain = this.chunkManager.getTerrainMeshesNear(currentPosition);
+        const intersects = groundRaycaster.intersectObjects(nearbyTerrain);
 
-            if (intersects.length > 0) {
-                this.lastGroundY = intersects[0].point.y;
-            }
-            // else: Keep last known ground Y
+        if (intersects.length > 0) {
+            this.lastGroundY = intersects[0].point.y;
+
+            // Apply a simple lerp for smoother transitions
+            this.currentGroundY = this.currentGroundY * 0.8 + this.lastGroundY * 0.2;
+
+            // Apply the ground height with appropriate offset
+            const legHeight = this.mesh.userData.legHeight || 0.5;
+            this.mesh.position.y = this.currentGroundY + legHeight / 2;
         }
-
-        const legHeight = this.mesh.userData.legHeight || 0.5;
-
-        // Smooth the ground height transition using smoothDamp
-        // Use a fixed deltaTime and a smaller smoothing factor for ground height
-        const groundSmoothingFactor = 0.2; // Lower value = smoother but faster transitions
-        this.currentGroundY = smoothDamp(
-            this.currentGroundY,
-            this.lastGroundY,
-            0.016, // Use a fixed deltaTime for consistent smoothing
-            groundSmoothingFactor
-        );
-
-        // Apply the smoothed ground height
-        this.mesh.position.y = this.currentGroundY + legHeight / 2;
     }
 
     _updateState(playerPos, deltaTime) {
@@ -178,13 +167,11 @@ class Enemy {
     }
 
     _updateMovement(playerPos, deltaTime) {
+        // Simple direct movement implementation
         const moveDirection = new THREE.Vector3();
         let targetPosition = null;
         let isMoving = false;
         let currentSpeed = this.speed;
-
-        // Store the previous position for smoothing
-        this.lastPosition.copy(this.mesh.position);
 
         // Determine target based on state
         if (this.state === ENEMY_STATE.CHASING) {
@@ -193,72 +180,66 @@ class Enemy {
             targetPosition = this.originalPosition;
         } else if (this.state === ENEMY_STATE.ROAMING && this.roamingTarget && this.roamingWaitTimer <= 0) {
             targetPosition = this.roamingTarget;
-            currentSpeed = this.speed * this.roamingSpeedFactor; // Use instance property
+            currentSpeed = this.speed * this.roamingSpeedFactor;
         }
 
         isMoving = !!targetPosition && this.roamingWaitTimer <= 0;
 
         if (isMoving && targetPosition) {
+            // Calculate direction to target
             moveDirection.subVectors(targetPosition, this.mesh.position);
-            moveDirection.y = 0;
+            moveDirection.y = 0; // Keep movement on the horizontal plane
             const distanceToTarget = moveDirection.length();
 
-            // Add a small deadzone to prevent tiny jittery movements
-            if (distanceToTarget > 0.05) { // Increased from 0.01 to 0.05 to reduce jitter
-                 moveDirection.normalize();
-                 const moveDistance = currentSpeed * deltaTime;
+            // Only move if we're not already at the target
+            if (distanceToTarget > 0.1) {
+                moveDirection.normalize();
+                const moveDistance = currentSpeed * deltaTime;
 
-                 if (moveDistance >= distanceToTarget) {
-                     // Don't snap to target immediately, smooth the final approach
-                     const newPosition = new THREE.Vector3();
-                     newPosition.lerpVectors(this.mesh.position, targetPosition, 0.5);
-                     this.mesh.position.copy(newPosition);
+                // If we would overshoot the target, just move to the target
+                if (moveDistance >= distanceToTarget) {
+                    // For roaming state, we've reached the target
+                    if (this.state === ENEMY_STATE.ROAMING) {
+                        this.roamingTarget = null;
+                        this.setRoamingWaitTimer();
+                        isMoving = false;
+                    }
 
-                     if (this.state === ENEMY_STATE.ROAMING && distanceToTarget < 0.5) {
-                         this.roamingTarget = null;
-                         this.setRoamingWaitTimer();
-                         isMoving = false; // Stop moving this frame
-                     }
-                 } else {
-                     // Calculate the new position with movement
-                     const newPosition = new THREE.Vector3();
-                     newPosition.copy(this.mesh.position).addScaledVector(moveDirection, moveDistance);
+                    // Move directly to target
+                    const newPos = new THREE.Vector3();
+                    newPos.x = targetPosition.x;
+                    newPos.z = targetPosition.z;
+                    newPos.y = this.mesh.position.y; // Keep current Y
+                    this.mesh.position.copy(newPos);
+                } else {
+                    // Move toward target by moveDistance
+                    this.mesh.position.x += moveDirection.x * moveDistance;
+                    this.mesh.position.z += moveDirection.z * moveDistance;
+                    // Y position is handled by grounding
+                }
 
-                     // Apply limited smoothing to the horizontal movement (x and z)
-                     // Use a much smaller smoothing factor to ensure movement happens
-                     const smoothedPosition = new THREE.Vector3();
-                     // Move at least 70% of the way to the target position each frame
-                     const moveFactor = Math.min(0.7, 1.0 - Math.pow(this.positionSmoothingFactor, deltaTime));
-                     smoothedPosition.x = this.mesh.position.x + (newPosition.x - this.mesh.position.x) * moveFactor;
-                     smoothedPosition.z = this.mesh.position.z + (newPosition.z - this.mesh.position.z) * moveFactor;
-                     smoothedPosition.y = this.mesh.position.y; // Keep current Y (handled by grounding)
+                // Update orientation to face movement direction
+                if (moveDirection.lengthSq() > 0.0001) {
+                    // Calculate the target rotation
+                    const lookTarget = new THREE.Vector3();
+                    lookTarget.copy(this.mesh.position).sub(moveDirection);
 
-                     // Apply the smoothed position
-                     this.mesh.position.copy(smoothedPosition);
-
-                     // Orientation - smooth the rotation as well
-                     const lookAwayPos = this.mesh.position.clone().sub(moveDirection);
-                     // Create a temporary object to calculate the target rotation
-                     const tempObj = new THREE.Object3D();
-                     tempObj.position.copy(this.mesh.position);
-                     tempObj.lookAt(lookAwayPos);
-
-                     // Smoothly interpolate the rotation
-                     this.mesh.quaternion.slerp(tempObj.quaternion, 0.1);
-                 }
+                    // Apply rotation directly
+                    this.mesh.lookAt(lookTarget);
+                }
             } else {
-                 // Already at target (or very close)
-                 if (this.state === ENEMY_STATE.ROAMING) {
-                     this.roamingTarget = null;
-                     this.setRoamingWaitTimer();
-                     isMoving = false;
-                 }
+                // Already at target
+                if (this.state === ENEMY_STATE.ROAMING) {
+                    this.roamingTarget = null;
+                    this.setRoamingWaitTimer();
+                    isMoving = false;
+                }
             }
-
         } else {
-             isMoving = false;
+            isMoving = false;
         }
-        return { isMoving, currentSpeed }; // Return movement status for animation
+
+        return { isMoving, currentSpeed };
     }
 
     _updateAnimation(elapsedTime, isMoving, currentSpeed) {
@@ -384,33 +365,24 @@ export class Rattlesnake extends Enemy {
     }
      // Override grounding to be closer to the ground
      _updateGrounding() {
-        this.groundCheckCounter++;
         const currentPosition = this.mesh.position;
 
-        if (this.groundCheckCounter % 2 === 0) { // More frequent checks (every 2 frames)
-            const rayOrigin = new THREE.Vector3(currentPosition.x, currentPosition.y + 0.5, currentPosition.z); // Lower origin
-            groundRaycaster.set(rayOrigin, downVector);
-            const nearbyTerrain = this.chunkManager.getTerrainMeshesNear(currentPosition);
-            const intersects = groundRaycaster.intersectObjects(nearbyTerrain);
+        // Perform ground check every frame with lower origin for snake
+        const rayOrigin = new THREE.Vector3(currentPosition.x, currentPosition.y + 0.5, currentPosition.z);
+        groundRaycaster.set(rayOrigin, downVector);
+        const nearbyTerrain = this.chunkManager.getTerrainMeshesNear(currentPosition);
+        const intersects = groundRaycaster.intersectObjects(nearbyTerrain);
 
-            if (intersects.length > 0) {
-                this.lastGroundY = intersects[0].point.y;
-            }
+        if (intersects.length > 0) {
+            this.lastGroundY = intersects[0].point.y;
+
+            // Apply a simple lerp for smoother transitions
+            this.currentGroundY = this.currentGroundY * 0.8 + this.lastGroundY * 0.2;
+
+            // Offset based on model height (very small for snake)
+            const modelHeight = 0.3; // Approximate height of the snake model
+            this.mesh.position.y = this.currentGroundY + modelHeight / 2;
         }
-
-        // Smooth the ground height transition
-        // Use a fixed deltaTime and a smaller smoothing factor for ground height
-        const groundSmoothingFactor = 0.2; // Lower value = smoother but faster transitions
-        this.currentGroundY = smoothDamp(
-            this.currentGroundY,
-            this.lastGroundY,
-            0.016, // Use a fixed deltaTime for consistent smoothing
-            groundSmoothingFactor
-        );
-
-        // Offset based on model height (very small for snake)
-        const modelHeight = 0.3; // Approximate height of the snake model
-        this.mesh.position.y = this.currentGroundY + modelHeight / 2;
     }
 }
 
@@ -431,33 +403,24 @@ export class Scorpion extends Enemy {
 
      // Override grounding to be closer to the ground
      _updateGrounding() {
-        this.groundCheckCounter++;
         const currentPosition = this.mesh.position;
 
-        if (this.groundCheckCounter % 2 === 0) { // More frequent checks (every 2 frames)
-            const rayOrigin = new THREE.Vector3(currentPosition.x, currentPosition.y + 0.5, currentPosition.z); // Lower origin
-            groundRaycaster.set(rayOrigin, downVector);
-            const nearbyTerrain = this.chunkManager.getTerrainMeshesNear(currentPosition);
-            const intersects = groundRaycaster.intersectObjects(nearbyTerrain);
+        // Perform ground check every frame with lower origin for scorpion
+        const rayOrigin = new THREE.Vector3(currentPosition.x, currentPosition.y + 0.5, currentPosition.z);
+        groundRaycaster.set(rayOrigin, downVector);
+        const nearbyTerrain = this.chunkManager.getTerrainMeshesNear(currentPosition);
+        const intersects = groundRaycaster.intersectObjects(nearbyTerrain);
 
-            if (intersects.length > 0) {
-                this.lastGroundY = intersects[0].point.y;
-            }
+        if (intersects.length > 0) {
+            this.lastGroundY = intersects[0].point.y;
+
+            // Apply a simple lerp for smoother transitions
+            this.currentGroundY = this.currentGroundY * 0.8 + this.lastGroundY * 0.2;
+
+            // Offset based on model height (very small for scorpion)
+            const modelHeight = 0.3; // Approximate height of the scorpion model
+            this.mesh.position.y = this.currentGroundY + modelHeight / 2;
         }
-
-        // Smooth the ground height transition
-        // Use a fixed deltaTime and a smaller smoothing factor for ground height
-        const groundSmoothingFactor = 0.2; // Lower value = smoother but faster transitions
-        this.currentGroundY = smoothDamp(
-            this.currentGroundY,
-            this.lastGroundY,
-            0.016, // Use a fixed deltaTime for consistent smoothing
-            groundSmoothingFactor
-        );
-
-        // Offset based on model height (very small for scorpion)
-        const modelHeight = 0.3; // Approximate height of the scorpion model
-        this.mesh.position.y = this.currentGroundY + modelHeight / 2;
     }
 }
 
