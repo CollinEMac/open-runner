@@ -648,6 +648,24 @@ export class ChunkManager {
                             }
                         }
 
+                        // Verify the object type is correct based on its geometry
+                        if (collectibleMesh.userData.objectType === 'coin' &&
+                            collectibleMesh.geometry &&
+                            collectibleMesh.geometry.type !== 'CylinderGeometry') {
+                            console.warn(`[ChunkManager] Found coin with incorrect geometry type: ${collectibleMesh.geometry.type}`);
+                            // If it's not a cylinder, it's probably not a coin
+                            if (collectibleMesh instanceof THREE.Group ||
+                                (collectibleMesh.name && collectibleMesh.name.includes('magnet'))) {
+                                collectibleMesh.userData.objectType = 'magnet';
+                                console.warn(`[ChunkManager] Fixed objectType from coin to magnet`);
+                            }
+                        } else if (collectibleMesh.userData.objectType === 'magnet' &&
+                                 collectibleMesh.geometry &&
+                                 collectibleMesh.geometry.type === 'CylinderGeometry') {
+                            collectibleMesh.userData.objectType = 'coin';
+                            console.warn(`[ChunkManager] Fixed objectType from magnet to coin`);
+                        }
+
                         // Apply magnet effect if active - ONLY to coins, not other collectibles like magnets
                         if (magnetActive && playerPosition && collectibleMesh.userData.objectType === 'coin') {
                             // Calculate distance to player

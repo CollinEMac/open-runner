@@ -243,8 +243,23 @@ class Game {
         });
 
         this.eventBus.subscribe('powerupActivated', (powerupType) => {
-            this.player.powerup = powerupType;
-            console.log(`${powerupType} powerup started!`);
+            // Validate powerup type to prevent incorrect activations
+            if (powerupType !== 'magnet') {
+                console.warn(`[Game] Received invalid powerup type: ${powerupType}, ignoring`);
+                return;
+            }
+
+            // Check if we're already in a powerup state to prevent double activation
+            if (this.player.powerup === powerupType) {
+                console.log(`[Game] ${powerupType} powerup already active, extending duration`);
+                // Clear existing timer and set a new one
+                if (this.powerupTimer) {
+                    clearTimeout(this.powerupTimer);
+                }
+            } else {
+                this.player.powerup = powerupType;
+                console.log(`[Game] ${powerupType} powerup started!`);
+            }
 
             // give the player some visual indication of the powerup
             const magnetMaterial = new THREE.MeshStandardMaterial({

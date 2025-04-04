@@ -1,4 +1,5 @@
 // js/collisionManager.js
+import * as THREE from 'three';
 import * as Config from './config.js';
 import { GameStates, getCurrentState } from './gameStateManager.js'; // Need state info
 import eventBus from './eventBus.js'; // Import the event bus
@@ -86,11 +87,27 @@ export function checkCollisions(player) {
 
         // handle coins
         if (mesh.userData.objectType === 'coin' && !mesh.userData.collidable) {
+            console.log(`[CollisionManager] Processing coin collection, powerup state: ${player.powerup}`);
+
+            // Verify this is actually a coin by checking its geometry
+            if (!mesh.geometry || !mesh.geometry.parameters || !mesh.geometry.parameters.radiusBottom) {
+                console.warn(`[CollisionManager] Object marked as coin but has invalid geometry:`, mesh);
+                // Fix the object type if it's not actually a coin
+                if (mesh.geometry && mesh.geometry.type !== 'CylinderGeometry') {
+                    console.warn(`[CollisionManager] Fixing incorrect objectType for non-coin object`);
+                    // Try to determine the correct type based on the mesh
+                    if (mesh.name && mesh.name.includes('magnet')) {
+                        mesh.userData.objectType = 'magnet';
+                        continue; // Skip to next iteration so it's processed as a magnet
+                    }
+                }
+            }
+
             const dx = playerPosition.x - mesh.position.x;
             const dy = playerPosition.y - mesh.position.y;
             const dz = playerPosition.z - mesh.position.z;
             const distanceSq = dx * dx + dy * dy + dz * dz;
-            const coinCollisionRadius = mesh.geometry.parameters.radiusBottom;
+            const coinCollisionRadius = mesh.geometry?.parameters?.radiusBottom || 0.75; // Default if missing
 
             // When magnet is active, we need to ensure coins are collected properly
             // and don't get stuck inside the player model
@@ -141,6 +158,20 @@ export function checkCollisions(player) {
 
         // handle powerups
         if (mesh.userData.objectType === 'magnet' && !mesh.userData.collidable) {
+            console.log(`[CollisionManager] Processing magnet powerup collection`);
+
+            // Verify this is actually a magnet by checking its structure
+            // Magnets are typically groups with multiple child meshes
+            if (!(mesh instanceof THREE.Group) && !mesh.name.includes('magnet')) {
+                console.warn(`[CollisionManager] Object marked as magnet but doesn't appear to be one:`, mesh);
+                // If it's a cylinder, it's probably a coin with incorrect type
+                if (mesh.geometry && mesh.geometry.type === 'CylinderGeometry') {
+                    console.warn(`[CollisionManager] Fixing incorrect objectType from magnet to coin`);
+                    mesh.userData.objectType = 'coin';
+                    continue; // Skip to next iteration so it's processed as a coin
+                }
+            }
+
             if (!mesh.position) {
                 console.warn('Mesh missing position:', mesh);
                 continue;
@@ -158,6 +189,7 @@ export function checkCollisions(player) {
 
                 if (collected) {
                     // Emit score change event instead of calling callback
+                    console.log(`[CollisionManager] Activating magnet powerup, mesh userData:`, mesh.userData);
                     eventBus.emit('powerupActivated', 'magnet');
                     // console.log(`Collectible collected!`);
                     nearbyArray.splice(i, 1); // Remove from local array for this check
