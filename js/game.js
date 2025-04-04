@@ -212,7 +212,7 @@ class Game {
                 metalness: 0.9,       // More metallic
                 roughness: 0.1        // More shiny
             });
-            
+
             // Apply to all player meshes
             this.player.modelParts.characterGroup.traverse(child => {
                 if (child instanceof THREE.Mesh) {
@@ -224,7 +224,7 @@ class Game {
             if (this.powerupTimer) {
                 clearTimeout(this.powerupTimer);
             }
-            
+
             this.powerupTimer = setTimeout(() => {
                 this.player.powerup = '';
                 console.log(`${powerupType} powerup expired!`);
@@ -342,6 +342,10 @@ class Game {
     async startGame(levelId) {
         console.log(`[Game] Starting level: ${levelId}`);
         this.eventBus.emit('uiButtonClicked');
+
+        // Reset input states to prevent any stuck inputs when starting a new game
+        resetInputStates();
+        console.log("[Game] Input states reset before starting game");
 
         // 1. Create a new scene for gameplay
         const gameplaySceneComponents = initScene(this.canvas, this.currentLevelConfig);
@@ -586,6 +590,10 @@ class Game {
         const currentLevelId = this.levelManager.getCurrentLevelId();
         if (currentLevelId && !this.isTransitioning) {
              console.log(`[Game] Restarting level: ${currentLevelId}`);
+             // Reset input states directly before restarting to prevent stuck inputs
+             resetInputStates();
+             console.log("[Game] Input states reset before restart");
+
              this.eventBus.emit('uiButtonClicked');
              this.startGame(currentLevelId);
         } else if (this.isTransitioning) {

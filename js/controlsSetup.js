@@ -127,12 +127,18 @@ export function setupPlayerControls(canvasElement) {
  * This should be called once during game initialization.
  */
 export function initInputStateManager() {
-    // Subscribe to game state changes to reset inputs when pausing/resuming
+    // Subscribe to game state changes to reset inputs when pausing/resuming or restarting from game over
     eventBus.subscribe('gameStateChanged', (newState, previousState) => {
-        // Reset input states when entering or exiting the PAUSED state
+        // Reset input states when:
+        // 1. Entering or exiting the PAUSED state
+        // 2. Transitioning from GAME_OVER to PLAYING (restart)
+        // 3. Starting a new game (any state to PLAYING)
         if (newState === GameStates.PAUSED ||
-            (previousState === GameStates.PAUSED && newState === GameStates.PLAYING)) {
+            (previousState === GameStates.PAUSED && newState === GameStates.PLAYING) ||
+            (previousState === GameStates.GAME_OVER && newState === GameStates.PLAYING) ||
+            (newState === GameStates.PLAYING)) {
             resetInputStates();
+            console.log(`[Controls] Reset input states during transition from ${previousState} to ${newState}`);
         }
     });
 
