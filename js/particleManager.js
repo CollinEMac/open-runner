@@ -4,6 +4,7 @@ import { performanceManager } from './config.js';
 
 // Base particle settings
 const BASE_MAX_PARTICLES = 500; // Max dust particles at once
+const MAX_PARTICLES = BASE_MAX_PARTICLES; // Define MAX_PARTICLES for use in other parts of the code
 const BASE_PARTICLE_LIFETIME = 0.8; // Seconds
 const BASE_PARTICLES_PER_SECOND = 150; // How many particles to emit
 const PARTICLE_INITIAL_SPEED_MIN = 0.5;

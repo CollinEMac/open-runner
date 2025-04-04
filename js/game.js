@@ -21,13 +21,13 @@ import * as AssetManager from './assetManager.js';
 import * as ScoreManager from './scoreManager.js';
 
 // Constants for camera transitions
-const TITLE_TRANSITION_SPEED = 4.0; // Increased for faster transition
-const TITLE_TRANSITION_THRESHOLD_SQ = 0.05; // Squared distance threshold to switch to TITLE state
+const TITLE_TRANSITION_SPEED = 6.0; // Further increased for faster transition
+const TITLE_TRANSITION_THRESHOLD_SQ = 0.03; // Reduced threshold for quicker state change
 const TITLE_LOOK_AT_TARGET = new THREE.Vector3(0, 0, 0); // Target for camera lookAt during title
 
 // Constants for gameplay camera transition
-const GAMEPLAY_TRANSITION_SPEED = 5.0; // Increased for faster transition
-const GAMEPLAY_TRANSITION_THRESHOLD_SQ = 0.2; // Reduced threshold for quicker state change
+const GAMEPLAY_TRANSITION_SPEED = 7.0; // Further increased for faster transition
+const GAMEPLAY_TRANSITION_THRESHOLD_SQ = 0.1; // Further reduced threshold for quicker state change
 
 class Game {
     constructor(canvasElement) {
@@ -86,7 +86,7 @@ class Game {
         this.cameraStartPosition = null;
         this.cameraStartQuaternion = null;
         this.cameraTransitionStartTime = 0;
-        this.cameraTransitionDuration = 0.8; // seconds - increased for smoother transitions between levels
+        this.cameraTransitionDuration = 0.6; // seconds - reduced for faster transitions while maintaining smoothness
 
         // Title Screen Animation
         this.titleCameraDrift = null;
@@ -523,7 +523,7 @@ class Game {
         console.log(`[Game] Loading level ${levelId}...`);
 
         // 1. Don't change the state - keep the current transition state
-        // Skip showing loading screen
+        // Skip showing loading screen - this improves the transition experience
 
         // Store the player's current scene parent before removing it
         const playerCurrentParent = this.player.model?.parent;
@@ -983,7 +983,7 @@ class Game {
             return;
         }
 
-        // Force player visibility during camera transitions
+        // CRITICAL FIX: Force player visibility during camera transitions
         // This is critical for level transitions, especially to level 2
         if (!this.player.model.visible) {
             console.log("[Game] Player was invisible during camera transition, making visible.");
@@ -993,7 +993,12 @@ class Game {
         // Double check that the player is in the scene
         if (!this.player.model.parent) {
             console.log("[Game] Player model not in scene during camera transition, adding to scene.");
-            this.scene.add(this.player.model);
+            // Use activeScene instead of scene to ensure player is added to the correct scene
+            if (this.activeScene) {
+                this.activeScene.add(this.player.model);
+            } else {
+                this.scene.add(this.player.model);
+            }
         }
 
         // Get the player position
@@ -1057,13 +1062,19 @@ class Game {
             // Ensure player is in the scene
             if (!this.player.model.parent) {
                 console.log("[Game] Player model not in scene after transition, adding to scene.");
-                this.scene.add(this.player.model);
+                // Use activeScene instead of scene to ensure player is added to the correct scene
+                if (this.activeScene) {
+                    this.activeScene.add(this.player.model);
+                } else {
+                    this.scene.add(this.player.model);
+                }
             }
 
             // Force a render to ensure player is visible
             if (this.renderer) {
                 console.log("[Game] Forcing a render after camera transition to ensure player visibility.");
-                this.renderer.render(this.scene, this.camera);
+                // Render the active scene instead of just this.scene
+                this.renderer.render(this.activeScene || this.scene, this.camera);
             }
 
             // From now on, use normal camera follow

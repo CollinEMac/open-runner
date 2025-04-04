@@ -33,7 +33,7 @@ const worldConfig = {
     CHUNK_SIZE: 100, // Width and depth of a single terrain chunk
     RENDER_DISTANCE_CHUNKS: performanceManager.getSettings().renderDistance, // Render distance in chunks (from performance settings)
     GRID_CELL_SIZE: 25, // Size of cells in the spatial grid for collision detection
-    PLAYER_SPAWN_SAFE_RADIUS: 50 // Increased minimum distance objects can spawn from player's spawn point
+    PLAYER_SPAWN_SAFE_RADIUS: 70 // Further increased minimum distance objects can spawn from player's spawn point
 };
 
 // Terrain configuration

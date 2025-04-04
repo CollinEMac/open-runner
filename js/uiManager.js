@@ -388,6 +388,8 @@ export function showTitleScreen() {
     }
     // Always hide high score on title screen
     if (highScoreElement) highScoreElement.style.display = 'none';
+    // Also hide score display
+    if (scoreElement) scoreElement.style.display = 'none';
 }
 
 /** Hides the title screen overlay. */
@@ -455,9 +457,17 @@ function checkForLiveHighScore(data) {
         // Update the high score display in real-time
         updateHighScoreDisplay(score);
 
-        // Only show notification for the first time we exceed the high score
-        // We can't easily detect this without storing state, so we'll skip the notification
-        // during gameplay and only show it at game over
+        // Show a small visual indicator that this is a new high score
+        // Add a subtle animation to the high score display
+        if (highScoreElement) {
+            // Add a pulse animation class
+            highScoreElement.classList.add('high-score-pulse');
+
+            // Remove the class after animation completes
+            setTimeout(() => {
+                highScoreElement.classList.remove('high-score-pulse');
+            }, 1000);
+        }
 
         // Note: We don't save to localStorage here - that happens at game over
         // This is just for visual feedback during gameplay
@@ -609,9 +619,15 @@ export function hidePauseMenu() {
     } else {
         displayError(new Error("Pause menu element not found when trying to hide it."));
     }
-    // Immediately show score UI when hiding pause menu
-    if (scoreElement) scoreElement.style.display = 'block';
-    if (highScoreElement) highScoreElement.style.display = 'block';
+    // Immediately show score UI when hiding pause menu - no delay
+    if (scoreElement) {
+        scoreElement.style.display = 'block';
+        scoreElement.style.opacity = '1';
+    }
+    if (highScoreElement) {
+        highScoreElement.style.display = 'block';
+        highScoreElement.style.opacity = '1';
+    }
 }
 
 /**
@@ -855,10 +871,22 @@ function addCustomStyles() {
             transition: transform var(--transition-fast), opacity 0.3s ease;
         }
 
+        /* Animation for high score when it updates during gameplay */
+        @keyframes highScorePulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        .high-score-pulse {
+            animation: highScorePulse 0.5s ease-in-out;
+            text-shadow: var(--text-shadow), 0 0 15px rgba(255, 215, 0, 0.8); /* Enhanced gold glow */
+        }
+
         .notification {
             position: fixed;
-            top: 60px; /* Moved up from 80px */
-            right: 30px; /* Moved more to the right on desktop (was 15px) */
+            top: 40px; /* Moved up further from 60px */
+            right: 40px; /* Moved more to the right on desktop (was 30px) */
             left: auto; /* Override left positioning */
             margin: 0; /* Remove auto margins */
             width: fit-content;
@@ -902,7 +930,7 @@ function addCustomStyles() {
         /* Additional positioning for high score notification on desktop */
         @media (min-width: 769px) and (pointer: fine) {
             .high-score-notification {
-                right: 40px; /* Position even more to the right on desktop */
+                right: 50px; /* Position even more to the right on desktop */
             }
         }
 

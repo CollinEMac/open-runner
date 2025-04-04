@@ -1544,12 +1544,12 @@ export function createMagnetModel(properties) {
         roughness: 0.10
     });
 
-    // Create white tip material
+    // Create white tip material with enhanced properties
     const whiteTipMat = new THREE.MeshStandardMaterial({
         color: 0xFFFFFF,
-        emissive: 0x333333,
-        metalness: 0.7,
-        roughness: 0.15
+        emissive: 0x444444,
+        metalness: 0.8,
+        roughness: 0.10
     });
 
     // Create the horseshoe shape (U-shape)
@@ -1577,9 +1577,9 @@ export function createMagnetModel(properties) {
     rightArm.position.set(baseWidth/2 - armWidth/2, armHeight/2, 0);
     group.add(rightArm);
 
-    // Add white tips to the magnet poles
-    const tipRadius = size * 0.25;
-    const tipHeight = size * 0.2;
+    // Add white tips to the magnet poles - larger and more prominent
+    const tipRadius = size * 0.3; // Increased from 0.25
+    const tipHeight = size * 0.25; // Increased from 0.2
 
     // Left (North) tip - white
     const leftTipGeo = new THREE.CylinderGeometry(tipRadius, tipRadius, tipHeight, 16);
@@ -1602,9 +1602,9 @@ export function createMagnetModel(properties) {
     // Rotate the magnet to face forward
     group.rotation.x = Math.PI/2;
 
-    // Add a tilt to make the magnet more dynamic
-    tiltedGroup.rotation.z = Math.PI/12; // 15-degree tilt
-    tiltedGroup.rotation.y = Math.PI/24; // Slight rotation on Y axis for perspective
+    // Add a more pronounced tilt to make the magnet more dynamic
+    tiltedGroup.rotation.z = Math.PI/8; // 22.5-degree tilt (increased from 15 degrees)
+    tiltedGroup.rotation.y = Math.PI/16; // Slight rotation on Y axis for perspective
 
     // Set shadows
     tiltedGroup.traverse(child => {

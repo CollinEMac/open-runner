@@ -587,8 +587,8 @@ export class ChunkManager {
         }
 
         // Magnet effect parameters
-        const magnetRadius = 60; // Radius within which coins are attracted (increased further)
-        const magnetForce = 80; // Force of attraction (significantly increased for faster movement)
+        const magnetRadius = 70; // Radius within which coins are attracted (increased further)
+        const magnetForce = 120; // Force of attraction (significantly increased for faster movement)
 
         // Debug coin count and collectible types every 5 seconds
         if (Math.floor(elapsedTime) % 5 === 0 && Math.floor(elapsedTime * 10) % 10 === 0) {
@@ -666,8 +666,12 @@ export class ChunkManager {
                             console.warn(`[ChunkManager] Fixed objectType from magnet to coin`);
                         }
 
-                        // Apply magnet effect if active - ONLY to coins, not other collectibles like magnets
-                        if (magnetActive && playerPosition && collectibleMesh.userData.objectType === 'coin') {
+                        // Apply magnet effect if active - ONLY to coins, not other collectibles like magnets or rocks
+                        if (magnetActive && playerPosition && collectibleMesh.userData.objectType === 'coin' &&
+                            collectibleMesh.userData.objectType !== 'magnet' &&
+                            collectibleMesh.userData.objectType !== 'rock_desert' &&
+                            collectibleMesh.userData.objectType !== 'rock_small' &&
+                            collectibleMesh.userData.objectType !== 'rock_large') {
                             // Calculate distance to player
                             const dx = playerPosition.x - collectibleMesh.position.x;
                             const dy = playerPosition.y - collectibleMesh.position.y;
@@ -685,9 +689,9 @@ export class ChunkManager {
                                 // Move coin toward player with exponential acceleration based on distance
                                 // Coins closer to the player move MUCH faster (exponential curve)
                                 const normalizedDist = distance / magnetRadius; // 0 to 1 value
-                                // Use a power curve for stronger acceleration as coins get closer
+                                // Use a steeper power curve for stronger acceleration as coins get closer
                                 // This creates an exponential increase in speed as coins approach the player
-                                const acceleration = Math.pow(1 - normalizedDist, 2.5); // Exponential curve
+                                const acceleration = Math.pow(1 - normalizedDist, 3.0); // Steeper exponential curve (was 2.5)
                                 const moveSpeed = magnetForce * acceleration * deltaTime;
 
                                 // Debug coin movement occasionally
