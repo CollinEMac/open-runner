@@ -585,21 +585,31 @@ export class ChunkManager {
         const magnetRadius = 60; // Radius within which coins are attracted (increased further)
         const magnetForce = 80; // Force of attraction (significantly increased for faster movement)
 
-        // Debug coin count every 5 seconds
+        // Debug coin count and collectible types every 5 seconds
         if (Math.floor(elapsedTime) % 5 === 0 && Math.floor(elapsedTime * 10) % 10 === 0) {
             let totalCoins = 0;
             let coinsWithType = 0;
+            let otherCollectibles = {};
+
             for (const [key, chunkData] of this.loadedChunks.entries()) {
                 if (chunkData.collectibles) {
                     totalCoins += chunkData.collectibles.length;
                     chunkData.collectibles.forEach(mesh => {
                         if (mesh?.userData?.objectType === 'coin') {
                             coinsWithType++;
+                        } else if (mesh?.userData?.objectType) {
+                            // Count other collectible types
+                            const type = mesh.userData.objectType;
+                            otherCollectibles[type] = (otherCollectibles[type] || 0) + 1;
                         }
                     });
                 }
             }
+
             console.log(`[ChunkManager] Total collectibles: ${totalCoins}, Coins with correct type: ${coinsWithType}`);
+            if (Object.keys(otherCollectibles).length > 0) {
+                console.log(`[ChunkManager] Other collectible types:`, otherCollectibles);
+            }
         }
 
         // Iterate through all loaded chunks
@@ -607,18 +617,26 @@ export class ChunkManager {
             // Update all collectible coins in this chunk
             if (chunkData.collectibles && chunkData.collectibles.length > 0) {
                 chunkData.collectibles.forEach(collectibleMesh => {
-                    // First, ensure all coins have the correct objectType
+                    // First, ensure all collectibles have the correct objectType
                     if (collectibleMesh?.userData?.collidable === false) {
                         // If objectType is missing but it's a coin (has cylinder geometry), set it
-                        if (!collectibleMesh.userData.objectType && collectibleMesh.geometry?.type === 'CylinderGeometry') {
-                            collectibleMesh.userData.objectType = 'coin';
+                        if (!collectibleMesh.userData.objectType) {
+                            if (collectibleMesh.geometry?.type === 'CylinderGeometry') {
+                                collectibleMesh.userData.objectType = 'coin';
+                                console.log('[ChunkManager] Fixed missing objectType for coin');
+                            } else {
+                                // For any other collectible with missing type, log a warning
+                                console.warn('[ChunkManager] Collectible missing objectType:', collectibleMesh);
+                                // Set a default type to prevent future warnings
+                                collectibleMesh.userData.objectType = 'unknown_collectible';
+                            }
                         }
 
                         // Rotate all collectibles around Y axis
                         collectibleMesh.rotation.y += spinSpeed * deltaTime;
 
-                        // Apply magnet effect if active - to ALL collectibles for now
-                        if (magnetActive && playerPosition) {
+                        // Apply magnet effect if active - ONLY to coins, not other collectibles like magnets
+                        if (magnetActive && playerPosition && collectibleMesh.userData.objectType === 'coin') {
                             // Calculate distance to player
                             const dx = playerPosition.x - collectibleMesh.position.x;
                             const dy = playerPosition.y - collectibleMesh.position.y;
