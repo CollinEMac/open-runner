@@ -6,6 +6,7 @@ import { EnemyManager } from './enemyManager.js';
 import { SpatialGrid } from './spatialGrid.js';
 import { ParticleManager } from './particleManager.js';
 import { setupPlayerControls, initInputStateManager, resetInputStates } from './controlsSetup.js';
+import { updateMobileControlsVisibility } from './utils/deviceUtils.js';
 import { grayMaterial, createPlayerCharacter } from './playerCharacter.js';
 import * as GlobalConfig from './config.js';
 import { performanceManager } from './config.js';
@@ -403,8 +404,8 @@ class Game {
         resetInputStates();
         console.log("[Game] Input states reset before starting game");
 
-        // Show mobile controls when game starts
-        document.body.classList.add('show-mobile-controls');
+        // Show mobile controls only on mobile devices when game starts
+        updateMobileControlsVisibility();
 
         // 1. Create a new scene for gameplay
         const gameplaySceneComponents = initScene(this.canvas, this.currentLevelConfig);
@@ -653,8 +654,8 @@ class Game {
              resetInputStates();
              console.log("[Game] Input states reset before restart");
 
-             // Make sure mobile controls stay visible when restarting
-             document.body.classList.add('show-mobile-controls');
+             // Show mobile controls only on mobile devices when restarting
+             updateMobileControlsVisibility();
 
              this.eventBus.emit('uiButtonClicked');
              this.startGame(currentLevelId);
@@ -674,7 +675,7 @@ class Game {
          this.eventBus.emit('uiButtonClicked');
 
          // Hide mobile controls when returning to title
-         document.body.classList.remove('show-mobile-controls');
+         updateMobileControlsVisibility(false);
 
          // Don't unload level, remove player/atmospheric elements
          this._clearAtmosphericElements();
@@ -728,9 +729,8 @@ class Game {
         // Get the current high score
         const highScore = ScoreManager.getLevelHighScore(currentLevelId);
 
-        // Make sure mobile controls stay visible during game over
-        // This prevents the brief disappearance of controls
-        document.body.classList.add('show-mobile-controls');
+        // Show mobile controls only on mobile devices during game over
+        updateMobileControlsVisibility();
 
         // Set game state to GAME_OVER
         this.gameStateManager.setGameState(GameStates.GAME_OVER);

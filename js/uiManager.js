@@ -1,5 +1,6 @@
 // js/uiManager.js
 import eventBus from './eventBus.js';
+import { updateMobileControlsVisibility } from './utils/deviceUtils.js';
 import { GameStates, getPreviousState } from './gameStateManager.js'; // Import states and functions
 import * as ScoreManager from './scoreManager.js';
 
@@ -405,15 +406,7 @@ export function showGameScreen() {
     }
 
     // Show mobile controls only on mobile devices
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
-                    (window.matchMedia && window.matchMedia('(max-width: 768px)').matches);
-
-    // Add or remove the class that controls mobile controls visibility
-    if (isMobile) {
-        document.body.classList.add('show-mobile-controls');
-    } else {
-        document.body.classList.remove('show-mobile-controls');
-    }
+    updateMobileControlsVisibility();
 
     // Ensure conflicting overlays are hidden (handled by gameStateChanged)
 }
