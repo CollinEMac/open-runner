@@ -21,13 +21,13 @@ import * as AssetManager from './assetManager.js';
 import * as ScoreManager from './scoreManager.js';
 
 // Constants for camera transitions
-const TITLE_TRANSITION_SPEED = 2.5; // Increased for faster transition
-const TITLE_TRANSITION_THRESHOLD_SQ = 0.1; // Squared distance threshold to switch to TITLE state
+const TITLE_TRANSITION_SPEED = 4.0; // Increased for faster transition
+const TITLE_TRANSITION_THRESHOLD_SQ = 0.05; // Squared distance threshold to switch to TITLE state
 const TITLE_LOOK_AT_TARGET = new THREE.Vector3(0, 0, 0); // Target for camera lookAt during title
 
 // Constants for gameplay camera transition
-const GAMEPLAY_TRANSITION_SPEED = 3.0; // Increased for faster transition
-const GAMEPLAY_TRANSITION_THRESHOLD_SQ = 0.5; // Reduced threshold for quicker state change
+const GAMEPLAY_TRANSITION_SPEED = 5.0; // Increased for faster transition
+const GAMEPLAY_TRANSITION_THRESHOLD_SQ = 0.2; // Reduced threshold for quicker state change
 
 class Game {
     constructor(canvasElement) {
@@ -52,7 +52,7 @@ class Game {
         // Scene transition properties
         this.isSceneTransitioning = false;
         this.sceneTransitionStartTime = 0;
-        this.sceneTransitionDuration = 0.6; // seconds - reduced for faster transitions
+        this.sceneTransitionDuration = 0.4; // seconds - reduced for faster transitions
 
         // Managers
         this.assetManager = AssetManager;
@@ -86,7 +86,7 @@ class Game {
         this.cameraStartPosition = null;
         this.cameraStartQuaternion = null;
         this.cameraTransitionStartTime = 0;
-        this.cameraTransitionDuration = 0.6; // seconds - reduced for faster transitions
+        this.cameraTransitionDuration = 0.4; // seconds - reduced for faster transitions
 
         // Title Screen Animation
         this.titleCameraDrift = null;
@@ -470,12 +470,16 @@ class Game {
         // 1. Don't change the state - keep the current transition state
         // Skip showing loading screen
 
+        // Store the player's current scene parent before removing it
+        const playerCurrentParent = this.player.model?.parent;
+
         // 2. Unload Current Level Assets & State (if necessary)
         console.log("[Game] Unloading current level (if necessary)...");
         if (this.levelManager.getCurrentLevelId()) {
              this.levelManager.unloadCurrentLevel();
              this.chunkManager.clearAllChunks();
              this._clearAtmosphericElements();
+             // Don't remove the player model yet - we'll handle it after the new scene is ready
         }
 
         // 3. Load New Level Config
@@ -506,9 +510,10 @@ class Game {
         // 8. Reset Player State & Add to Scene
         console.log("[Game] Resetting player state...");
         if (this.player.model) {
-            // Remove player from scene if already present to avoid duplicates
-            if (this.player.model.parent) {
-                this.player.model.parent.remove(this.player.model);
+            // Only remove the player from its previous parent if it exists
+            // and we're not in the middle of a camera transition
+            if (playerCurrentParent && !this.isCameraTransitioning) {
+                playerCurrentParent.remove(this.player.model);
             }
 
             // Reset player position and rotation
@@ -516,8 +521,10 @@ class Game {
             this.player.model.rotation.set(0, 0, 0);
             this.player.currentSpeed = GlobalConfig.PLAYER_SPEED;
 
-            // Add player to scene
+            // Add player to scene - ensure it's visible during transitions
             this.scene.add(this.player.model);
+            // Make sure the player is visible
+            this.player.model.visible = true;
             console.log("[Game] Player model reset and added to scene.");
         }
         const scoreToReset = this.score;
@@ -682,6 +689,13 @@ class Game {
 
          // Don't unload level, remove player/atmospheric elements
          this._clearAtmosphericElements();
+
+         // Store the camera's current position for a smoother transition
+         this.cameraStartPosition = this.camera.position.clone();
+         this.cameraStartQuaternion = this.camera.quaternion.clone();
+         this.cameraTransitionStartTime = this.clock.getElapsedTime();
+
+         // Only remove the player after we've captured the camera position
          if (this.player.model && this.player.model.parent) {
              this.player.model.parent.remove(this.player.model);
          }
@@ -832,25 +846,41 @@ class Game {
     _transitionCameraToTitle(deltaTime) {
         if (!this.camera) return;
 
-        // Smoothly interpolate position towards the initial title position
-        const targetPosition = this.initialCameraPosition;
-        this.camera.position.lerp(targetPosition, TITLE_TRANSITION_SPEED * deltaTime);
+        // Get elapsed time since transition started
+        const elapsedTime = this.clock.getElapsedTime();
+        const timeElapsed = elapsedTime - this.cameraTransitionStartTime;
+        const progress = Math.min(timeElapsed / (this.cameraTransitionDuration * 1.5), 1.0);
 
-        // Smoothly interpolate lookAt towards the title target (origin)
-        // We can lerp the camera's quaternion towards a target quaternion
-        const currentQuaternion = this.camera.quaternion.clone();
-        const targetRotationMatrix = new THREE.Matrix4();
-        targetRotationMatrix.lookAt(this.camera.position, TITLE_LOOK_AT_TARGET, this.camera.up);
-        const targetQuaternion = new THREE.Quaternion().setFromRotationMatrix(targetRotationMatrix);
+        if (progress < 1.0) {
+            // Use smooth easing function for better transition
+            const easedProgress = this._easeInOutCubic(progress);
 
-        // Slerp (Spherical Linear Interpolation) for smoother rotation
-        currentQuaternion.slerp(targetQuaternion, TITLE_TRANSITION_SPEED * deltaTime);
-        this.camera.quaternion.copy(currentQuaternion);
+            // Smoothly interpolate position towards the initial title position
+            const targetPosition = this.initialCameraPosition;
 
-        // Check if close enough to target position to switch state
-        if (this.camera.position.distanceToSquared(targetPosition) < TITLE_TRANSITION_THRESHOLD_SQ) {
+            // Use lerpVectors for more precise control
+            const newPosition = new THREE.Vector3().lerpVectors(
+                this.cameraStartPosition || this.camera.position,
+                targetPosition,
+                easedProgress
+            );
+            this.camera.position.copy(newPosition);
+
+            // Smoothly interpolate lookAt towards the title target (origin)
+            const targetRotationMatrix = new THREE.Matrix4();
+            targetRotationMatrix.lookAt(newPosition, TITLE_LOOK_AT_TARGET, this.camera.up);
+            const targetQuaternion = new THREE.Quaternion().setFromRotationMatrix(targetRotationMatrix);
+
+            // Use slerpQuaternions for smoother rotation
+            this.camera.quaternion.slerpQuaternions(
+                this.cameraStartQuaternion || this.camera.quaternion,
+                targetQuaternion,
+                easedProgress
+            );
+        } else {
+            // Transition complete
             console.log("[Game] Camera transition to title complete.");
-            this.camera.position.copy(targetPosition); // Snap to final position
+            this.camera.position.copy(this.initialCameraPosition); // Snap to final position
             this.camera.lookAt(TITLE_LOOK_AT_TARGET); // Ensure final lookAt
 
             // Make sure level select is properly populated before switching to title
