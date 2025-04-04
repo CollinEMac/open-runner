@@ -499,8 +499,20 @@ html, body {
     transition: opacity 0.3s ease; /* Smooth transition */
 }
 
-/* Only show mobile controls when the class is present (for mobile devices) */
+/* Only show mobile controls when the class is present AND on mobile devices */
 .show-mobile-controls #mobileControls {
+    display: none; /* Still hidden by default */
+    opacity: 0;
+}
+
+/* Add a specific class for desktop devices */
+.desktop-device.show-mobile-controls #mobileControls {
+    display: none !important; /* Force hide on desktop */
+    opacity: 0 !important;
+}
+
+/* Only show on mobile devices with the class */
+.mobile-device.show-mobile-controls #mobileControls {
     display: flex;
     opacity: 1;
 }
@@ -549,7 +561,7 @@ html, body {
 
 /* Only show mobile controls on small screens or touch devices when playing */
 @media (max-width: 768px), (pointer: coarse) {
-    .show-mobile-controls #mobileControls {
+    .mobile-device.show-mobile-controls #mobileControls {
         display: block;
         opacity: 1; /* Make fully visible */
     }

@@ -1,6 +1,6 @@
 // js/uiManager.js
 import eventBus from './eventBus.js';
-import { updateMobileControlsVisibility } from './utils/deviceUtils.js';
+import { updateMobileControlsVisibility, setDeviceClass } from './utils/deviceUtils.js';
 import { GameStates, getPreviousState } from './gameStateManager.js'; // Import states and functions
 import * as ScoreManager from './scoreManager.js';
 
@@ -222,6 +222,9 @@ function showGameOverScreenWithScore(scoreData) {
  * @returns {boolean} True if all essential elements were found, false otherwise.
  */
 export function initUIManager() {
+    // Set device class first
+    setDeviceClass();
+
     // Get existing UI elements
     scoreElement = document.getElementById('scoreDisplay');
     gameOverElement = document.getElementById('gameOverDisplay');

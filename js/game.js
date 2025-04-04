@@ -6,7 +6,7 @@ import { EnemyManager } from './enemyManager.js';
 import { SpatialGrid } from './spatialGrid.js';
 import { ParticleManager } from './particleManager.js';
 import { setupPlayerControls, initInputStateManager, resetInputStates } from './controlsSetup.js';
-import { updateMobileControlsVisibility } from './utils/deviceUtils.js';
+import { updateMobileControlsVisibility, setDeviceClass } from './utils/deviceUtils.js';
 import { grayMaterial, createPlayerCharacter } from './playerCharacter.js';
 import * as GlobalConfig from './config.js';
 import { performanceManager } from './config.js';
@@ -109,6 +109,9 @@ class Game {
 
     async init() {
         console.log("Game initialization started...");
+
+        // --- Set Device Class ---
+        setDeviceClass();
 
         // --- Initialize Performance Manager ---
         performanceManager.init();
