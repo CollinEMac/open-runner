@@ -857,8 +857,8 @@ function addCustomStyles() {
 
         .notification {
             position: fixed;
-            top: 80px;
-            right: 15px; /* Position to the right on desktop */
+            top: 60px; /* Moved up from 80px */
+            right: 30px; /* Moved more to the right on desktop (was 15px) */
             left: auto; /* Override left positioning */
             margin: 0; /* Remove auto margins */
             width: fit-content;
@@ -897,6 +897,13 @@ function addCustomStyles() {
             color: gold;
             font-weight: bold;
             border-bottom-color: gold;
+        }
+
+        /* Additional positioning for high score notification on desktop */
+        @media (min-width: 769px) and (pointer: fine) {
+            .high-score-notification {
+                right: 40px; /* Position even more to the right on desktop */
+            }
         }
 
         .level-unlock-notification {
