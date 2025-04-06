@@ -259,14 +259,15 @@ class Game {
      * @private
      */
     async _loadLevel(levelId) {
-        // Check scene transition state (allow camera transition concurrently)
-        if (this.sceneTransitionManager.getIsTransitioning()) {
-            logger.warn("Already transitioning (scene), cannot load new level yet.");
-            return;
-        }
-        // Scene transition flag is managed by SceneTransitionManager
-        logger.info(`Loading level ${levelId}...`);
-
+        logger.info(`[_loadLevel] Starting execution for level ID: ${levelId}`); // Added entry log
+        try { // Added try block
+            // Check scene transition state (allow camera transition concurrently)
+            if (this.sceneTransitionManager.getIsTransitioning()) {
+                logger.warn("[_loadLevel] Already transitioning (scene), cannot load new level yet.");
+                return;
+            }
+            // Scene transition flag is managed by SceneTransitionManager
+            logger.info(`[_loadLevel] Loading level ${levelId}...`);
         // 1. Don't change the state - keep the current transition state
         // Skip showing loading screen - this improves the transition experience
 
@@ -367,12 +368,18 @@ class Game {
         logger.info(`[Game] Initialized ChunkManager last coords to player start: ${initialPlayerChunkX},${initialPlayerChunkZ}`);
 
         // 10. Finalize Transition
-        logger.info(`Level ${levelId} loaded successfully.`);
+        logger.info(`[_loadLevel] Level ${levelId} loaded successfully.`);
 
         // Don't change the state here - let the calling function handle state changes
         // This allows for proper sequencing of loading and camera transitions
 
         // Scene transition flag managed by SceneTransitionManager
+        } catch (error) { // Added catch block
+            logger.error(`[_loadLevel] CRITICAL ERROR during level load for ${levelId}:`, error);
+            // Attempt to recover or go to a safe state
+            this.gameStateManager.setGameState(GameStates.TITLE);
+            this.uiManager.displayError(new Error(`Failed to load level ${levelId}. Returning to title.`));
+        }
     }
 
     /**

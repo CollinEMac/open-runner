@@ -24,12 +24,15 @@ export function setupEventHandlers(game) {
     }
 
     game.eventBus.subscribe('scoreChanged', (scoreIncrement) => {
-        if (game.score + scoreIncrement < 0) {
+        // Ensure both score and increment are treated as numbers
+        const currentScoreNum = Number(game.score);
+        const incrementNum = Number(scoreIncrement);
+
+        if (currentScoreNum + incrementNum < 0) {
             game.score = 0;
         } else {
-            game.score += scoreIncrement;
+            game.score = currentScoreNum + incrementNum; // Explicitly use Number addition
         }
-        logger.debug(`Score updated to: ${game.score}`);
 
         const currentLevelId = game.levelManager.getCurrentLevelId();
 
@@ -38,9 +41,10 @@ export function setupEventHandlers(game) {
             levelId: currentLevelId
         });
 
+        // Log values just before the check
+
         if (currentLevelId === 'level1' && game.score >= LEVEL1_TRANSITION_SCORE && game.gameStateManager.getCurrentState() === GameStates.PLAYING) {
              game.eventBus.emit('requestLevelTransition', 'level2');
-             logger.info("Requesting level transition to level2");
         }
     });
 

@@ -96,7 +96,7 @@ class Logger {
      * @param {string} [moduleName=''] - Name of the module using this logger
      * @param {LogLevel} [minLevel=LogLevel.INFO] - Minimum level to log
      */
-    constructor(moduleName = '', minLevel = LogLevel.WARN) { // Default level changed to WARN
+    constructor(moduleName = '', minLevel = LogLevel.DEBUG) { // Default level changed to DEBUG
         this.moduleName = moduleName;
         this.minLevel = minLevel;
         this.enabled = true;

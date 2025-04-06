@@ -65,6 +65,7 @@ export function checkCollisions(player) {
     for (let i = nearbyArray.length - 1; i >= 0; i--) {
         const mesh = nearbyArray[i];
         if (!mesh || !mesh.userData) continue;
+        // Log details of every nearby object being checked
         if (!mesh.position) continue;
 
         // handle coins

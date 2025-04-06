@@ -1,8 +1,8 @@
 // js/utils/configManager.js
 
-import { createLogger } from './logger.js';
+import { createLogger, LogLevel } from './logger.js'; // Import LogLevel
 
-const logger = createLogger('ConfigManager');
+const logger = createLogger('ConfigManager', LogLevel.INFO); // Set level to INFO
 
 /**
  * Manages game configuration with support for overrides and defaults

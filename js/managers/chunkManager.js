@@ -348,6 +348,7 @@ export class ChunkManager {
         const chunkData = this.loadedChunks.get(chunkKey);
         if (chunkData && chunkData.objects && objectIndex >= 0 && objectIndex < chunkData.objects.length) {
             const object = chunkData.objects[objectIndex];
+            // Log the object being collected right at the start of the function
             if (object && !object.collidable && object.mesh && !object.collected) {
                 this.spatialGrid.remove(object.mesh);
                 this.scene.remove(object.mesh);
