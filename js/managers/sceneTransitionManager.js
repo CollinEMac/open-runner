@@ -1,9 +1,10 @@
 // js/managers/sceneTransitionManager.js
 import * as THREE from 'three'; // Import THREE
-import { createLogger } from '../utils/logger.js'; // Stays in utils
+import { createLogger, LogLevel } from '../utils/logger.js'; // Stays in utils, import LogLevel
 import eventBus from '../core/eventBus.js'; // Moved to core
+import cameraManager from './cameraManager.js'; // Import CameraManager
 
-const logger = createLogger('SceneTransitionManager'); // Use logger instance
+const logger = createLogger('SceneTransitionManager', LogLevel.DEBUG); // Use logger instance, set level to DEBUG
 
 class SceneTransitionManager {
     constructor() {
@@ -40,6 +41,13 @@ class SceneTransitionManager {
         this.isTransitioning = true;
         this.transitionStartTime = this.clock.getElapsedTime(); // Use internal clock's time
         this.activeScene = targetScene; // Immediately set the target scene as active for rendering
+
+        // Trigger camera transition
+        if (this.camera) {
+            cameraManager.startTransitionToGameplay(this.camera.position, this.camera.quaternion);
+        } else {
+            logger.error("Cannot start camera transition: Camera reference missing.");
+        }
     }
 
     getIsTransitioning() {

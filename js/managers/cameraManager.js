@@ -2,10 +2,10 @@
 import * as THREE from 'three';
 import * as GlobalConfig from '../config/config.js'; // Moved to config
 import { GameStates } from '../core/gameStateManager.js'; // Moved to core
-import { createLogger } from '../utils/logger.js'; // Stays in utils
+import { createLogger, LogLevel } from '../utils/logger.js'; // Stays in utils, import LogLevel
 import eventBus from '../core/eventBus.js'; // Moved to core
 
-const logger = createLogger('CameraManager'); // Use logger instance
+const logger = createLogger('CameraManager', LogLevel.DEBUG); // Use logger instance, set level to DEBUG
 
 // Constants for camera transitions
 // const TITLE_TRANSITION_SPEED = 10.0; // Not directly used in current lerp/slerp logic
@@ -26,7 +26,8 @@ class CameraManager {
         this.transitionType = null;
         this.cameraStartPosition = null;
         this.cameraStartQuaternion = null;
-        this.transitionStartTime = 0;
+        // this.transitionStartTime = 0; // No longer needed for gameplay transition
+        this.transitionTimeElapsed = 0; // Track time elapsed during transition
         this.transitionDuration = 0.6;
 
         this.titleCameraDrift = null;
@@ -95,7 +96,8 @@ class CameraManager {
         this.transitionType = 'toGameplay';
         this.cameraStartPosition = currentCameraPosition.clone();
         this.cameraStartQuaternion = currentCameraQuaternion.clone();
-        this.transitionStartTime = this.clock.getElapsedTime();
+        // this.transitionStartTime = this.clock.getElapsedTime(); // No longer needed
+        this.transitionTimeElapsed = 0; // Reset elapsed time
         this.transitionDuration = 0.4; // Faster transition to gameplay
     }
 
@@ -256,8 +258,9 @@ class CameraManager {
         const lookAtPosition = playerPosition.clone();
         lookAtPosition.y += GlobalConfig.CAMERA_LOOK_AT_OFFSET_Y;
 
-        const timeElapsed = elapsedTime - this.transitionStartTime;
-        const progress = Math.min(timeElapsed / this.transitionDuration, 1.0);
+        // Increment elapsed time and calculate progress based on deltaTime
+        this.transitionTimeElapsed += deltaTime;
+        const progress = Math.min(this.transitionTimeElapsed / this.transitionDuration, 1.0);
 
         if (progress < 1.0) {
             const easedProgress = this._easeInOutCubic(progress);
