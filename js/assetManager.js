@@ -1667,15 +1667,43 @@ export function disposeLevelAssets() {
     console.log("[AssetManager] Disposing current level assets...");
     Object.keys(levelAssets).forEach(key => {
         const asset = levelAssets[key];
-        if (asset) {
-            if (asset.dispose) { // Materials and Geometries have dispose()
-                // console.log(`[AssetManager] Disposing ${key}`);
-                asset.dispose();
-            } else if (asset instanceof THREE.Texture) { // Handle textures if added later
-                 asset.dispose();
+        if (!asset) return;
+
+        if (asset.dispose) { // Materials, Geometries, and textures have dispose()
+            asset.dispose();
+        }
+
+        if (asset.isObject3D) {
+            // Recursively process all children
+            if (asset.children && asset.children.length > 0) {
+                // Create a copy of children array since we're modifying it
+                const children = asset.children.slice();
+                for (let i = 0; i < children.length; i++) {
+                    asset.remove(children[i]);
+                }
+            }
+            
+            // Dispose geometry
+            if (asset.geometry) {
+                asset.geometry.dispose();
+                asset.geometry = null;
+            }
+            
+            // Dispose material(s)
+            if (asset.material) {
+                if (Array.isArray(asset.material)) {
+                    asset.material.forEach(material => material.dispose());
+                } else {
+                    asset.material.dispose();
+                }
+                asset.material = null;
             }
         }
     });
+
     levelAssets = {}; // Clear the storage object
+
+    THREE.Cache.clear();
+
     console.log("[AssetManager] Level assets disposed.");
 }
