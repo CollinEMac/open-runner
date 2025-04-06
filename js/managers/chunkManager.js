@@ -1,27 +1,18 @@
 // js/managers/chunkManager.js
 import * as THREE from 'three';
-import * as UIManager from './uiManager.js'; // Stays in managers
-import { createTerrainChunk } from '../rendering/terrainGenerator.js'; // Moved to rendering
-import { generateObjectsForChunk, createObjectVisual, disposeObjectVisual } from '../generators/objectGenerator.js'; // Moved to generators
-import { createLogger } from '../utils/logger.js'; // Import logger
-import Tumbleweed from '../entities/gameObjects/Tumbleweed.js'; // Moved to entities/gameObjects
-import { EnemyManager } from './enemyManager.js'; // Stays in managers
-import * as AudioManager from './audioManager.js'; // Stays in managers
-import * as AssetManager from './assetManager.js'; // Stays in managers
-import eventBus from '../core/eventBus.js'; // Moved to core
+// import * as UIManager from './uiManager.js'; // No longer needed directly
+import { createTerrainChunk } from '../rendering/terrainGenerator.js';
+import { generateObjectsForChunk } from '../generators/objectGenerator.js'; // Still needed for loadChunk
+import { createLogger } from '../utils/logger.js';
+import { EnemyManager } from './enemyManager.js'; // Needed for constructor check & passing
+import objectPoolManager from './objectPoolManager.js'; // Needed for clearAllChunks
+import { worldConfig } from '../config/world.js';
+import { ChunkContentManager } from './chunkContentManager.js'; // Import the new manager
+// Removed unused imports: Tumbleweed, AudioManager, AssetManager, eventBus, playerConfig, gameplayConfig, modelsConfig, createObjectVisual, disposeObjectVisual
 
-const logger = createLogger('ChunkManager'); // Instantiate logger
-import {
-    CHUNK_SIZE,
-    RENDER_DISTANCE_CHUNKS,
-    RENDERING, // Keep for potential future use, though MAX_OBJECTS_PER_CHUNK is removed
-    performanceManager,
-    PLAYER_TORSO_WIDTH
-} from '../config/config.js'; // Moved to config
-import objectPoolManager from './objectPoolManager.js'; // Stays in managers
+const logger = createLogger('ChunkManager');
 
-// Collision constants
-const playerCollisionRadius = PLAYER_TORSO_WIDTH;
+// Removed unused constant: playerCollisionRadius
 
 export class ChunkManager {
     constructor(scene, enemyManager, spatialGrid, initialLevelConfig = null) {
@@ -32,14 +23,22 @@ export class ChunkManager {
         this.scene = scene;
         this.enemyManager = enemyManager;
         this.spatialGrid = spatialGrid;
-        this.chunkSize = CHUNK_SIZE;
-        this.renderDistance = RENDER_DISTANCE_CHUNKS;
-        this.loadedChunks = new Map();
+        this.chunkSize = worldConfig.CHUNK_SIZE;
+        this.renderDistance = worldConfig.RENDER_DISTANCE_CHUNKS;
+        this.loadedChunks = new Map(); // Stores { terrainMesh, objects: objectDataArray, contentManagerData: { ... } }
         this.lastCameraChunkX = null;
         this.lastCameraChunkZ = null;
 
-        // Object Pooling is now handled by ObjectPoolManager
-        this.objectPoolManager = objectPoolManager;
+        // Instantiate the content manager, passing dependencies
+        this.contentManager = new ChunkContentManager({
+            scene: this.scene,
+            enemyManager: this.enemyManager,
+            spatialGrid: this.spatialGrid,
+            objectPoolManager: objectPoolManager,
+            levelConfig: this.levelConfig,
+            getChunkDataCallback: this.getChunkData.bind(this),
+            chunkManager: this // Pass self-reference
+        });
 
         // Async Loading Queues
         this.chunksToLoadQueue = new Set();
@@ -48,21 +47,43 @@ export class ChunkManager {
     }
 
     /**
-     * Sets the level configuration to be used for generating new chunks.
+     * Sets the level configuration for both ChunkManager and ChunkContentManager.
      * @param {object} config - The level configuration object.
      */
     setLevelConfig(config) {
-        logger.info("Setting level config.");
+        logger.info("Setting level config for ChunkManager and ContentManager.");
         this.levelConfig = config;
+        this.contentManager.setLevelConfig(config);
     }
 
-    // Calculates the chunk coordinates a position (camera or player) is currently in
+     /**
+     * Sets the scene reference for both ChunkManager and ChunkContentManager.
+     * @param {THREE.Scene} scene - The new scene instance.
+     */
+     setScene(scene) {
+        if (!scene) {
+            logger.error("Attempted to set invalid scene in ChunkManager.");
+            return;
+        }
+        this.scene = scene;
+        this.contentManager.scene = scene;
+        logger.info("ChunkManager scene updated.");
+    }
+
+    /**
+     * Retrieves the data associated with a specific chunk key.
+     * @param {string} chunkKey - The key of the chunk (e.g., "0,0").
+     * @returns {object | undefined} The chunk data object or undefined if not found.
+     */
+    getChunkData(chunkKey) {
+        return this.loadedChunks.get(chunkKey);
+    }
+
+
     // Calculates the chunk coordinates a position (e.g., player) is currently in
     getPositionChunkCoords(position) {
-        // Add safety check for invalid input position
         if (!position || isNaN(position.x) || isNaN(position.z)) {
             logger.warn(`[ChunkManager] Invalid position provided to getPositionChunkCoords:`, position);
-            // Return null or the last known valid coords? Returning null might be safer.
             return { chunkX: null, chunkZ: null };
         }
         const chunkX = Math.floor(position.x / this.chunkSize);
@@ -70,12 +91,10 @@ export class ChunkManager {
         return { chunkX, chunkZ };
     }
 
-    // Main update function, called every frame - now uses playerPosition
+    // Main update function, called every frame - determines which chunks to load/unload
     update(playerPosition) {
-        // Use the renamed helper function
         const { chunkX: currentChunkX, chunkZ: currentChunkZ } = this.getPositionChunkCoords(playerPosition);
 
-        // If position was invalid, skip update
         if (currentChunkX === null || currentChunkZ === null) {
             logger.warn("[ChunkManager] Skipping update due to invalid player position.");
             return;
@@ -88,11 +107,11 @@ export class ChunkManager {
             const chunksToLoad = new Set();
             const currentlyLoadedKeys = new Set(this.loadedChunks.keys());
 
+            // Determine required chunks
             for (let x = currentChunkX - this.renderDistance; x <= currentChunkX + this.renderDistance; x++) {
                 for (let z = currentChunkZ - this.renderDistance; z <= currentChunkZ + this.renderDistance; z++) {
                     const key = `${x},${z}`;
                     chunksToLoad.add(key);
-
                     if (!this.loadedChunks.has(key) && !this.chunksToLoadQueue.has(key)) {
                         this.chunksToLoadQueue.add(key);
                         this.chunksToUnloadQueue.delete(key);
@@ -100,6 +119,7 @@ export class ChunkManager {
                 }
             }
 
+            // Determine chunks to unload
             for (const loadedKey of currentlyLoadedKeys) {
                 if (!chunksToLoad.has(loadedKey) && !this.chunksToUnloadQueue.has(loadedKey)) {
                     this.chunksToUnloadQueue.add(loadedKey);
@@ -118,7 +138,7 @@ export class ChunkManager {
             return;
         }
         this.processingQueues = true;
-        setTimeout(() => this.processNextChunkInQueue(), 0);
+        requestAnimationFrame(() => this.processNextChunkInQueue());
     }
 
     processNextChunkInQueue() {
@@ -135,13 +155,14 @@ export class ChunkManager {
         }
 
         if (this.chunksToLoadQueue.size > 0 || this.chunksToUnloadQueue.size > 0) {
-             setTimeout(() => this.processNextChunkInQueue(), 0);
+             requestAnimationFrame(() => this.processNextChunkInQueue());
         } else {
             this.processingQueues = false;
+            logger.debug("Chunk load/unload queues processed.");
         }
     }
 
-    // --- Original Synchronous Load/Unload Methods ---
+    // --- Load/Unload Logic ---
 
     loadChunk(chunkX, chunkZ) {
         const key = `${chunkX},${chunkZ}`;
@@ -151,140 +172,40 @@ export class ChunkManager {
         }
         try {
             if (!this.levelConfig) {
-                const errorMsg = `Cannot load chunk ${key}, levelConfig is not set!`;
-                UIManager.displayError(new Error(`[ChunkManager] ${errorMsg}`));
-                logger.error(errorMsg);
-                return;
+                throw new Error(`Cannot load chunk ${key}, levelConfig is not set!`);
             }
+
+            // 1. Create Terrain
             const terrainMesh = createTerrainChunk(chunkX, chunkZ, this.levelConfig);
             this.scene.add(terrainMesh);
 
+            // 2. Generate Object Data
             const objectDataArray = generateObjectsForChunk(chunkX, chunkZ, this.levelConfig);
-            const collectibleMeshes = [];
-            const collidableMeshes = [];
-            const enemies = [];
-            const tumbleweeds = [];
 
-            objectDataArray.forEach((objectData, index) => {
-                const enemyTypesForLevel = this.levelConfig?.ENEMY_TYPES || [];
-                if (enemyTypesForLevel.includes(objectData.type)) {
-                    const enemyInstance = this.enemyManager.spawnEnemy(objectData.type, objectData, this, this.levelConfig);
-                    if (enemyInstance) {
-                        enemies.push(enemyInstance);
-                        objectData.enemyInstance = enemyInstance;
-                    } else {
-                         const errorMsg = `Failed to spawn enemy instance for type ${objectData.type} in chunk ${key}`;
-                         UIManager.displayError(new Error(`[ChunkManager] ${errorMsg}`));
-                         logger.error(errorMsg);
-                    }
-                } else if (objectData.type === 'tumbleweed' && objectData.isDynamic) {
-                    let tumbleweed = this.objectPoolManager.getFromPool('tumbleweeds'); // Use pool manager
+            // 3. Load Content using Content Manager
+            const contentManagerData = this.contentManager.loadContent(key, objectDataArray);
 
-                    if (!tumbleweed) {
-                        tumbleweed = new Tumbleweed({
-                            position: objectData.position || new THREE.Vector3(0, 0, 0),
-                            scale: objectData.scale && objectData.scale.x ? objectData.scale.x : 1,
-                            scene: this.scene,
-                            levelConfig: this.levelConfig
-                        });
-                    } else {
-                        // Reset pooled tumbleweed
-                        if (tumbleweed.object3D) {
-                            if (objectData.position) tumbleweed.object3D.position.copy(objectData.position);
-                            tumbleweed.object3D.rotation.set(0, 0, 0);
-                            const scale = objectData.scale && objectData.scale.x ? objectData.scale.x : 1;
-                            tumbleweed.object3D.scale.set(scale, scale, scale);
-                            this.scene.add(tumbleweed.object3D); // Add back to scene
-                            tumbleweed.object3D.visible = true; // Make visible
-                        }
-                        if (typeof tumbleweed.reset === 'function') tumbleweed.reset();
-                    }
-
-                    tumbleweed.object3D.userData.chunkKey = key;
-                    tumbleweed.object3D.userData.objectIndex = index;
-                    tumbleweed.object3D.userData.objectType = 'tumbleweed';
-                    tumbleweed.object3D.userData.gameObject = tumbleweed;
-                    tumbleweed.object3D.name = `tumbleweed_${key}_${index}`;
-                    tumbleweeds.push(tumbleweed);
-                    this.spatialGrid.add(tumbleweed.object3D);
-                    objectData.gameObject = tumbleweed;
-                    objectData.mesh = tumbleweed.object3D;
-                } else {
-                    let mesh;
-                    const poolName = objectData.collidable ? 'obstacles' : 'collectibles';
-                    mesh = this.objectPoolManager.getFromPool(poolName, objectData.type); // Use pool manager
-
-                    // Special handling for tree_pine objects
-                    if (objectData.type === 'tree_pine' && mesh) {
-                        let hasTrunk = false;
-                        let hasFoliage = false;
-                        mesh.traverse((child) => {
-                            if (child.name === 'treeTrunk') hasTrunk = true;
-                            if (child.name === 'treeFoliage') hasFoliage = true;
-                        });
-                        if (!hasTrunk || !hasFoliage) {
-                            logger.warn(`Pooled tree missing parts (trunk: ${hasTrunk}, foliage: ${hasFoliage}). Creating new tree.`);
-                            this.objectPoolManager.addToPool('obstacles', mesh); // Put incomplete back
-                            mesh = null; // Force creation
-                        }
-                    }
-
-                    if (!mesh) {
-                        mesh = createObjectVisual(objectData, this.levelConfig);
-                    } else {
-                        // Reset pooled object
-                        if (objectData.position) mesh.position.copy(objectData.position);
-                        const rotationY = objectData.rotationY !== undefined ? objectData.rotationY : 0;
-                        mesh.rotation.set(0, rotationY, 0);
-                        const scaleX = objectData.scale?.x ?? 1;
-                        const scaleY = objectData.scale?.y ?? 1;
-                        const scaleZ = objectData.scale?.z ?? 1;
-                        mesh.scale.set(scaleX, scaleY, scaleZ);
-                        mesh.visible = true; // Make visible
-                    }
-
-                    if (mesh) {
-                        mesh.userData.chunkKey = key;
-                        mesh.userData.objectIndex = index;
-                        mesh.userData.objectType = objectData.type;
-                        mesh.name = `${objectData.type}_${key}_${index}`;
-                        this.scene.add(mesh);
-                        objectData.mesh = mesh;
-
-                        if (objectData.collidable) {
-                            collidableMeshes.push(mesh);
-                        } else {
-                            collectibleMeshes.push(mesh);
-                        }
-                        this.spatialGrid.add(mesh);
-                    }
-                }
-            });
-
+            // 4. Store Chunk Data
             this.loadedChunks.set(key, {
                 terrainMesh: terrainMesh,
-                objects: objectDataArray,
-                collectibles: collectibleMeshes,
-                collidables: collidableMeshes,
-                enemies: enemies,
-                tumbleweeds: tumbleweeds
+                objects: objectDataArray, // Keep original data with mesh refs updated by contentManager
+                contentManagerData: contentManagerData // Store refs returned by content manager
             });
 
         } catch (error) {
-            const errorMsg = `Error creating chunk or objects for ${key}: ${error.message}`;
-            UIManager.displayError(new Error(`[ChunkManager] ${errorMsg}`));
-            logger.error(errorMsg, error); // Log full error
+            const errorMsg = `Error loading chunk ${key}: ${error.message}`;
+            // UIManager.displayError(new Error(`[ChunkManager] ${errorMsg}`)); // UIManager removed
+            logger.error(errorMsg, error);
         }
     }
 
     unloadChunk(key) {
         const chunkData = this.loadedChunks.get(key);
         if (chunkData) {
-            // Unload Terrain Mesh
+            // 1. Unload Terrain Mesh
             if (chunkData.terrainMesh) {
                 this.scene.remove(chunkData.terrainMesh);
                 chunkData.terrainMesh.geometry?.dispose();
-                // Add check to ensure material exists before checking if it's an array
                 if (chunkData.terrainMesh.material) {
                     if (Array.isArray(chunkData.terrainMesh.material)) {
                         chunkData.terrainMesh.material.forEach(material => material?.dispose());
@@ -294,40 +215,17 @@ export class ChunkManager {
                 }
             }
 
-            // Unload Non-Enemy/Non-Tumbleweed Object Visuals using object pooling
-            if (chunkData.objects) {
-                chunkData.objects.forEach(objectData => {
-                    if (!objectData.enemyInstance && objectData.mesh && objectData.type !== 'tumbleweed') {
-                        this.scene.remove(objectData.mesh);
-                        this.spatialGrid.remove(objectData.mesh);
-                        const poolName = objectData.collidable ? 'obstacles' : 'collectibles';
-                        this.objectPoolManager.addToPool(poolName, objectData.mesh); // Use pool manager
-                        objectData.mesh = null;
-                    }
-                });
-            }
+            // 2. Unload Content using Content Manager
+            this.contentManager.unloadContent(chunkData);
 
-            // Unload Enemies using EnemyManager
-            if (chunkData.enemies) {
-                chunkData.enemies.forEach(enemyInstance => {
-                    this.enemyManager.removeEnemy(enemyInstance);
-                });
-            }
-
-            // Unload Tumbleweeds using object pooling
-            if (chunkData.tumbleweeds) {
-                chunkData.tumbleweeds.forEach(tumbleweed => {
-                    this.scene.remove(tumbleweed.object3D);
-                    this.spatialGrid.remove(tumbleweed.object3D);
-                    this.objectPoolManager.addToPool('tumbleweeds', tumbleweed); // Use pool manager
-                });
-            }
-
+            // 3. Remove from loaded chunks map
             this.loadedChunks.delete(key);
         } else {
              logger.warn(`Attempted to unload chunk ${key} which was not found in loaded chunks.`);
         }
     }
+
+    // --- Helper Methods ---
 
     getTerrainMeshesNear(position) {
         const { chunkX: centerChunkX, chunkZ: centerChunkZ } = this.getPositionChunkCoords(position);
@@ -342,44 +240,17 @@ export class ChunkManager {
             }
         }
         return nearbyMeshes;
-    }
-
-    collectObject(chunkKey, objectIndex) {
-        const chunkData = this.loadedChunks.get(chunkKey);
-        if (chunkData && chunkData.objects && objectIndex >= 0 && objectIndex < chunkData.objects.length) {
-            const object = chunkData.objects[objectIndex];
-            // Log the object being collected right at the start of the function
-            if (object && !object.collidable && object.mesh && !object.collected) {
-                this.spatialGrid.remove(object.mesh);
-                this.scene.remove(object.mesh);
-                this.objectPoolManager.addToPool('collectibles', object.mesh); // Use pool manager
-
-                const collectibleIndex = chunkData.collectibles.indexOf(object.mesh);
-                if (collectibleIndex > -1) {
-                    chunkData.collectibles.splice(collectibleIndex, 1);
-                } else {
-                    // This warning might indicate a state inconsistency (Bug #3)
-                    logger.warn(`Collected object mesh not found in collectibles list for chunk ${chunkKey}, index ${objectIndex}`);
-                }
-
-                object.mesh = null;
-                object.collected = true;
-                AudioManager.playCoinSound();
-                return true;
-            } else {
-                 logger.warn(`Attempted to collect invalid, collidable, or already collected object: chunk ${chunkKey}, index ${objectIndex}`);
-            }
-        } else {
-            logger.warn(`Attempted to collect coin with invalid chunkKey or objectIndex: chunk ${chunkKey}, index ${objectIndex}`);
-        }
-        return false;
-    }
-
+    } // <-- Added missing closing brace
+    /**
+     * Loads the initial set of chunks around the starting position.
+     * @param {Function} [progressCallback] - Optional callback for loading progress (loaded, total).
+     */
     async loadInitialChunks(progressCallback) {
         const startChunkX = 0;
         const startChunkZ = 0;
-        const initialLoadRadius = RENDER_DISTANCE_CHUNKS;
-        logger.info(`Initial load radius set to: ${initialLoadRadius} (from config)`);
+        // Use renderDistance from instance property
+        const initialLoadRadius = this.renderDistance;
+        logger.info(`Initial load radius set to: ${initialLoadRadius}`);
 
         const chunksToLoadInitially = [];
         for (let x = startChunkX - initialLoadRadius; x <= startChunkX + initialLoadRadius; x++) {
@@ -393,25 +264,43 @@ export class ChunkManager {
 
         if (progressCallback) progressCallback(loadedCount, totalChunks);
 
+        // Process synchronously as loadChunk is currently synchronous
         for (const chunkCoords of chunksToLoadInitially) {
-            const key = `${chunkCoords.x},${chunkCoords.z}`;
-            if (!this.loadedChunks.has(key)) {
-                try {
-                    this.loadChunk(chunkCoords.x, chunkCoords.z);
-                } catch (error) {
-                    const errorMsg = `Error during initial load of chunk ${key}: ${error.message}`;
-                    UIManager.displayError(new Error(`[ChunkManager] ${errorMsg}`));
-                    logger.error(errorMsg, error);
-                }
-            } else {
-                logger.warn(`Chunk ${key} was already loaded (unexpected during initial load).`);
-            }
-            loadedCount++;
-            if (progressCallback) progressCallback(loadedCount, totalChunks);
+             const key = `${chunkCoords.x},${chunkCoords.z}`;
+             if (!this.loadedChunks.has(key)) {
+                 try {
+                     this.loadChunk(chunkCoords.x, chunkCoords.z); // Call the instance method
+                 } catch (error) {
+                     const errorMsg = `Error during initial load of chunk ${key}: ${error.message}`;
+                     logger.error(errorMsg, error);
+                 }
+             } else {
+                 logger.warn(`Chunk ${key} was already loaded (unexpected during initial load).`);
+             }
+             loadedCount++;
+             // Update progress after each chunk load attempt
+             if (progressCallback) progressCallback(loadedCount, totalChunks);
         }
+
         this.lastCameraChunkX = startChunkX;
         this.lastCameraChunkZ = startChunkZ;
+        logger.info("Initial chunks loading process complete.");
     }
+    // --- Content Management Delegation ---
+
+    collectObject(chunkKey, objectIndex) {
+        return this.contentManager.collectObject(chunkKey, objectIndex);
+    }
+
+    updateCollectibles(deltaTime, elapsedTime, playerPosition, playerPowerup) {
+        this.contentManager.updateCollectibles(this.loadedChunks, deltaTime, elapsedTime, playerPosition, playerPowerup);
+    }
+
+    updateTumbleweeds(deltaTime, elapsedTime, playerPosition) {
+        this.contentManager.updateTumbleweeds(this.loadedChunks, deltaTime, elapsedTime, playerPosition);
+    }
+
+    // --- Cleanup ---
 
     clearAllChunks() {
         logger.info(`Clearing all ${this.loadedChunks.size} loaded chunks...`);
@@ -424,125 +313,15 @@ export class ChunkManager {
             this.unloadChunk(key);
         });
 
-        this.lastCameraChunkX = null;
-        this.lastCameraChunkZ = null;
-
         if (this.loadedChunks.size > 0) {
-            // This warning might indicate a state inconsistency (Bug #3)
             logger.warn(`loadedChunks map not empty after clearAllChunks. Size: ${this.loadedChunks.size}`);
             this.loadedChunks.clear();
         }
-        // Clear pools when clearing all chunks
-        this.objectPoolManager.clearPools();
+
+        objectPoolManager.clearPools(); // Use imported singleton directly
+
+        this.lastCameraChunkX = null;
+        this.lastCameraChunkZ = null;
         logger.info("All chunks and pools cleared.");
     }
-
-    updateCollectibles(deltaTime, elapsedTime, playerPosition, playerPowerup) {
-        if (!this.levelConfig || !this.levelConfig.COIN_VISUALS) return;
-        const spinSpeed = this.levelConfig.COIN_VISUALS.spinSpeed || 1.0;
-        const magnetActive = playerPowerup === 'magnet';
-        const magnetRadius = 80;
-        const magnetForce = 150;
-
-        // Debug logging reduced frequency
-        // if (Math.floor(elapsedTime) % 5 === 0 && Math.floor(elapsedTime * 10) % 10 === 0) {
-
-        for (const [key, chunkData] of this.loadedChunks.entries()) {
-            if (chunkData.collectibles && chunkData.collectibles.length > 0) {
-                for (let i = chunkData.collectibles.length - 1; i >= 0; i--) {
-                    const collectibleMesh = chunkData.collectibles[i];
-                    if (!collectibleMesh) continue;
-
-                    // Ensure objectType exists and fix if necessary (Bug #4 related)
-                    if (!collectibleMesh.userData.objectType) {
-                         if (collectibleMesh.geometry?.type === 'CylinderGeometry') {
-                             collectibleMesh.userData.objectType = 'coin';
-                             logger.warn('[ChunkManager] Fixed missing objectType for coin');
-                         } else {
-                             logger.warn('[ChunkManager] Collectible missing objectType:', collectibleMesh);
-                             collectibleMesh.userData.objectType = 'unknown_collectible';
-                         }
-                     }
-
-                    // Rotate coins and magnets
-                    if (collectibleMesh.userData.objectType === 'coin' || collectibleMesh.userData.objectType === 'magnet') {
-                        collectibleMesh.rotation.y += spinSpeed * deltaTime;
-                    }
-
-                    // Apply magnet effect ONLY to coins
-                    if (magnetActive && playerPosition && collectibleMesh.userData.objectType === 'coin') {
-                        const dx = playerPosition.x - collectibleMesh.position.x;
-                        const dy = playerPosition.y - collectibleMesh.position.y;
-                        const dz = playerPosition.z - collectibleMesh.position.z;
-                        const distanceSq = dx * dx + dy * dy + dz * dz;
-
-                        if (distanceSq < magnetRadius * magnetRadius) {
-                            const distance = Math.sqrt(distanceSq);
-                            const dirX = dx / distance;
-                            const dirY = dy / distance;
-                            const dirZ = dz / distance;
-
-                            const normalizedDist = distance / magnetRadius;
-                            const acceleration = Math.pow(1 - normalizedDist, 4.0);
-                            const moveSpeed = magnetForce * acceleration * deltaTime;
-
-                            const newX = collectibleMesh.position.x + dirX * moveSpeed;
-                            const newY = collectibleMesh.position.y + dirY * moveSpeed;
-                            const newZ = collectibleMesh.position.z + dirZ * moveSpeed;
-
-                            const newDx = playerPosition.x - newX;
-                            const newDy = playerPosition.y - newY;
-                            const newDz = playerPosition.z - newZ;
-                            const newDistanceSq = newDx * newDx + newDy * newDy + newDz * newDz;
-
-                            const coinCollisionRadius = collectibleMesh.geometry?.parameters?.radiusBottom ?? 0.5;
-                            const collectionThresholdSq = (playerCollisionRadius + coinCollisionRadius * 1.5) ** 2;
-                            const minSafeDistanceSq = (playerCollisionRadius * 0.1) ** 2;
-
-                            const wouldPassThreshold =
-                                (distanceSq > collectionThresholdSq && newDistanceSq < collectionThresholdSq) ||
-                                (newDistanceSq < minSafeDistanceSq);
-
-                            if (wouldPassThreshold) {
-                                const { chunkKey, objectIndex, scoreValue } = collectibleMesh.userData;
-                                if (chunkKey !== undefined && objectIndex !== undefined) {
-                                    const collected = this.collectObject(chunkKey, objectIndex);
-                                    if (collected) {
-                                        eventBus.emit('scoreChanged', scoreValue || 10);
-                                        // Since we modified the array while iterating, break/continue might be safer
-                                        // However, iterating backwards handles splice correctly.
-                                    }
-                                }
-                            } else if (newDistanceSq > minSafeDistanceSq) {
-                                collectibleMesh.position.set(newX, newY, newZ);
-                            } else {
-                                // Move to safe distance boundary
-                                const safeDistance = Math.sqrt(minSafeDistanceSq);
-                                const safeFactor = safeDistance / Math.sqrt(newDistanceSq);
-                                collectibleMesh.position.x = playerPosition.x - newDx * safeFactor;
-                                collectibleMesh.position.y = playerPosition.y - newDy * safeFactor;
-                                collectibleMesh.position.z = playerPosition.z - newDz * safeFactor;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-
-    updateTumbleweeds(deltaTime, elapsedTime, playerPosition) {
-        for (const [key, chunkData] of this.loadedChunks.entries()) {
-            if (chunkData.tumbleweeds && chunkData.tumbleweeds.length > 0) {
-                chunkData.tumbleweeds.forEach(tumbleweed => {
-                    if (tumbleweed) {
-                        tumbleweed.update(deltaTime, elapsedTime, playerPosition);
-                        this.spatialGrid.update(tumbleweed.object3D);
-                    }
-                });
-            }
-        }
-    }
-
-    // --- Object Pooling Methods Removed ---
 }

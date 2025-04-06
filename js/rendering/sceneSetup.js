@@ -1,14 +1,14 @@
 // js/rendering/sceneSetup.js
 import * as THREE from 'three'; // Re-enabled THREE import
 import configManager from '../utils/configManager.js'; // Import config manager
-// Import specific constants and performanceManager
-import {
-    performanceManager,
-    CAMERA_FOV, CAMERA_NEAR_PLANE, CAMERA_FAR_PLANE,
-    RENDERING, // Basic rendering config
-    RENDERING_ADVANCED // Advanced config (shadows, etc.)
-    // PLAYER_HEIGHT_OFFSET // Needed? No, camera pos is absolute now.
-} from '../config/config.js'; // Moved to config
+// Import config objects and performanceManager
+import { performanceManager } from '../config/config.js'; // Re-export from config.js
+import { cameraConfig } from '../config/camera.js';
+import { renderingConfig } from '../config/rendering.js';
+import { renderingAdvancedConfig } from '../config/renderingAdvanced.js';
+
+
+
 
 /**
  * Initializes the core Three.js components: scene, camera, renderer, and lighting.
@@ -25,23 +25,23 @@ export function initScene(canvasElement, levelConfig) { // Added levelConfig
 
     // Camera
     const camera = new THREE.PerspectiveCamera(
-        CAMERA_FOV, // Use imported constant
+        cameraConfig.FOV, // Use imported constant
         window.innerWidth / window.innerHeight,
-        CAMERA_NEAR_PLANE, // Use imported constant
-        CAMERA_FAR_PLANE // Use imported constant
+        cameraConfig.NEAR_PLANE, // Use imported constant
+        cameraConfig.FAR_PLANE // Use imported constant
     );
     // Initial camera position using constants
     camera.position.set(
-        RENDERING_ADVANCED.INITIAL_CAMERA_POS_X,
-        RENDERING_ADVANCED.INITIAL_CAMERA_POS_Y,
-        RENDERING_ADVANCED.INITIAL_CAMERA_POS_Z
+        renderingAdvancedConfig.INITIAL_CAMERA_POS_X,
+        renderingAdvancedConfig.INITIAL_CAMERA_POS_Y,
+        renderingAdvancedConfig.INITIAL_CAMERA_POS_Z
     );
     camera.lookAt(0, 0, 0); // Look at origin initially
 
     // Renderer
     const renderer = new THREE.WebGLRenderer({
         canvas: canvasElement,
-        antialias: RENDERING.ANTIALIAS, // Use imported constant
+        antialias: renderingConfig.ANTIALIAS, // Use imported constant
         // Disable texture flipping to prevent WebGL warnings with 3D textures
         // See: https://threejs.org/docs/#api/en/renderers/WebGLRenderer
         alpha: true,
@@ -52,8 +52,8 @@ export function initScene(canvasElement, levelConfig) { // Added levelConfig
     renderer.outputEncoding = THREE.LinearEncoding;
 
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(RENDERING.PIXEL_RATIO); // Use imported constant
-    renderer.shadowMap.enabled = RENDERING.SHADOWS_ENABLED; // Use imported constant
+    renderer.setPixelRatio(renderingConfig.PIXEL_RATIO); // Use imported constant
+    renderer.shadowMap.enabled = renderingConfig.SHADOWS_ENABLED; // Use imported constant
 
     // Lighting
     const ambientLight = new THREE.AmbientLight(
@@ -71,22 +71,22 @@ export function initScene(canvasElement, levelConfig) { // Added levelConfig
         levelConfig.DIRECTIONAL_LIGHT_POS_Y,
         levelConfig.DIRECTIONAL_LIGHT_POS_Z
     );
-    directionalLight.castShadow = RENDERING.SHADOWS_ENABLED; // Use imported constant
+    directionalLight.castShadow = renderingConfig.SHADOWS_ENABLED; // Use imported constant
 
     // Configure shadow properties based on performance settings and constants
-    if (RENDERING.SHADOWS_ENABLED) {
-        const shadowQuality = performanceManager.currentQuality === 'low' ? RENDERING_ADVANCED.SHADOW_MAP_SIZE_LOW :
-                             performanceManager.currentQuality === 'medium' ? RENDERING_ADVANCED.SHADOW_MAP_SIZE_MEDIUM :
-                             RENDERING_ADVANCED.SHADOW_MAP_SIZE_HIGH;
+    if (renderingConfig.SHADOWS_ENABLED) {
+        const shadowQuality = performanceManager.currentQuality === 'low' ? renderingAdvancedConfig.SHADOW_MAP_SIZE_LOW :
+                             performanceManager.currentQuality === 'medium' ? renderingAdvancedConfig.SHADOW_MAP_SIZE_MEDIUM :
+                             renderingAdvancedConfig.SHADOW_MAP_SIZE_HIGH;
 
         directionalLight.shadow.mapSize.width = shadowQuality;
         directionalLight.shadow.mapSize.height = shadowQuality;
-        directionalLight.shadow.camera.near = RENDERING_ADVANCED.SHADOW_CAMERA_NEAR;
-        directionalLight.shadow.camera.far = RENDERING_ADVANCED.SHADOW_CAMERA_FAR;
-        directionalLight.shadow.bias = RENDERING_ADVANCED.SHADOW_BIAS;
+        directionalLight.shadow.camera.near = renderingAdvancedConfig.SHADOW_CAMERA_NEAR;
+        directionalLight.shadow.camera.far = renderingAdvancedConfig.SHADOW_CAMERA_FAR;
+        directionalLight.shadow.bias = renderingAdvancedConfig.SHADOW_BIAS;
 
         // Configure shadow camera frustum
-        const frustumSize = RENDERING_ADVANCED.SHADOW_FRUSTUM_SIZE;
+        const frustumSize = renderingAdvancedConfig.SHADOW_FRUSTUM_SIZE;
         directionalLight.shadow.camera.left = -frustumSize;
         directionalLight.shadow.camera.right = frustumSize;
         directionalLight.shadow.camera.top = frustumSize;
@@ -108,7 +108,7 @@ export function handleResize(camera, renderer) {
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
     // Maintain pixel ratio from performance settings
-    renderer.setPixelRatio(RENDERING.PIXEL_RATIO); // Use imported constant
+    renderer.setPixelRatio(renderingConfig.PIXEL_RATIO); // Use imported constant
 }
 
 /**
@@ -129,7 +129,7 @@ export function createFpsCounter() {
     fpsCounter.style.fontSize = '12px'; // Keep style for now
     fpsCounter.style.zIndex = '1000'; // Keep style for now
     fpsCounter.style.display = configManager.get('debug.showFPS') ? 'block' : 'none'; // Use configManager
-    fpsCounter.textContent = `${RENDERING_ADVANCED.FPS_COUNTER_PREFIX}--`; // Use constant
+    fpsCounter.textContent = `${renderingAdvancedConfig.FPS_COUNTER_PREFIX}--`; // Use constant
     document.body.appendChild(fpsCounter);
     return fpsCounter;
 }
@@ -142,6 +142,6 @@ export function createFpsCounter() {
 export function updateFpsCounter(fpsCounter, fps) {
     if (!fpsCounter) return;
     // Use constants for text
-    fpsCounter.textContent = `${RENDERING_ADVANCED.FPS_COUNTER_PREFIX}${Math.round(fps)}${RENDERING_ADVANCED.FPS_COUNTER_SEPARATOR}${performanceManager.currentQuality}`;
+    fpsCounter.textContent = `${renderingAdvancedConfig.FPS_COUNTER_PREFIX}${Math.round(fps)}${renderingAdvancedConfig.FPS_COUNTER_SEPARATOR}${performanceManager.currentQuality}`;
     fpsCounter.style.display = configManager.get('debug.showFPS') ? 'block' : 'none'; // Use configManager
 }

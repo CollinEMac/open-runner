@@ -1,6 +1,6 @@
 // js/core/gameStateManager.js
 
-import eventBus from './eventBus.js'; // Path remains correct relative to new location
+import eventBus from './eventBus.js';
 import { createLogger } from '../utils/logger.js';
 
 const logger = createLogger('GameStateManager');
@@ -11,42 +11,29 @@ const logger = createLogger('GameStateManager');
  * @enum {string}
  */
 export const GameStates = Object.freeze({
-    /** Initial asset loading */
     LOADING: 'loading',
-    /** Title screen is visible */
     TITLE: 'title',
-    /** Level selection screen is visible */
     LEVEL_SELECT: 'levelSelect',
-    /** Game is active and being played */
     PLAYING: 'playing',
-    /** Game is paused with menu visible */
     PAUSED: 'paused',
-    /** Game over screen is visible */
     GAME_OVER: 'gameOver',
-    /** Preparing to load next level (may show loading) */
     LEVEL_TRANSITION: 'levelTransition',
-    /** Actively loading next level assets/chunks */
     LOADING_LEVEL: 'loadingLevel',
-    /** Smooth camera transition back to title */
     TRANSITIONING_TO_TITLE: 'transitioningToTitle',
-    /** Smooth camera transition to player before gameplay */
     TRANSITIONING_TO_GAMEPLAY: 'transitioningToGameplay'
 });
 
 /**
  * GameStateManager class handles state transitions and notifications
  */
-export class GameStateManager { // Add named export
+export class GameStateManager {
     constructor() {
         /** @private */
         this.currentState = GameStates.LOADING;
-
         /** @private */
         this.stateHistory = [GameStates.LOADING];
-
         /** @private */
         this.maxHistoryLength = 10;
-
         /** @private */
         this.stateChangeTime = Date.now();
     }
@@ -84,31 +71,20 @@ export class GameStateManager { // Add named export
      * @returns {boolean} Whether the state was changed
      */
     setGameState(newState) {
-        // Validate the new state
         if (!Object.values(GameStates).includes(newState)) {
             logger.warn(`[GameStateManager] Attempted to set invalid game state: ${newState}`);
             return false;
         }
-
-        // Check if state is actually changing
         if (this.currentState === newState) {
             return false;
         }
-
-        // Log the state change
-        const oldState = this.currentState; // Capture old state before changing
-        // Update state and history
+        const oldState = this.currentState;
         this.currentState = newState;
         this.stateChangeTime = Date.now();
-
-        // Add to history and trim if needed
         this.stateHistory.push(newState);
         if (this.stateHistory.length > this.maxHistoryLength) {
             this.stateHistory.shift();
         }
-
-        // Notify listeners
-        // Pass both new and old state to the event
         eventBus.emit('gameStateChanged', { newState: newState, oldState: oldState });
         return true;
     }
@@ -129,36 +105,88 @@ export class GameStateManager { // Add named export
     revertToPreviousState() {
         if (this.stateHistory.length < 2) {
             logger.warn("[GameStateManager] Cannot revert: No previous state in history.");
-            return false; // No previous state to revert to
+            return false;
         }
-
         const oldState = this.currentState;
-        // Remove the current state from history
         this.stateHistory.pop();
-        // The new current state is now the last element in the history
         const newState = this.stateHistory[this.stateHistory.length - 1];
-
         this.currentState = newState;
         this.stateChangeTime = Date.now();
-
-
-        // Notify listeners about the revert (which is a state change)
         eventBus.emit('gameStateChanged', { newState: newState, oldState: oldState });
-
         return true;
+    }
+
+    // --- State Transition Request Methods ---
+
+    /** Requests the game to pause */
+    requestPause() {
+        if (this.currentState === GameStates.PLAYING) {
+            logger.info("Requesting Pause state...");
+            eventBus.emit('requestPause'); // Let handler change state
+        } else {
+            logger.warn(`Cannot pause from state: ${this.currentState}`);
+        }
+    }
+
+    /** Requests the game to resume */
+    requestResume() {
+        if (this.currentState === GameStates.PAUSED) {
+            logger.info("Requesting Resume (Playing) state...");
+            eventBus.emit('requestResume'); // Let handler change state
+        } else {
+            logger.warn(`Cannot resume from state: ${this.currentState}`);
+        }
+    }
+
+    /** Requests the current level to be restarted */
+    requestRestart() {
+        // Allow restart from PAUSED or GAME_OVER
+        if (this.currentState === GameStates.PAUSED || this.currentState === GameStates.GAME_OVER) {
+            logger.info("Requesting Level Restart...");
+            eventBus.emit('requestRestart'); // Let handler manage transitions/state
+        } else {
+            logger.warn(`Cannot restart from state: ${this.currentState}`);
+        }
+    }
+
+    /** Requests returning to the title screen */
+    requestReturnToTitle() {
+        // Allow return from PAUSED, GAME_OVER, LEVEL_SELECT
+        if (this.currentState === GameStates.PAUSED ||
+            this.currentState === GameStates.GAME_OVER ||
+            this.currentState === GameStates.LEVEL_SELECT) {
+            logger.info("Requesting Return to Title...");
+            eventBus.emit('requestReturnToTitle'); // Let handler manage transitions/state
+        } else {
+            logger.warn(`Cannot return to title from state: ${this.currentState}`);
+        }
+    }
+
+    /** Requests showing the level select screen */
+    requestShowLevelSelect() {
+        if (this.currentState === GameStates.TITLE) {
+            logger.info("Requesting Show Level Select...");
+            eventBus.emit('requestShowLevelSelect'); // Let handler change state
+        } else {
+            logger.warn(`Cannot show level select from state: ${this.currentState}`);
+        }
+    }
+
+    /** Initiates the game over sequence */
+    requestGameOverSequence() {
+        if (this.currentState === GameStates.PLAYING) {
+            logger.info("Requesting Game Over sequence...");
+            // The 'playerDied' event usually triggers this.
+            // Emitting 'playerDied' here might be clearer than a separate event.
+            eventBus.emit('playerDied');
+        } else {
+            logger.warn(`Cannot trigger game over from state: ${this.currentState}`);
+        }
     }
 }
 
 // Create and export a singleton instance
 const gameStateManager = new GameStateManager();
-
-// Export the instance methods as standalone functions for backward compatibility
-export const getCurrentState = () => gameStateManager.getCurrentState();
-export const setGameState = (newState) => gameStateManager.setGameState(newState);
-export const getPreviousState = () => gameStateManager.getPreviousState();
-export const isInState = (...states) => gameStateManager.isInState(...states);
-export const getTimeInCurrentState = () => gameStateManager.getTimeInCurrentState();
-export const revertToPreviousState = () => gameStateManager.revertToPreviousState();
 
 // Export the manager instance itself for advanced usage
 export default gameStateManager;

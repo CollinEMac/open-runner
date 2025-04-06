@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import PhysicsComponent from '../../physics/PhysicsComponent.js'; // Updated path
 import { noise2D } from '../../rendering/terrainGenerator.js'; // Updated path
 import eventBus from '../../core/eventBus.js'; // Updated path
-import * as C from '../../config/config.js'; // Import all config constants
+import { tumbleweedConfig as C } from '../../config/tumbleweed.js'; // Import specific config object and alias it
 import { randomRange } from '../../utils/mathUtils.js'; // Import randomRange if needed
 
 /**

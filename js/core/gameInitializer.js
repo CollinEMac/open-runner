@@ -7,18 +7,17 @@ import { ParticleManager } from '../managers/particleManager.js';
 import { setupPlayerControls, initInputStateManager } from '../input/controlsSetup.js';
 import { setDeviceClass } from '../utils/deviceUtils.js';
 import { createPlayerCharacter } from '../entities/playerCharacter.js';
-import {
-    performanceManager,
-    GRID_CELL_SIZE,
-    PLAYER_SPEED,
-    PLAYER_INITIAL_POS_X, PLAYER_INITIAL_POS_Y, PLAYER_INITIAL_POS_Z
-} from '../config/config.js';
+import { performanceManager } from '../config/config.js'; // Re-export from config.js
+import { worldConfig } from '../config/world.js';
+import { playerConfig } from '../config/player.js';
 import * as AudioManager from '../managers/audioManager.js';
 import { initScene, createFpsCounter } from '../rendering/sceneSetup.js';
 import * as LevelManager from '../managers/levelManager.js';
-import { GameStates } from './gameStateManager.js'; // Needed for setting state
-import { initPlayerController } from '../entities/playerController.js';
-import { initCollisionManager, checkCollisions } from '../managers/collisionManager.js'; // Corrected import name
+import gameStateManager, { GameStates } from './gameStateManager.js'; // Import default instance and GameStates enum
+import eventBus from './eventBus.js'; // Import eventBus singleton
+import { initPlayerController, updatePlayer as updatePlayerController } from '../entities/playerController.js'; // Import updatePlayer
+import { initCollisionManager, checkCollisions } from '../managers/collisionManager.js';
+import * as ScoreManager from '../managers/scoreManager.js'; // Import ScoreManager
 import * as UIManager from '../managers/uiManager.js';
 import * as AssetManager from '../managers/assetManager.js';
 import cameraManager from '../managers/cameraManager.js';
@@ -29,129 +28,142 @@ import { createLogger } from '../utils/logger.js';
 const logger = createLogger('GameInitializer');
 
 /**
- * Initializes the game asynchronously, setting up scenes, managers, assets, and initial state.
- * Modifies the passed game instance directly.
- * @param {Game} game - The main game instance.
- * @returns {Promise<boolean>} True if initialization was successful, false otherwise.
+ * Initializes the core game components and managers asynchronously.
+ * Returns an object containing the initialized components.
+ * @param {HTMLCanvasElement} canvasElement - The canvas element for rendering.
+ * @returns {Promise<object|null>} An object with initialized components or null if initialization fails.
  */
-export async function initializeGame(game) {
+export async function initializeGame(canvasElement) {
     logger.info("Game initialization started...");
 
-    // --- Set Device Class ---
-    setDeviceClass();
+    try {
+        // --- Set Device Class ---
+        setDeviceClass();
 
-    // --- Initialize Performance Manager ---
-    performanceManager.init();
+        // --- Initialize Performance Manager ---
+        performanceManager.init();
 
-    // --- Initialize FPS Counter ---
-    game.fpsCounter = createFpsCounter(); // Set on game instance
+        // --- Initialize FPS Counter (DOM element) ---
+        const fpsCounter = createFpsCounter();
 
-    // Initialize UI Manager first
-    if (!game.uiManager.initUIManager()) { // Access via game instance
-        return false;
+        // Initialize UI Manager first
+        if (!UIManager.initUIManager()) {
+            logger.error("UI Manager initialization failed.");
+            return null;
+        }
+        // Initialize score displays AFTER UI Manager is initialized
+        UIManager.updateScoreDisplay(0);
+        UIManager.updateHighScoreDisplay(ScoreManager.getGlobalHighScore());
+        // Initialize score displays AFTER UI Manager is initialized
+        UIManager.updateScoreDisplay(0);
+        UIManager.updateHighScoreDisplay(ScoreManager.getGlobalHighScore());
+        // Initialize score displays AFTER UI Manager is initialized
+        UIManager.updateScoreDisplay(0);
+        UIManager.updateHighScoreDisplay(ScoreManager.getGlobalHighScore());
+
+        // --- Load Initial Level Configuration ---
+        const initialLevelId = 'level1'; // TODO: Make this configurable?
+        const levelLoaded = await LevelManager.loadLevel(initialLevelId);
+        if (!levelLoaded) {
+            logger.error("Initial level configuration loading failed.");
+            return null;
+        }
+        const currentLevelConfig = LevelManager.getCurrentConfig();
+
+        // --- Initialize Asset Manager ---
+        await AssetManager.initLevelAssets(currentLevelConfig);
+
+        // --- Initialize Scene, Camera, Renderer ---
+        const { scene, camera, renderer } = initScene(canvasElement, currentLevelConfig);
+
+        // --- Create Player ---
+        const playerModelData = createPlayerCharacter();
+        const player = {
+            model: playerModelData.characterGroup,
+            modelParts: playerModelData,
+            currentSpeed: playerConfig.SPEED,
+            powerup: '',
+        };
+        player.model.position.set(playerConfig.INITIAL_POS_X, playerConfig.INITIAL_POS_Y, playerConfig.INITIAL_POS_Z);
+
+        // --- Initialize Managers ---
+        cameraManager.setCamera(camera);
+        cameraManager.setRenderer(renderer);
+        sceneTransitionManager.setRenderer(renderer);
+        sceneTransitionManager.setCamera(camera);
+        sceneTransitionManager.setPlayer(player); // Pass player object
+        atmosphericManager.setPlayerReference(player); // Pass player object
+        atmosphericManager.setTargetScene(scene); // Initial scene
+
+        const spatialGrid = new SpatialGrid(worldConfig.GRID_CELL_SIZE);
+        const enemyManager = new EnemyManager(scene, spatialGrid); // Pass initial scene
+        const chunkManager = new ChunkManager(scene, enemyManager, spatialGrid, currentLevelConfig); // Pass initial scene
+        const particleManager = new ParticleManager(scene); // Pass initial scene
+        LevelManager.setManagers(chunkManager, enemyManager); // Still needed for unload logic
+
+        // --- Initialize Controllers/Checkers ---
+        const raycaster = new THREE.Raycaster();
+        initPlayerController(raycaster); // Pass shared raycaster
+        initCollisionManager(spatialGrid, chunkManager);
+        const collisionChecker = checkCollisions; // Assign function
+
+        // --- Setup Controls ---
+        setupPlayerControls(renderer.domElement);
+        initInputStateManager(); // Initialize input state manager to handle input resets
+
+        // --- Initialize Audio ---
+        AudioManager.initAudio();
+
+        // --- Initial Chunk Loading & State ---
+        gameStateManager.setGameState(GameStates.LOADING);
+        await chunkManager.loadInitialChunks((loaded, total) => {
+            UIManager.updateLoadingProgress(loaded, total);
+        });
+
+        // --- Set Initial Game State ---
+        gameStateManager.setGameState(GameStates.TITLE);
+
+        // --- Setup UI Button Listeners (Requires Game instance - move this call to Game.init) ---
+        // UIManager.setupStartButton(() => game.startGame('level1'));
+        // UIManager.setupBackToTitleButton(() => game.returnToTitle());
+        // UIManager.setupLevelSelectButton(() => game.showLevelSelect());
+        // UIManager.setupPauseMenuButtons(...);
+        // UIManager.setupGameOverButtons(...);
+
+        // --- Setup global event listeners (Move to Game.init or main entry point) ---
+        // window.addEventListener('resize', () => cameraManager.handleResize(), false);
+        // document.addEventListener('keydown', boundHandleGlobalKeys);
+
+        logger.info("Game initialization complete.");
+
+        // Return all initialized components and managers needed by the Game class
+        return {
+            scene,
+            camera,
+            renderer,
+            player,
+            assetManager: AssetManager,
+            audioManager: AudioManager,
+            cameraManager,
+            sceneTransitionManager,
+            chunkManager,
+            collisionChecker,
+            enemyManager,
+            gameStateManager,
+            levelManager: LevelManager,
+            particleManager,
+            playerController: { updatePlayer: updatePlayerController }, // Keep consistent structure
+            spatialGrid,
+            uiManager: UIManager,
+            atmosphericManager,
+            fpsCounter,
+            currentLevelConfig, // Pass initial config
+            eventBus // Pass eventBus instance
+        };
+
+    } catch (error) {
+        logger.error("CRITICAL ERROR during game initialization:", error);
+        UIManager.displayError(new Error("Game initialization failed critically. Check console."));
+        return null;
     }
-
-    // --- Load Initial Level Configuration ---
-    const initialLevelId = 'level1';
-    const levelLoaded = await game.levelManager.loadLevel(initialLevelId); // Access via game instance
-    if (!levelLoaded) {
-        return false;
-    }
-    game.currentLevelConfig = game.levelManager.getCurrentConfig(); // Set on game instance
-
-    // --- Initialize Asset Manager ---
-    await game.assetManager.initLevelAssets(game.currentLevelConfig); // Access via game instance
-
-    // --- Initialize Scene, Camera, Renderer ---
-    const sceneComponents = initScene(game.canvas, game.currentLevelConfig); // Access canvas via game instance
-    game.scene = sceneComponents.scene; // Set on game instance
-    game.camera = sceneComponents.camera; // Set on game instance
-    game.renderer = sceneComponents.renderer; // Set on game instance
-
-    // Initialize CameraManager
-    game.cameraManager.setCamera(game.camera); // Access via game instance
-    game.cameraManager.setRenderer(game.renderer); // Access via game instance
-    // Initialize SceneTransitionManager
-    game.sceneTransitionManager.setRenderer(game.renderer); // Access via game instance
-    game.sceneTransitionManager.setCamera(game.camera); // Access via game instance
-    game.sceneTransitionManager.setPlayer(game.player); // Access via game instance
-    // Initialize AtmosphericManager
-    game.atmosphericManager.setPlayerReference(game.player); // Access via game instance
-    game.atmosphericManager.setTargetScene(game.scene); // Access via game instance
-
-    // Set the title scene as the active scene
-    game.activeScene = game.scene; // Set on game instance
-
-    // Title Camera Drift is handled within CameraManager initialization
-
-    // --- Initialize Managers ---
-    game.spatialGrid = new SpatialGrid(GRID_CELL_SIZE); // Set on game instance
-    game.enemyManager = new EnemyManager(game.scene, game.spatialGrid); // Set on game instance
-    game.chunkManager = new ChunkManager(game.scene, game.enemyManager, game.spatialGrid, game.currentLevelConfig); // Set on game instance
-    game.particleManager = new ParticleManager(game.scene); // Set on game instance
-    game.levelManager.setManagers(game.chunkManager, game.enemyManager); // Access via game instance
-
-    // --- Initialize Player Controller ---
-    const raycaster = new THREE.Raycaster();
-    initPlayerController(raycaster);
-
-    // --- Initialize Collision Manager ---
-    initCollisionManager(game.spatialGrid, game.chunkManager);
-    game.collisionChecker = checkCollisions; // Assign the correctly imported function
-
-    // --- Create Player ---
-    const playerModelData = createPlayerCharacter();
-    game.player = { // Re-assign player object on game instance
-        model: playerModelData.characterGroup,
-        modelParts: playerModelData,
-        currentSpeed: PLAYER_SPEED,
-        powerup: '',
-    };
-    game.player.model.position.set(PLAYER_INITIAL_POS_X, PLAYER_INITIAL_POS_Y, PLAYER_INITIAL_POS_Z);
-    game.atmosphericManager.setPlayerReference(game.player); // Update player reference after creation
-    game.sceneTransitionManager.setPlayer(game.player); // Update player reference in manager
-
-    // --- Setup Controls ---
-    setupPlayerControls(game.renderer.domElement); // Access renderer via game instance
-    initInputStateManager(); // Initialize input state manager to handle input resets
-
-    // --- Initialize Audio ---
-    game.audioManager.initAudio(); // Access via game instance
-
-    // --- Initial Chunk Loading & State ---
-    game.gameStateManager.setGameState(GameStates.LOADING); // Access via game instance
-    await game.chunkManager.loadInitialChunks((loaded, total) => { // Access via game instance
-        game.uiManager.updateLoadingProgress(loaded, total); // Access via game instance
-    });
-
-    game.gameStateManager.setGameState(GameStates.TITLE); // Access via game instance
-
-    // Setup UI Button Listeners (Callbacks need access to game instance methods)
-    game.uiManager.setupStartButton(() => game.startGame('level1')); // Access via game instance
-    game.uiManager.setupBackToTitleButton(() => game.returnToTitle()); // Access via game instance
-    game.uiManager.setupLevelSelectButton(() => game.showLevelSelect()); // Access via game instance
-    game.uiManager.setupPauseMenuButtons(
-        () => game.resumeGame(), // Access via game instance
-        () => game.restartLevel(), // Access via game instance
-        () => game.returnToTitle() // Access via game instance
-    );
-    game.uiManager.setupGameOverButtons(
-        () => game.restartLevel(), // Access via game instance
-        () => game.returnToTitle() // Access via game instance
-    );
-
-    // Setup global event listeners
-    window.addEventListener('resize', () => game.cameraManager.handleResize(), false); // Access via game instance
-
-    // Remove any existing keydown listeners to prevent duplicates
-    // Note: handleGlobalKeys needs to be bound to the game instance
-    const boundHandleGlobalKeys = game.handleGlobalKeys.bind(game);
-    document.removeEventListener('keydown', boundHandleGlobalKeys);
-    document.addEventListener('keydown', boundHandleGlobalKeys);
-
-    // Subscribe to events (This should remain in game.js as it uses game instance methods)
-    // game._setupEventSubscriptions(); // Call from game.js after initializeGame completes
-
-    logger.info("Game initialization complete.");
-    return true;
 }

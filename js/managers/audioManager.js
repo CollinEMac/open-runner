@@ -1,8 +1,11 @@
 // js/managers/audioManager.js
-import * as UIManager from './uiManager.js'; // Stays in managers
-import eventBus from '../core/eventBus.js'; // Moved to core
-import { GameStates } from '../core/gameStateManager.js'; // Moved to core
-import { AUDIO } from '../config/config.js'; // Import audio constants
+import * as UIManager from './uiManager.js';
+import eventBus from '../core/eventBus.js';
+import { GameStates } from '../core/gameStateManager.js';
+import { audioConfig } from '../config/audio.js'; // Import specific audio config
+import { createLogger } from '../utils/logger.js'; // Import logger
+
+const logger = createLogger('AudioManager'); // Instantiate logger
 
 let audioContext = null;
 let masterGain = null; // Master gain node for overall volume control
@@ -21,7 +24,7 @@ function setupEventListeners() {
     });
 
     // Listen for game state changes (specifically for Game Over)
-    eventBus.subscribe('gameStateChanged', (newState) => {
+    eventBus.subscribe('gameStateChanged', ({ newState }) => { // Destructure newState
         if (newState === GameStates.GAME_OVER) {
             playGameOverSound();
         }
@@ -41,8 +44,6 @@ function setupEventListeners() {
         playButtonClickSound();
     });
 
-    // Removed commented-out playerTurned listener
-
 }
 
 
@@ -59,7 +60,7 @@ export function initAudio() {
 
         // Create and connect a master gain node
         masterGain = audioContext.createGain();
-        masterGain.gain.setValueAtTime(AUDIO.INITIAL_MASTER_GAIN, audioContext.currentTime); // Use constant
+        masterGain.gain.setValueAtTime(audioConfig.INITIAL_MASTER_GAIN, audioContext.currentTime); // Use audioConfig
         masterGain.connect(audioContext.destination);
 
         // Resume context if it starts suspended
@@ -88,7 +89,7 @@ export function initAudio() {
 export function playCoinSound() {
     if (!audioContext || !masterGain) return;
     const now = audioContext.currentTime;
-    const config = AUDIO.COIN; // Use config object
+    const config = audioConfig.COIN; // Use audioConfig
     const duration = config.DURATION;
     const frequency = config.FREQUENCY;
     const volume = config.VOLUME;
@@ -139,7 +140,7 @@ export function playCoinSound() {
 export function playCollisionSound() {
     if (!audioContext || !masterGain) return;
     const now = audioContext.currentTime;
-    const config = AUDIO.COLLISION; // Use config object
+    const config = audioConfig.COLLISION; // Use audioConfig
     const duration = config.DURATION;
     const volume = config.VOLUME;
 
@@ -195,7 +196,7 @@ export function playCollisionSound() {
 export function playButtonClickSound() {
     if (!audioContext || !masterGain) return;
     const now = audioContext.currentTime;
-    const config = AUDIO.BUTTON_CLICK; // Use config object
+    const config = audioConfig.BUTTON_CLICK; // Use audioConfig
     const duration = config.DURATION;
     const frequency = config.FREQUENCY;
     const volume = config.VOLUME;
@@ -226,7 +227,7 @@ export function playButtonClickSound() {
 export function playGameOverSound() {
     if (!audioContext || !masterGain) return;
     const now = audioContext.currentTime;
-    const config = AUDIO.GAME_OVER; // Use config object
+    const config = audioConfig.GAME_OVER; // Use audioConfig
     const noteDuration = config.NOTE_DURATION;
     const gap = config.GAP;
     const startVolume = config.START_VOLUME;
@@ -281,7 +282,7 @@ export function playGameOverSound() {
 export function playTurnSound() {
     if (!audioContext || !masterGain) return;
     const now = audioContext.currentTime;
-    const config = AUDIO.TURN; // Use config object
+    const config = audioConfig.TURN; // Use audioConfig
     const duration = config.DURATION;
     const frequency = config.FREQUENCY;
     const volume = config.VOLUME;

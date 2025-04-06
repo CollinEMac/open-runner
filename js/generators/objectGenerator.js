@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import { prng_alea } from 'seedrandom';
 import { noise2D } from '../rendering/terrainGenerator.js'; // Updated path
-import * as GlobalConfig from '../config/config.js'; // Updated path
+import { worldConfig } from '../config/world.js'; // Import specific config object
 import { createLogger } from '../utils/logger.js'; // Import logger
 
 const logger = createLogger('ObjectGenerator'); // Instantiate logger
@@ -20,15 +20,15 @@ import * as ModelFactory from '../rendering/modelFactory.js'; // Updated path
  */
 export function generateObjectsForChunk(chunkX, chunkZ, levelConfig) {
 
-    const chunkSeed = `${GlobalConfig.WORLD_SEED}_objects_chunk_${chunkX}_${chunkZ}`;
+    const chunkSeed = `${worldConfig.SEED}_objects_chunk_${chunkX}_${chunkZ}`;
     const rng = prng_alea(chunkSeed);
     const chunkObjectsData = [];
-    const chunkOffsetX = chunkX * GlobalConfig.CHUNK_SIZE;
-    const chunkOffsetZ = chunkZ * GlobalConfig.CHUNK_SIZE;
-    const chunkArea = GlobalConfig.CHUNK_SIZE * GlobalConfig.CHUNK_SIZE;
+    const chunkOffsetX = chunkX * worldConfig.CHUNK_SIZE;
+    const chunkOffsetZ = chunkZ * worldConfig.CHUNK_SIZE;
+    const chunkArea = worldConfig.CHUNK_SIZE * worldConfig.CHUNK_SIZE;
 
     const playerSpawnPoint = new THREE.Vector3(0, 10, 5);
-    const playerSpawnSafeRadiusSq = GlobalConfig.PLAYER_SPAWN_SAFE_RADIUS * GlobalConfig.PLAYER_SPAWN_SAFE_RADIUS;
+    const playerSpawnSafeRadiusSq = worldConfig.PLAYER_SPAWN_SAFE_RADIUS * worldConfig.PLAYER_SPAWN_SAFE_RADIUS;
     // Removed debug log
 
 
@@ -58,13 +58,13 @@ export function generateObjectsForChunk(chunkX, chunkZ, levelConfig) {
                     const side = rng() > 0.5 ? 1 : -1;
                     const offsetRange = objectType.spawnOffsetRange || [60, 100];
                     const offsetDistance = offsetRange[0] + rng() * (offsetRange[1] - offsetRange[0]);
-                    relativeX = (rng() - 0.5) * GlobalConfig.CHUNK_SIZE * 0.2 + (side * offsetDistance);
-                    relativeZ = (rng() - 0.5) * GlobalConfig.CHUNK_SIZE * 2.0;
+                    relativeX = (rng() - 0.5) * worldConfig.CHUNK_SIZE * 0.2 + (side * offsetDistance);
+                    relativeZ = (rng() - 0.5) * worldConfig.CHUNK_SIZE * 2.0;
                     worldX = relativeX + chunkOffsetX;
                     worldZ = relativeZ + chunkOffsetZ;
                 } else {
-                    relativeX = (rng() - 0.5) * GlobalConfig.CHUNK_SIZE;
-                    relativeZ = (rng() - 0.5) * GlobalConfig.CHUNK_SIZE;
+                    relativeX = (rng() - 0.5) * worldConfig.CHUNK_SIZE;
+                    relativeZ = (rng() - 0.5) * worldConfig.CHUNK_SIZE;
                     worldX = relativeX + chunkOffsetX;
                     worldZ = relativeZ + chunkOffsetZ;
                 }
@@ -133,8 +133,8 @@ export function generateObjectsForChunk(chunkX, chunkZ, levelConfig) {
         let placed = false;
         const maxTotalAttempts = 20; // Keep attempts reasonable
         for (let attempt = 0; attempt < maxTotalAttempts; attempt++) {
-            const relativeX = (rng() - 0.5) * GlobalConfig.CHUNK_SIZE;
-            const relativeZ = (rng() - 0.5) * GlobalConfig.CHUNK_SIZE;
+            const relativeX = (rng() - 0.5) * worldConfig.CHUNK_SIZE;
+            const relativeZ = (rng() - 0.5) * worldConfig.CHUNK_SIZE;
             const worldX = relativeX + chunkOffsetX;
             const worldZ = relativeZ + chunkOffsetZ;
 

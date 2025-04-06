@@ -1,24 +1,24 @@
 // js/managers/collisionManager.js
 import * as THREE from 'three';
 import { createLogger } from '../utils/logger.js'; // Import logger
-// Import specific constants and the MODELS object
-import {
-    PLAYER_TORSO_WIDTH, PLAYER_HEIGHT_OFFSET, // Player dimensions
-    MODELS, // Contains collision radii/sizes
-    DEFAULT_COIN_SCORE, COIN_COLLECTION_RADIUS_FACTOR, PLAYER_SAFE_DISTANCE_FACTOR, // Gameplay constants
-    TREE_COLLISION_BUFFER, // Gameplay constant for trees
-    TW_OBJECT_TYPE_NAME // Tumbleweed type name
-} from '../config/config.js'; // Moved to config
-import { GameStates, getCurrentState } from '../core/gameStateManager.js'; // Moved to core
+// Import specific config objects
+import { playerConfig } from '../config/player.js';
+import { modelsConfig } from '../config/models.js';
+import { gameplayConfig } from '../config/gameplay.js';
+import { tumbleweedConfig } from '../config/tumbleweed.js';
+
+
+
+import gameStateManager, { GameStates } from '../core/gameStateManager.js'; // Import default instance and GameStates enum
 import eventBus from '../core/eventBus.js'; // Moved to core
 
 const logger = createLogger('CollisionManager'); // Instantiate logger
 
 // --- Collision Constants ---
-const playerCollisionRadius = PLAYER_TORSO_WIDTH; // Use imported constant
+const playerCollisionRadius = playerConfig.TORSO_WIDTH; // Use imported constant
 
-// obstacleRadii and enemyCollisionSizes are now defined in config.js under MODELS
-// Access them via MODELS.ROCK_DESERT.COLLISION_RADIUS, MODELS.BEAR.COLLISION_WIDTH_FACTOR etc.
+// Collision sizes/radii are accessed via the imported modelsConfig object,
+// e.g., modelsConfig.ROCK_DESERT.COLLISION_RADIUS, modelsConfig.BEAR.COLLISION_WIDTH_FACTOR etc.
 
 // --- Module State ---
 let _spatialGrid = null;
@@ -50,7 +50,7 @@ export function checkCollisions(player) {
     }
     const playerPosition = player.model.position;
     // Removed checks for callbacks, only check for core dependencies and game state
-    if (getCurrentState() !== GameStates.PLAYING || !_spatialGrid || !_chunkManager) {
+    if (gameStateManager.getCurrentState() !== GameStates.PLAYING || !_spatialGrid || !_chunkManager) {
         // Only check collisions during 'playing' state and if initialized
         return;
     }
@@ -94,13 +94,13 @@ export function checkCollisions(player) {
             // When magnet is active, we need to ensure coins are collected properly
             // and don't get stuck inside the player model
             let collisionThresholdSq;
-            const minSafeDistanceSq = (playerCollisionRadius * PLAYER_SAFE_DISTANCE_FACTOR) ** 2; // Use constant
+            const minSafeDistanceSq = (playerCollisionRadius * gameplayConfig.PLAYER_SAFE_DISTANCE_FACTOR) ** 2; // Use constant
 
             if (player.powerup === 'magnet') {
                 // Use a much larger collection radius when magnet is active
                 // This ensures coins don't get stuck inside the player model
                 // This must be larger than the minSafeDistanceSq
-                collisionThresholdSq = (playerCollisionRadius + coinCollisionRadius * COIN_COLLECTION_RADIUS_FACTOR) ** 2; // Use constant factor
+                collisionThresholdSq = (playerCollisionRadius + coinCollisionRadius * gameplayConfig.COIN_COLLECTION_RADIUS_FACTOR) ** 2; // Use constant factor
 
                 // Debug logging to help diagnose collection issues
                 if (distanceSq < (playerCollisionRadius * 0.5) ** 2) {
@@ -113,7 +113,7 @@ export function checkCollisions(player) {
                     const collected = _chunkManager.collectObject(chunkKey, objectIndex);
 
                     if (collected) {
-                        eventBus.emit('scoreChanged', scoreValue || DEFAULT_COIN_SCORE); // Use constant default
+                        eventBus.emit('scoreChanged', scoreValue || gameplayConfig.DEFAULT_COIN_SCORE); // Use constant default
                         nearbyArray.splice(i, 1);
                     }
                     continue; // Skip to next object
@@ -129,7 +129,7 @@ export function checkCollisions(player) {
 
                 if (collected) {
                     // Emit score change event instead of calling callback
-                    eventBus.emit('scoreChanged', scoreValue || DEFAULT_COIN_SCORE); // Use constant default
+                    eventBus.emit('scoreChanged', scoreValue || gameplayConfig.DEFAULT_COIN_SCORE); // Use constant default
                     nearbyArray.splice(i, 1); // Remove from local array for this check
                 }
             }
@@ -158,7 +158,7 @@ export function checkCollisions(player) {
             const dz = playerPosition.z - mesh.position.z;
             const distanceSq = dx * dx + dz * dz;
             // Use collision radius from config
-            const magnetCollisionRadius = MODELS.MAGNET.COLLISION_RADIUS || 1.0; // Default if not in config
+            const magnetCollisionRadius = modelsConfig.MAGNET.COLLISION_RADIUS || 1.0; // Default if not in config
             const collisionThresholdSq = (playerCollisionRadius + magnetCollisionRadius) ** 2;
 
             if (distanceSq < collisionThresholdSq) {
@@ -166,7 +166,7 @@ export function checkCollisions(player) {
                 const collected = _chunkManager.collectObject(chunkKey, objectIndex);
 
                 if (collected) {
-                    eventBus.emit('powerupActivated', MODELS.MAGNET.POWERUP_TYPE || 'magnet'); // Use constant if defined
+                    eventBus.emit('powerupActivated', modelsConfig.MAGNET.POWERUP_TYPE || 'magnet'); // Use constant if defined
                     nearbyArray.splice(i, 1); // Remove from local array for this check
                 }
             }
@@ -187,8 +187,8 @@ export function checkCollisions(player) {
             const objectType = mesh.userData.objectType;
 
             // Special check for Tumbleweed hazard
-            if (objectType === TW_OBJECT_TYPE_NAME) { // Use constant for tumbleweed type name
-                 const tumbleweedRadius = (MODELS.TUMBLEWEED_MODEL.COLLISION_RADIUS || 1.0) * mesh.scale.x; // Use constant from config
+            if (objectType === tumbleweedConfig.OBJECT_TYPE_NAME) { // Use constant for tumbleweed type name
+                 const tumbleweedRadius = (modelsConfig.TUMBLEWEED_MODEL.COLLISION_RADIUS || 1.0) * mesh.scale.x; // Use constant from config
                  const collisionThresholdSqTumbleweed = (playerCollisionRadius + tumbleweedRadius) ** 2;
                  if (distanceSq < collisionThresholdSqTumbleweed) {
                      eventBus.emit('playerDied'); // Emit player death event
@@ -196,9 +196,9 @@ export function checkCollisions(player) {
                  }
             }
             // Special check for trees to allow walking under foliage
-            else if (objectType === MODELS.TREE_PINE.OBJECT_TYPE && MODELS.TREE_PINE.ALLOW_WALK_UNDER) { // Use constants
+            else if (objectType === modelsConfig.TREE_PINE.OBJECT_TYPE && modelsConfig.TREE_PINE.ALLOW_WALK_UNDER) { // Use constants
                 // Use trunk radius from config
-                const trunkRadius = MODELS.TREE_PINE.TRUNK_RADIUS * mesh.scale.x;
+                const trunkRadius = modelsConfig.TREE_PINE.TRUNK_RADIUS * mesh.scale.x;
                 const collisionThresholdSqTrunk = (playerCollisionRadius + trunkRadius) ** 2;
 
                 // Only check for collision with the trunk if we're close enough horizontally
@@ -208,16 +208,16 @@ export function checkCollisions(player) {
                     const treeBaseY = mesh.position.y;
 
                     // Tree trunk height from config
-                    const trunkHeight = MODELS.TREE_PINE.TRUNK_HEIGHT * mesh.scale.y;
+                    const trunkHeight = modelsConfig.TREE_PINE.TRUNK_HEIGHT * mesh.scale.y;
                     const trunkTopY = treeBaseY + trunkHeight;
 
                     // Calculate player's feet position
-                    const playerFeetY = playerY - PLAYER_HEIGHT_OFFSET; // Use imported constant
+                    const playerFeetY = playerY - playerConfig.HEIGHT_OFFSET; // Use imported constant
 
 
                     // Only trigger collision if player's feet are below the top of the trunk
                     // Add a small buffer using constant
-                    if (playerFeetY < trunkTopY - TREE_COLLISION_BUFFER) {
+                    if (playerFeetY < trunkTopY - gameplayConfig.TREE_COLLISION_BUFFER) {
                         eventBus.emit('playerDied'); // Emit player death event
                         return; // Stop checking
                     }
@@ -227,7 +227,7 @@ export function checkCollisions(player) {
             // Check for other static obstacles
             else {
                 // Get radius from MODELS config, fallback to 1.0
-                const modelConfig = MODELS[objectType.toUpperCase()]; // Find config based on type name
+                const modelConfig = modelsConfig[objectType.toUpperCase()]; // Find config based on type name
                 const obstacleRadius = (modelConfig?.COLLISION_RADIUS || 1.0) * mesh.scale.x;
                 const collisionThresholdSqObstacle = (playerCollisionRadius + obstacleRadius) ** 2;
 
@@ -241,7 +241,7 @@ export function checkCollisions(player) {
         else if (mesh.userData.enemyInstance) {
             const enemyType = mesh.userData.enemyInstance.type;
             let enemyRadius = 0.5; // Default fallback
-            const enemyConfig = MODELS[enemyType.toUpperCase()]; // Find config based on type name
+            const enemyConfig = modelsConfig[enemyType.toUpperCase()]; // Find config based on type name
 
             if (enemyConfig) {
                 // Use radius if defined in config

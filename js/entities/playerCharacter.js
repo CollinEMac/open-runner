@@ -1,16 +1,16 @@
 // js/entities/playerCharacter.js
 import * as THREE from 'three';
-// Import specific constants
-import {
-    PLAYER_HEAD_SIZE, PLAYER_TORSO_HEIGHT, PLAYER_TORSO_WIDTH, PLAYER_TORSO_DEPTH,
-    PLAYER_LIMB_WIDTH, PLAYER_JOINT_RADIUS,
-    PLAYER_UPPER_ARM_LENGTH, PLAYER_FOREARM_LENGTH, PLAYER_THIGH_LENGTH, PLAYER_CALF_LENGTH,
-    PLAYER_ANIMATION_BASE_SPEED, PLAYER_MAX_ANIMATION_SPEED_FACTOR, // Used in animatePlayerCharacter
-    PLAYER_ARM_SWING_AMPLITUDE, PLAYER_LEG_SWING_AMPLITUDE,
-    PLAYER_ELBOW_BEND_AMPLITUDE, PLAYER_KNEE_BEND_AMPLITUDE,
-    PLAYER_DEFAULT_COLOR, PLAYER_DEFAULT_ROUGHNESS, PLAYER_DEFAULT_METALNESS, // New material constants
-    PLAYER_JOINT_SEGMENTS_W, PLAYER_JOINT_SEGMENTS_H, PLAYER_LIMB_OFFSET_FACTOR // New geometry/offset constants
-} from '../config/config.js'; // Moved to config
+// Import the player config object
+import { playerConfig } from '../config/player.js';
+
+
+
+
+
+
+
+
+
 
 
 /**
@@ -44,9 +44,9 @@ import {
  */
 // Material - Use constants for default material
 export const grayMaterial = new THREE.MeshStandardMaterial({
-    color: PLAYER_DEFAULT_COLOR,
-    roughness: PLAYER_DEFAULT_ROUGHNESS,
-    metalness: PLAYER_DEFAULT_METALNESS
+    color: playerConfig.DEFAULT_COLOR,
+    roughness: playerConfig.DEFAULT_ROUGHNESS,
+    metalness: playerConfig.DEFAULT_METALNESS
 });
 
 export function createPlayerCharacter() {
@@ -54,19 +54,19 @@ export function createPlayerCharacter() {
     const characterGroup = new THREE.Group(); // Overall group for the character model
 
     // Dimensions from imported constants
-    const headSize = PLAYER_HEAD_SIZE;
-    const torsoHeight = PLAYER_TORSO_HEIGHT;
-    const torsoWidth = PLAYER_TORSO_WIDTH;
-    const torsoDepth = PLAYER_TORSO_DEPTH;
-    const limbWidth = PLAYER_LIMB_WIDTH;
+    const headSize = playerConfig.HEAD_SIZE;
+    const torsoHeight = playerConfig.TORSO_HEIGHT;
+    const torsoWidth = playerConfig.TORSO_WIDTH;
+    const torsoDepth = playerConfig.TORSO_DEPTH;
+    const limbWidth = playerConfig.LIMB_WIDTH;
     // Remove commented out unused variables
-    const jointRadius = PLAYER_JOINT_RADIUS;
+    const jointRadius = playerConfig.JOINT_RADIUS;
 
     // Limb segment lengths from imported constants
-    const upperArmLength = PLAYER_UPPER_ARM_LENGTH;
-    const forearmLength = PLAYER_FOREARM_LENGTH;
-    const thighLength = PLAYER_THIGH_LENGTH;
-    const calfLength = PLAYER_CALF_LENGTH;
+    const upperArmLength = playerConfig.UPPER_ARM_LENGTH;
+    const forearmLength = playerConfig.FOREARM_LENGTH;
+    const thighLength = playerConfig.THIGH_LENGTH;
+    const calfLength = playerConfig.CALF_LENGTH;
 
     // Head
     const headGeometry = new THREE.BoxGeometry(headSize, headSize, headSize);
@@ -85,7 +85,7 @@ export function createPlayerCharacter() {
     const forearmGeometry = new THREE.BoxGeometry(limbWidth, forearmLength, limbWidth);
     const thighGeometry = new THREE.BoxGeometry(limbWidth, thighLength, limbWidth);
     const calfGeometry = new THREE.BoxGeometry(limbWidth, calfLength, limbWidth);
-    const jointGeometry = new THREE.SphereGeometry(jointRadius, PLAYER_JOINT_SEGMENTS_W, PLAYER_JOINT_SEGMENTS_H); // Use constants
+    const jointGeometry = new THREE.SphereGeometry(jointRadius, playerConfig.JOINT_SEGMENTS_W, playerConfig.JOINT_SEGMENTS_H); // Use constants
 
     // --- Limb Groups (for overall swing) ---
     const leftArmGroup = new THREE.Group(); // Pivots at shoulder
@@ -145,7 +145,7 @@ export function createPlayerCharacter() {
     rightArmGroup.add(rightElbowGroup);
 
     rightElbowMesh.position.y = 0;
-    rightForearmMesh.position.y = -forearmLength / 2 - jointRadius * PLAYER_LIMB_OFFSET_FACTOR; // Use constant factor
+    rightForearmMesh.position.y = -forearmLength / 2 - jointRadius * playerConfig.LIMB_OFFSET_FACTOR; // Use constant factor
 
     rightElbowGroup.add(rightElbowMesh);
     rightElbowGroup.add(rightForearmMesh);
@@ -166,7 +166,7 @@ export function createPlayerCharacter() {
     leftLegGroup.add(leftKneeGroup);
 
     leftKneeMesh.position.y = 0;
-    leftCalfMesh.position.y = -calfLength / 2 - jointRadius * PLAYER_LIMB_OFFSET_FACTOR; // Use constant factor
+    leftCalfMesh.position.y = -calfLength / 2 - jointRadius * playerConfig.LIMB_OFFSET_FACTOR; // Use constant factor
 
     leftKneeGroup.add(leftKneeMesh);
     leftKneeGroup.add(leftCalfMesh);
@@ -187,7 +187,7 @@ export function createPlayerCharacter() {
     rightLegGroup.add(rightKneeGroup);
 
     rightKneeMesh.position.y = 0;
-    rightCalfMesh.position.y = -calfLength / 2 - jointRadius * PLAYER_LIMB_OFFSET_FACTOR; // Use constant factor
+    rightCalfMesh.position.y = -calfLength / 2 - jointRadius * playerConfig.LIMB_OFFSET_FACTOR; // Use constant factor
 
     rightKneeGroup.add(rightKneeMesh);
     rightKneeGroup.add(rightCalfMesh);
@@ -224,10 +224,10 @@ export function animatePlayerCharacter(parts, animationTime, runSpeed = 10) {
 
     // Animation parameters from imported constants
     const frequency = runSpeed; // Keep runSpeed as the dynamic factor
-    const armAmplitude = PLAYER_ARM_SWING_AMPLITUDE;
-    const legAmplitude = PLAYER_LEG_SWING_AMPLITUDE;
-    const elbowBendAmplitude = PLAYER_ELBOW_BEND_AMPLITUDE;
-    const kneeBendAmplitude = PLAYER_KNEE_BEND_AMPLITUDE;
+    const armAmplitude = playerConfig.ARM_SWING_AMPLITUDE;
+    const legAmplitude = playerConfig.LEG_SWING_AMPLITUDE;
+    const elbowBendAmplitude = playerConfig.ELBOW_BEND_AMPLITUDE;
+    const kneeBendAmplitude = playerConfig.KNEE_BEND_AMPLITUDE;
 
     // Calculate base swing angles
     const armSwing = Math.sin(animationTime * frequency) * armAmplitude;

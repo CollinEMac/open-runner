@@ -1,6 +1,6 @@
 // js/managers/objectPoolManager.js
 import * as THREE from 'three'; // Re-enabled THREE import as it's used for Object3D checks
-import { RENDERING } from '../config/config.js'; // Moved to config
+// import { renderingConfig } from '../config/rendering.js'; // Example if needed later
 import { createLogger } from '../utils/logger.js'; // Stays in utils
 
 const logger = createLogger('ObjectPoolManager'); // Create logger instance

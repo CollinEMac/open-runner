@@ -1,20 +1,10 @@
 // js/managers/particleManager.js
 import * as THREE from 'three';
 import { createLogger } from '../utils/logger.js'; // Import logger
-// Import specific constants and performanceManager
-import {
-    performanceManager,
-    PARTICLES, // Import the whole section
-    P_BASE_MAX_PARTICLES, P_BASE_PARTICLE_LIFETIME, P_BASE_PARTICLES_PER_SECOND,
-    P_INITIAL_SPEED_MIN, P_INITIAL_SPEED_MAX,
-    P_DRIFT_VELOCITY_X, P_DRIFT_VELOCITY_Y, P_DRIFT_VELOCITY_Z,
-    P_SIZE, P_COLOR, P_LIFETIME_LOW_QUALITY_FACTOR,
-    P_EMIT_POS_RANDOM_FACTOR, P_EMIT_VEL_SPREAD_FACTOR,
-    P_EMIT_VEL_UPWARD_BIAS_MIN, P_EMIT_VEL_UPWARD_BIAS_MAX, P_EMIT_VEL_BACKWARD_BIAS,
-    P_EMIT_ORIGIN_Y_OFFSET_FACTOR,
-    P_TEXTURE_SIZE, P_TEXTURE_GRADIENT_STOPS,
-    PLAYER_HEIGHT_OFFSET // Needed for emit origin calculation
-} from '../config/config.js'; // Moved to config
+// Import config objects and performanceManager
+import { performanceManager } from '../config/config.js'; // Re-export from config.js
+import { particleConfig as P } from '../config/particles.js'; // Alias for brevity
+import { playerConfig } from '../config/player.js';
 
 // Base particle settings are now in config.js
 // Use P_BASE_MAX_PARTICLES, P_BASE_PARTICLE_LIFETIME, etc.
@@ -23,44 +13,44 @@ const logger = createLogger('ParticleManager'); // Instantiate logger
 
 // Reusable vector for drift
 const PARTICLE_DRIFT_VELOCITY = new THREE.Vector3(
-    P_DRIFT_VELOCITY_X,
-    P_DRIFT_VELOCITY_Y,
-    P_DRIFT_VELOCITY_Z
+    P.DRIFT_VELOCITY_X,
+    P.DRIFT_VELOCITY_Y,
+    P.DRIFT_VELOCITY_Z
 );
 // Reusable vector for velocity calculation
 const _particleVelocity = new THREE.Vector3();
 
 // Get actual particle count based on performance settings
 function getMaxParticles() {
-    const density = PARTICLES.PARTICLE_DENSITY ?? 1.0; // Use PARTICLES section
-    return Math.floor(P_BASE_MAX_PARTICLES * density); // Use imported constant
+    const density = P.PARTICLE_DENSITY ?? 1.0; // Use aliased config object
+    return Math.floor(P.BASE_MAX_PARTICLES * density); // Use aliased config object
 }
 
 function getParticlesPerSecond() {
-    const density = PARTICLES.PARTICLE_DENSITY ?? 1.0; // Use PARTICLES section
-    return Math.floor(P_BASE_PARTICLES_PER_SECOND * density); // Use imported constant
+    const density = P.PARTICLE_DENSITY ?? 1.0; // Use aliased config object
+    return Math.floor(P.BASE_PARTICLES_PER_SECOND * density); // Use aliased config object
 }
 
 function getParticleLifetime() {
     // Lower quality = shorter lifetime for better performance
     if (performanceManager.currentQuality === 'low') {
-        return P_BASE_PARTICLE_LIFETIME * P_LIFETIME_LOW_QUALITY_FACTOR; // Use constants
+        return P.BASE_PARTICLE_LIFETIME * P.LIFETIME_LOW_QUALITY_FACTOR; // Use constants
     }
-    return P_BASE_PARTICLE_LIFETIME; // Use constant
+    return P.BASE_PARTICLE_LIFETIME; // Use constant
 }
 
 // Simple circular texture for particles
 function createParticleTexture() {
     const canvas = document.createElement('canvas');
-    canvas.width = P_TEXTURE_SIZE; // Use constant
-    canvas.height = P_TEXTURE_SIZE; // Use constant
+    canvas.width = P.TEXTURE_SIZE; // Use constant
+    canvas.height = P.TEXTURE_SIZE; // Use constant
     const context = canvas.getContext('2d');
     const gradient = context.createRadialGradient(
         canvas.width / 2, canvas.height / 2, 0,
         canvas.width / 2, canvas.height / 2, canvas.width / 2
     );
     // Add gradient stops from config
-    P_TEXTURE_GRADIENT_STOPS.forEach(stop => {
+    P.TEXTURE_GRADIENT_STOPS.forEach(stop => {
         gradient.addColorStop(stop[0], stop[1]);
     });
 
@@ -92,13 +82,13 @@ export class ParticleManager {
 
         // Material using constants
         this.particleMaterial = new THREE.PointsMaterial({
-            size: P_SIZE,
+            size: P.SIZE,
             map: createParticleTexture(),
             blending: THREE.AdditiveBlending, // Or NormalBlending
             depthWrite: false, // Particles don't obscure each other as much
             transparent: true,
             vertexColors: false, // Using uniform color for now
-            color: P_COLOR,
+            color: P.COLOR,
             opacity: 1.0, // We'll control via attribute/shader later if needed, for now uniform
             sizeAttenuation: performanceManager.currentQuality !== 'low' // Disable size attenuation on low quality
         });
@@ -111,6 +101,26 @@ export class ParticleManager {
         this.activeParticleCount = 0;
 }
 
+    /**
+     * Sets the scene for the particle manager and adds the particle system to it.
+     * @param {THREE.Scene} newScene - The new scene instance.
+     */
+    setScene(newScene) {
+        if (!newScene || !(newScene instanceof THREE.Scene)) {
+            logger.error("ParticleManager: Invalid scene provided to setScene.");
+            return;
+        }
+
+        // Remove from old scene if necessary
+        if (this.particleSystem.parent) {
+            this.particleSystem.parent.remove(this.particleSystem);
+        }
+
+        this.scene = newScene;
+        this.scene.add(this.particleSystem);
+        logger.info("ParticleManager scene updated.");
+    }
+
     emitParticle(originPosition) {
         if (this.activeParticleCount >= this.maxParticles) {
             logger.warn("Max particles reached, skipping emission.");
@@ -120,17 +130,17 @@ export class ParticleManager {
         const index = this.activeParticleCount;
 
         // Set initial position slightly randomized around origin using constant
-        const randomFactor = P_EMIT_POS_RANDOM_FACTOR;
+        const randomFactor = P.EMIT_POS_RANDOM_FACTOR;
         this.positions[index * 3 + 0] = originPosition.x + (Math.random() - 0.5) * randomFactor;
         this.positions[index * 3 + 1] = originPosition.y; // Start at ground level (adjust if needed)
         this.positions[index * 3 + 2] = originPosition.z + (Math.random() - 0.5) * randomFactor;
 
         // Initial velocity using constants and reusable vector
-        const speed = THREE.MathUtils.randFloat(P_INITIAL_SPEED_MIN, P_INITIAL_SPEED_MAX);
+        const speed = THREE.MathUtils.randFloat(P.INITIAL_SPEED_MIN, P.INITIAL_SPEED_MAX);
         _particleVelocity.set(
-            (Math.random() - 0.5) * P_EMIT_VEL_SPREAD_FACTOR, // Sideways spread
-            Math.random() * (P_EMIT_VEL_UPWARD_BIAS_MAX - P_EMIT_VEL_UPWARD_BIAS_MIN) + P_EMIT_VEL_UPWARD_BIAS_MIN, // Upward bias
-            (Math.random() - 0.5) * P_EMIT_VEL_SPREAD_FACTOR + P_EMIT_VEL_BACKWARD_BIAS // Backward bias
+            (Math.random() - 0.5) * P.EMIT_VEL_SPREAD_FACTOR, // Sideways spread
+            Math.random() * (P.EMIT_VEL_UPWARD_BIAS_MAX - P.EMIT_VEL_UPWARD_BIAS_MIN) + P.EMIT_VEL_UPWARD_BIAS_MIN, // Upward bias
+            (Math.random() - 0.5) * P.EMIT_VEL_SPREAD_FACTOR + P.EMIT_VEL_BACKWARD_BIAS // Backward bias
         );
         _particleVelocity.normalize().multiplyScalar(speed);
 
@@ -158,7 +168,7 @@ export class ParticleManager {
             let _rayOrigin = new THREE.Vector3(); // Declare the temporary vector
             const emitOrigin = _rayOrigin.copy(playerPosition); // Using _rayOrigin as a temp vector
             // Adjust emit origin slightly behind and below the player model center if needed
-            emitOrigin.y -= PLAYER_HEIGHT_OFFSET * P_EMIT_ORIGIN_Y_OFFSET_FACTOR; // Use constants
+            emitOrigin.y -= playerConfig.HEIGHT_OFFSET * P.EMIT_ORIGIN_Y_OFFSET_FACTOR; // Use constants
             // emitOrigin.z += 0.5; // Slightly behind player center
 
             // Only emit as many particles as we have room for

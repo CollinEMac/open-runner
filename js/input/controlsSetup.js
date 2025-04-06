@@ -1,6 +1,6 @@
 // js/input/controlsSetup.js
 // import { OrbitControls } from 'three/addons/controls/OrbitControls.js'; // Removed OrbitControls
-import { GameStates, getCurrentState, setGameState } from '../core/gameStateManager.js'; // Updated path
+import gameStateManager, { GameStates } from '../core/gameStateManager.js'; // Import default instance and GameStates enum
 import * as UIManager from '../managers/uiManager.js'; // Updated path
 import eventBus from '../core/eventBus.js'; // Updated path
 import { createLogger } from '../utils/logger.js'; // Import logger
@@ -188,7 +188,7 @@ export function setupPlayerControls(canvasElement) {
             // Pause button touch event
             mobilePauseTouchListener = (event) => {
                 event.preventDefault();
-                const currentState = getCurrentState();
+                const currentState = gameStateManager.getCurrentState();
 
                 if (currentState === GameStates.PLAYING) {
                     eventBus.emit('requestPause');

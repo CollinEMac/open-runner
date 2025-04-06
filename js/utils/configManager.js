@@ -29,16 +29,13 @@ class ConfigManager {
         // Iterate over the new defaults provided
         Object.keys(defaultConfig).forEach(sectionKey => {
             const newSectionValue = defaultConfig[sectionKey];
-            if (newSectionValue && typeof newSectionValue === 'object') {
+            if (newSectionValue && typeof newSectionValue === 'object' && !Array.isArray(newSectionValue)) { // Check for object, not array
                 // Deep clone the new section value before assigning
                 this.defaultConfig[sectionKey] = JSON.parse(JSON.stringify(newSectionValue));
             } else {
-                 // Assign primitive values directly (implicitly clones)
+                 // Assign primitive values or arrays directly (implicitly clones primitives)
                  this.defaultConfig[sectionKey] = newSectionValue;
             }
-            // Note: This logic replaces the entire section if it exists,
-            // and adds it if it doesn't. Sections not present in the input
-            // `defaultConfig` remain untouched in `this.defaultConfig`.
         });
         logger.debug('Default configuration updated', this.defaultConfig);
     }
@@ -89,14 +86,12 @@ class ConfigManager {
             return false;
         }
 
-        // If section doesn't exist, register it with the updates
         if (!this.configs.has(section)) {
             logger.debug(`Section "${section}" not found, registering with updates.`);
-            // Deep clone updates for the new section
             this.configs.set(section, JSON.parse(JSON.stringify(updates)));
         } else {
-            // Merge updates into existing section (deep clone updates)
             const currentConfig = this.configs.get(section);
+            // Simple merge (does not handle deep merging within the section)
             this.configs.set(section, { ...currentConfig, ...JSON.parse(JSON.stringify(updates)) });
         }
         logger.debug(`Updated config for section "${section}"`, this.configs.get(section));
@@ -105,7 +100,7 @@ class ConfigManager {
 
     /**
      * Gets a configuration value
-     * @param {string} key - Configuration key in format "section.key" or just "key" for default section
+     * @param {string} key - Configuration key in format "section.key" or just "key" for top-level defaults
      * @param {*} [defaultValue] - Default value if key not found
      * @returns {*} Configuration value or default
      */
@@ -115,50 +110,59 @@ class ConfigManager {
             return defaultValue;
         }
 
-        if (!key.includes('.')) {
-            logger.warn(`Non-section key provided: "${key}". Use getSection for whole sections.`);
-            return defaultValue;
+        // 1. Check if it's a top-level default key
+        if (this.defaultConfig.hasOwnProperty(key)) {
+            // Check if it's also a section name (ambiguous) - prefer section if registered
+            if (!this.configs.has(key) && !key.includes('.')) {
+                 return this.defaultConfig[key];
+            }
+            // If it could be a section name, fall through to section logic
         }
 
-        const parts = key.split('.');
-        const section = parts[0];
-        const sectionKey = parts.slice(1).join('.'); // Handle keys with dots
+        // 2. Check for section.key format
+        if (key.includes('.')) {
+            const parts = key.split('.');
+            const section = parts[0];
+            const sectionKey = parts.slice(1).join('.');
 
-        if (!section || !sectionKey) {
-             logger.warn(`Invalid key format: "${key}". Format should be "section.key".`);
-             return defaultValue;
-        }
-
-        // 1. Check registered config for the specific section and key
-        if (this.configs.has(section)) {
-            const sectionConfig = this.configs.get(section);
-            if (sectionConfig.hasOwnProperty(sectionKey)) {
-                return sectionConfig[sectionKey];
+            if (section && sectionKey) {
+                // 2a. Check registered config section
+                if (this.configs.has(section)) {
+                    const sectionConfig = this.configs.get(section);
+                    if (sectionConfig.hasOwnProperty(sectionKey)) {
+                        return sectionConfig[sectionKey];
+                    }
+                }
+                // 2b. Check default config section
+                if (this.defaultConfig.hasOwnProperty(section) && typeof this.defaultConfig[section] === 'object' && this.defaultConfig[section] !== null) {
+                     const defaultSectionConfig = this.defaultConfig[section];
+                     if (defaultSectionConfig.hasOwnProperty(sectionKey)) {
+                         return defaultSectionConfig[sectionKey];
+                     }
+                }
+            } else {
+                 logger.warn(`Invalid key format: "${key}". Format should be "section.key".`);
             }
         }
-
-        // 2. Check default config for the specific section and key
-        if (this.defaultConfig.hasOwnProperty(section) && typeof this.defaultConfig[section] === 'object' && this.defaultConfig[section] !== null) {
-             const defaultSectionConfig = this.defaultConfig[section];
-             if (defaultSectionConfig.hasOwnProperty(sectionKey)) {
-                 return defaultSectionConfig[sectionKey]; // Found in default
-             } // else { // Removed log block
+        // 3. If not found as top-level or section.key, issue warning only if it lacked a '.'
+        else {
+             logger.warn(`Key "${key}" not found as top-level default or in section format "section.key".`);
         }
-        // }
 
-        // 3. Return the provided default value if not found in registered or defaults
+
+        // 4. Return the provided default value if not found anywhere
         return defaultValue;
     }
 
     /**
-     * Gets an entire configuration section
+     * Gets an entire configuration section, merging defaults and registered values.
      * @param {string} section - Section name
-     * @returns {Object|null} Configuration section or null if section is invalid or not found
+     * @returns {Object|null} Deep cloned configuration section or null if section is invalid.
      */
     getSection(section) {
         if (!section || typeof section !== 'string') {
             logger.error('Invalid section name provided to getSection');
-            return null; // Return null for invalid section to be consistent with get method
+            return null;
         }
 
         const sectionDefaults = (this.defaultConfig.hasOwnProperty(section) && typeof this.defaultConfig[section] === 'object' && this.defaultConfig[section] !== null)
@@ -173,12 +177,17 @@ class ConfigManager {
         const mergedConfig = { ...sectionDefaults, ...registeredConfig };
 
         // Return a deep clone to prevent modification of internal state
-        return JSON.parse(JSON.stringify(mergedConfig));
+        try {
+            return JSON.parse(JSON.stringify(mergedConfig));
+        } catch (e) {
+            logger.error(`Failed to deep clone section "${section}":`, e);
+            return {}; // Return empty object on clone failure
+        }
     }
 
     /**
-     * Gets all configuration sections
-     * @returns {Object} All configurations
+     * Gets all configuration sections, merged with defaults.
+     * @returns {Object} All configurations (deep cloned).
      */
     getAll() {
         const allSections = new Set([...Object.keys(this.defaultConfig), ...this.configs.keys()]);
@@ -190,13 +199,18 @@ class ConfigManager {
         });
 
         // Return a deep clone of the entire result
-        return JSON.parse(JSON.stringify(result));
+        try {
+            return JSON.parse(JSON.stringify(result));
+        } catch (e) {
+            logger.error("Failed to deep clone all configs:", e);
+            return {}; // Return empty object on clone failure
+        }
     }
 
     /**
-     * Removes a configuration section
+     * Removes a configuration section from the registered configs (not defaults).
      * @param {string} section - Section name
-     * @returns {boolean} Whether the section was removed
+     * @returns {boolean} Whether the section was removed from registered configs.
      */
     removeSection(section) {
          if (!section || typeof section !== 'string') {
@@ -204,27 +218,20 @@ class ConfigManager {
             return false;
         }
         let removed = false;
-        // Remove from registered configs
         if (this.configs.has(section)) {
             this.configs.delete(section);
             logger.debug(`Removed registered config section "${section}"`);
             removed = true;
         }
-        // DO NOT remove from defaults, only from registered configs.
-        // The expectation is that get() should fall back to defaults if they exist.
-        // if (this.defaultConfig.hasOwnProperty(section)) {
-        //     delete this.defaultConfig[section];
-        //     removed = true; // Keep track if removed from registered OR defaults
-        // }
 
         if (!removed) {
-             logger.debug(`Section "${section}" not found in registered or default configs.`);
+             logger.debug(`Section "${section}" not found in registered configs.`);
         }
         return removed;
     }
 
     /**
-     * Clears all configuration
+     * Clears all registered and default configurations.
      */
     clear() {
         this.configs.clear();

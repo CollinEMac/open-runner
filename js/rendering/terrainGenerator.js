@@ -1,22 +1,22 @@
 // js/rendering/terrainGenerator.js
 import * as THREE from 'three';
 import { createNoise2D } from 'simplex-noise'; // Use createNoise2D for 2D noise
-import {
-    WORLD_SEED,
-    CHUNK_SIZE, // Use CHUNK_SIZE instead of TERRAIN_WIDTH/HEIGHT
-    TERRAIN_SEGMENTS_X,
-    TERRAIN_SEGMENTS_Y,
-    performanceManager // Import performance manager for LOD
-    // NOISE_FREQUENCY, NOISE_AMPLITUDE removed, will come from levelConfig
-} from '../config/config.js'; // Updated path
+import { performanceManager } from '../config/config.js'; // Re-export from config.js
+import { worldConfig } from '../config/world.js';
+import { terrainConfig } from '../config/terrain.js';
+
+
+
+
+
 
 // Initialize the noise function with the seed
 const noise2D = createNoise2D(() => {
     // This function provides the seed. Using a simple string hash for reproducibility.
     // A more robust seeding mechanism might be needed for complex scenarios.
     let h = 0;
-    for (let i = 0; i < WORLD_SEED.length; i++) {
-        h = (h << 5) - h + WORLD_SEED.charCodeAt(i);
+    for (let i = 0; i < worldConfig.SEED.length; i++) {
+        h = (h << 5) - h + worldConfig.SEED.charCodeAt(i);
         h |= 0; // Convert to 32bit integer
     }
     return h / 0x80000000; // Normalize to range expected by simplex-noise if needed
@@ -29,8 +29,8 @@ export { noise2D };
 export function createTerrainChunk(chunkX, chunkZ, levelConfig) { // Added levelConfig parameter
 
     // Calculate world offset for this chunk
-    const offsetX = chunkX * CHUNK_SIZE;
-    const offsetZ = chunkZ * CHUNK_SIZE;
+    const offsetX = chunkX * worldConfig.CHUNK_SIZE;
+    const offsetZ = chunkZ * worldConfig.CHUNK_SIZE;
 
     // Calculate distance from player's current chunk (assumed to be at 0,0 if not provided)
     // This is used for level of detail (LOD) - further chunks get less detail
@@ -38,8 +38,8 @@ export function createTerrainChunk(chunkX, chunkZ, levelConfig) { // Added level
 
     // Apply level of detail based on distance and performance settings
     // Chunks further away get progressively less detail
-    let segmentsX = TERRAIN_SEGMENTS_X;
-    let segmentsY = TERRAIN_SEGMENTS_Y;
+    let segmentsX = terrainConfig.SEGMENTS_X;
+    let segmentsY = terrainConfig.SEGMENTS_Y;
 
     // Apply distance-based LOD only if not in ultra quality mode
     // IMPORTANT: To avoid visible seams, we use a step function instead of continuous LOD
@@ -51,12 +51,12 @@ export function createTerrainChunk(chunkX, chunkZ, levelConfig) { // Added level
 
         if (lodBand >= 4) {
             // Far chunks (band 4+) - lowest detail
-            segmentsX = Math.max(20, Math.floor(TERRAIN_SEGMENTS_X * 0.5));
-            segmentsY = Math.max(20, Math.floor(TERRAIN_SEGMENTS_Y * 0.5));
+            segmentsX = Math.max(20, Math.floor(terrainConfig.SEGMENTS_X * 0.5));
+            segmentsY = Math.max(20, Math.floor(terrainConfig.SEGMENTS_Y * 0.5));
         } else if (lodBand >= 2) {
             // Medium distance chunks (band 2-3) - medium detail
-            segmentsX = Math.max(30, Math.floor(TERRAIN_SEGMENTS_X * 0.75));
-            segmentsY = Math.max(30, Math.floor(TERRAIN_SEGMENTS_Y * 0.75));
+            segmentsX = Math.max(30, Math.floor(terrainConfig.SEGMENTS_X * 0.75));
+            segmentsY = Math.max(30, Math.floor(terrainConfig.SEGMENTS_Y * 0.75));
         }
 
         // Ensure segments are even numbers to avoid seams
@@ -65,8 +65,8 @@ export function createTerrainChunk(chunkX, chunkZ, levelConfig) { // Added level
     }
 
     const geometry = new THREE.PlaneGeometry(
-        CHUNK_SIZE, // Use CHUNK_SIZE for geometry dimensions
-        CHUNK_SIZE,
+        worldConfig.CHUNK_SIZE, // Use CHUNK_SIZE for geometry dimensions
+        worldConfig.CHUNK_SIZE,
         segmentsX,
         segmentsY
     );

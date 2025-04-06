@@ -1,8 +1,10 @@
 // js/managers/assetManager.js
 import * as THREE from 'three'; // Re-enabled THREE import as it's used for geometries/materials
 import * as UIManager from './uiManager.js'; // Stays in managers
-// Import specific constant objects
-import { MATERIALS, FALLBACK_GEOMETRIES, MODELS } from '../config/config.js'; // Moved to config
+// Import specific config objects
+import { materialsConfig } from '../config/materials.js';
+import { fallbackGeometriesConfig } from '../config/fallbackGeometries.js';
+import { modelsConfig } from '../config/models.js';
 import { createLogger } from '../utils/logger.js'; // Import logger
 
 const logger = createLogger('AssetManager'); // Instantiate logger
@@ -33,10 +35,10 @@ export function initLevelAssets(levelConfig) {
 
     // --- Coin --- (Uses level config OR fallback geometry constants)
     const coinVis = levelConfig.COIN_VISUALS || {}; // Start with empty object
-    const coinRadius = coinVis.radius ?? FALLBACK_GEOMETRIES.COIN.RADIUS;
-    const coinHeight = coinVis.height ?? FALLBACK_GEOMETRIES.COIN.HEIGHT;
+    const coinRadius = coinVis.radius ?? fallbackGeometriesConfig.COIN.RADIUS;
+    const coinHeight = coinVis.height ?? fallbackGeometriesConfig.COIN.HEIGHT;
     const coinColor = coinVis.color ?? 0xFFFF00; // Default yellow if not in config
-    const coinSegments = FALLBACK_GEOMETRIES.COIN.SEGMENTS;
+    const coinSegments = fallbackGeometriesConfig.COIN.SEGMENTS;
     levelAssets.coinGeometry = new THREE.CylinderGeometry(coinRadius, coinRadius, coinHeight, coinSegments);
     levelAssets.coinGeometry.rotateX(Math.PI / 2);
     levelAssets.coinMaterial = new THREE.MeshStandardMaterial({ color: coinColor, metalness: 0.3, roughness: 0.4 }); // Keep metalness/roughness for now
@@ -45,17 +47,17 @@ export function initLevelAssets(levelConfig) {
     // --- Magnet --- (Uses level config OR model defaults and ModelFactory)
     const magnetVis = levelConfig.MAGNET_VISUALS || {};
     const magnetProps = {
-        size: magnetVis.size ?? MODELS.MAGNET.DEFAULT_SIZE,
-        color: magnetVis.color ?? MODELS.MAGNET.DEFAULT_COLOR
+        size: magnetVis.size ?? modelsConfig.MAGNET.DEFAULT_SIZE,
+        color: magnetVis.color ?? modelsConfig.MAGNET.DEFAULT_COLOR
     };
     try {
         levelAssets.magnetGroup = ModelFactory.createMagnetModel(magnetProps); // Use ModelFactory with potentially defaulted props
         // Define magnet material using constants from MODELS.MAGNET
         levelAssets.magnetMaterial = new THREE.MeshStandardMaterial({
           color: magnetProps.color, // Use the determined color
-          emissive: MODELS.MAGNET.MAGNET_EMISSIVE,
-          metalness: MODELS.MAGNET.MAGNET_METALNESS,
-          roughness: MODELS.MAGNET.MAGNET_ROUGHNESS
+          emissive: modelsConfig.MAGNET.MAGNET_EMISSIVE,
+          metalness: modelsConfig.MAGNET.MAGNET_METALNESS,
+          roughness: modelsConfig.MAGNET.MAGNET_ROUGHNESS
         });
     } catch (error) {
         logger.error("Error creating magnet model:", error);
@@ -64,11 +66,11 @@ export function initLevelAssets(levelConfig) {
 
 
     // --- Obstacles Materials (Use constants from MATERIALS) ---
-    levelAssets.rockMaterial = new THREE.MeshStandardMaterial({ color: MATERIALS.ROCK_COLOR, roughness: MATERIALS.ROCK_ROUGHNESS });
-    levelAssets.logMaterial = new THREE.MeshStandardMaterial({ color: MATERIALS.LOG_COLOR, roughness: MATERIALS.LOG_ROUGHNESS });
-    levelAssets.cabinMaterial = new THREE.MeshStandardMaterial({ color: MATERIALS.CABIN_COLOR, roughness: MATERIALS.CABIN_ROUGHNESS });
-    levelAssets.cactusMaterial = new THREE.MeshStandardMaterial({ color: MATERIALS.CACTUS_COLOR, roughness: MATERIALS.CACTUS_ROUGHNESS });
-    levelAssets.saloonMaterial = new THREE.MeshStandardMaterial({ color: MATERIALS.SALOON_COLOR, roughness: MATERIALS.SALOON_ROUGHNESS });
+    levelAssets.rockMaterial = new THREE.MeshStandardMaterial({ color: materialsConfig.ROCK_COLOR, roughness: materialsConfig.ROCK_ROUGHNESS });
+    levelAssets.logMaterial = new THREE.MeshStandardMaterial({ color: materialsConfig.LOG_COLOR, roughness: materialsConfig.LOG_ROUGHNESS });
+    levelAssets.cabinMaterial = new THREE.MeshStandardMaterial({ color: materialsConfig.CABIN_COLOR, roughness: materialsConfig.CABIN_ROUGHNESS });
+    levelAssets.cactusMaterial = new THREE.MeshStandardMaterial({ color: materialsConfig.CACTUS_COLOR, roughness: materialsConfig.CACTUS_ROUGHNESS });
+    levelAssets.saloonMaterial = new THREE.MeshStandardMaterial({ color: materialsConfig.SALOON_COLOR, roughness: materialsConfig.SALOON_ROUGHNESS });
     // Add other materials as needed...
 
     // --- Obstacles Geometries (Based on levelConfig.OBJECT_TYPES) ---
@@ -77,37 +79,37 @@ export function initLevelAssets(levelConfig) {
         // Only create geometries if they don't exist yet for this level load
         switch (objType.type) {
             case 'rock_small':
-                if (!levelAssets.rockSmallGeo) levelAssets.rockSmallGeo = new THREE.IcosahedronGeometry(FALLBACK_GEOMETRIES.ROCK_SMALL.RADIUS, FALLBACK_GEOMETRIES.ROCK_SMALL.DETAIL); // Use Icosahedron for blocky look
+                if (!levelAssets.rockSmallGeo) levelAssets.rockSmallGeo = new THREE.IcosahedronGeometry(fallbackGeometriesConfig.ROCK_SMALL.RADIUS, fallbackGeometriesConfig.ROCK_SMALL.DETAIL); // Use Icosahedron for blocky look
                 break;
             case 'rock_large':
-                if (!levelAssets.rockLargeGeo) levelAssets.rockLargeGeo = new THREE.IcosahedronGeometry(FALLBACK_GEOMETRIES.ROCK_LARGE.RADIUS, FALLBACK_GEOMETRIES.ROCK_LARGE.DETAIL); // Use Icosahedron
+                if (!levelAssets.rockLargeGeo) levelAssets.rockLargeGeo = new THREE.IcosahedronGeometry(fallbackGeometriesConfig.ROCK_LARGE.RADIUS, fallbackGeometriesConfig.ROCK_LARGE.DETAIL); // Use Icosahedron
                 break;
             case 'log_fallen':
-                if (!levelAssets.logFallenGeo) levelAssets.logFallenGeo = new THREE.CylinderGeometry(FALLBACK_GEOMETRIES.LOG_FALLEN.RADIUS, FALLBACK_GEOMETRIES.LOG_FALLEN.RADIUS, FALLBACK_GEOMETRIES.LOG_FALLEN.HEIGHT, FALLBACK_GEOMETRIES.LOG_FALLEN.SEGMENTS);
+                if (!levelAssets.logFallenGeo) levelAssets.logFallenGeo = new THREE.CylinderGeometry(fallbackGeometriesConfig.LOG_FALLEN.RADIUS, fallbackGeometriesConfig.LOG_FALLEN.RADIUS, fallbackGeometriesConfig.LOG_FALLEN.HEIGHT, fallbackGeometriesConfig.LOG_FALLEN.SEGMENTS);
                 break;
             case 'cabin_simple':
-                if (!levelAssets.cabinGeo) levelAssets.cabinGeo = new THREE.BoxGeometry(FALLBACK_GEOMETRIES.CABIN.WIDTH, FALLBACK_GEOMETRIES.CABIN.HEIGHT, FALLBACK_GEOMETRIES.CABIN.DEPTH);
+                if (!levelAssets.cabinGeo) levelAssets.cabinGeo = new THREE.BoxGeometry(fallbackGeometriesConfig.CABIN.WIDTH, fallbackGeometriesConfig.CABIN.HEIGHT, fallbackGeometriesConfig.CABIN.DEPTH);
                 break;
             case 'rock_desert':
-                 if (!levelAssets.rockDesertGeo) levelAssets.rockDesertGeo = new THREE.DodecahedronGeometry(FALLBACK_GEOMETRIES.ROCK_DESERT.RADIUS, FALLBACK_GEOMETRIES.ROCK_DESERT.DETAIL);
+                 if (!levelAssets.rockDesertGeo) levelAssets.rockDesertGeo = new THREE.DodecahedronGeometry(fallbackGeometriesConfig.ROCK_DESERT.RADIUS, fallbackGeometriesConfig.ROCK_DESERT.DETAIL);
                  break;
             case 'cactus_barrel':
-                 if (!levelAssets.cactusBarrelGeo) levelAssets.cactusBarrelGeo = new THREE.CylinderGeometry(FALLBACK_GEOMETRIES.CACTUS_BARREL.RAD_BOT, FALLBACK_GEOMETRIES.CACTUS_BARREL.RAD_TOP, FALLBACK_GEOMETRIES.CACTUS_BARREL.HEIGHT, FALLBACK_GEOMETRIES.CACTUS_BARREL.SEGMENTS);
+                 if (!levelAssets.cactusBarrelGeo) levelAssets.cactusBarrelGeo = new THREE.CylinderGeometry(fallbackGeometriesConfig.CACTUS_BARREL.RAD_BOT, fallbackGeometriesConfig.CACTUS_BARREL.RAD_TOP, fallbackGeometriesConfig.CACTUS_BARREL.HEIGHT, fallbackGeometriesConfig.CACTUS_BARREL.SEGMENTS);
                  break;
             case 'saloon':
-                 if (!levelAssets.saloonGeo) levelAssets.saloonGeo = new THREE.BoxGeometry(FALLBACK_GEOMETRIES.SALOON.WIDTH, FALLBACK_GEOMETRIES.SALOON.HEIGHT, FALLBACK_GEOMETRIES.SALOON.DEPTH);
+                 if (!levelAssets.saloonGeo) levelAssets.saloonGeo = new THREE.BoxGeometry(fallbackGeometriesConfig.SALOON.WIDTH, fallbackGeometriesConfig.SALOON.HEIGHT, fallbackGeometriesConfig.SALOON.DEPTH);
                  break;
             case 'skull':
-                 if (!levelAssets.skullGeo) levelAssets.skullGeo = new THREE.IcosahedronGeometry(FALLBACK_GEOMETRIES.SKULL.RADIUS, FALLBACK_GEOMETRIES.SKULL.DETAIL);
+                 if (!levelAssets.skullGeo) levelAssets.skullGeo = new THREE.IcosahedronGeometry(fallbackGeometriesConfig.SKULL.RADIUS, fallbackGeometriesConfig.SKULL.DETAIL);
                  break;
             case 'dried_bush':
-                 if (!levelAssets.driedBushGeo) levelAssets.driedBushGeo = new THREE.IcosahedronGeometry(FALLBACK_GEOMETRIES.DRIED_BUSH.RADIUS, FALLBACK_GEOMETRIES.DRIED_BUSH.DETAIL);
+                 if (!levelAssets.driedBushGeo) levelAssets.driedBushGeo = new THREE.IcosahedronGeometry(fallbackGeometriesConfig.DRIED_BUSH.RADIUS, fallbackGeometriesConfig.DRIED_BUSH.DETAIL);
                  break;
             case 'wagon_wheel':
-                 if (!levelAssets.wagonWheelGeo) levelAssets.wagonWheelGeo = new THREE.TorusGeometry(FALLBACK_GEOMETRIES.WAGON_WHEEL.RADIUS, FALLBACK_GEOMETRIES.WAGON_WHEEL.TUBE, FALLBACK_GEOMETRIES.WAGON_WHEEL.RAD_SEG, FALLBACK_GEOMETRIES.WAGON_WHEEL.TUB_SEG);
+                 if (!levelAssets.wagonWheelGeo) levelAssets.wagonWheelGeo = new THREE.TorusGeometry(fallbackGeometriesConfig.WAGON_WHEEL.RADIUS, fallbackGeometriesConfig.WAGON_WHEEL.TUBE, fallbackGeometriesConfig.WAGON_WHEEL.RAD_SEG, fallbackGeometriesConfig.WAGON_WHEEL.TUB_SEG);
                  break;
             case 'tumbleweed':
-                 if (!levelAssets.tumbleweedGeo) levelAssets.tumbleweedGeo = new THREE.IcosahedronGeometry(FALLBACK_GEOMETRIES.TUMBLEWEED.RADIUS, FALLBACK_GEOMETRIES.TUMBLEWEED.DETAIL);
+                 if (!levelAssets.tumbleweedGeo) levelAssets.tumbleweedGeo = new THREE.IcosahedronGeometry(fallbackGeometriesConfig.TUMBLEWEED.RADIUS, fallbackGeometriesConfig.TUMBLEWEED.DETAIL);
                  break;
             // Geometries for models created dynamically in factory are not stored here
             case 'tree_pine':
@@ -120,9 +122,9 @@ export function initLevelAssets(levelConfig) {
     });
 
     // --- Tree Materials (Use constants if needed by level) ---
-    if (objectTypes.some(t => t.type === MODELS.TREE_PINE.OBJECT_TYPE)) {
-        levelAssets.treeFoliageMaterial = new THREE.MeshStandardMaterial({ color: MODELS.TREE_PINE.FALLBACK_FOLIAGE_COLOR, roughness: MODELS.TREE_PINE.FALLBACK_FOLIAGE_ROUGHNESS });
-        levelAssets.treeTrunkMaterial = new THREE.MeshStandardMaterial({ color: MODELS.TREE_PINE.FALLBACK_TRUNK_COLOR, roughness: MODELS.TREE_PINE.FALLBACK_TRUNK_ROUGHNESS });
+    if (objectTypes.some(t => t.type === modelsConfig.TREE_PINE.OBJECT_TYPE)) {
+        levelAssets.treeFoliageMaterial = new THREE.MeshStandardMaterial({ color: modelsConfig.TREE_PINE.FALLBACK_FOLIAGE_COLOR, roughness: modelsConfig.TREE_PINE.FALLBACK_FOLIAGE_ROUGHNESS });
+        levelAssets.treeTrunkMaterial = new THREE.MeshStandardMaterial({ color: modelsConfig.TREE_PINE.FALLBACK_TRUNK_COLOR, roughness: modelsConfig.TREE_PINE.FALLBACK_TRUNK_ROUGHNESS });
     }
 
     logger.info("Level assets initialized:", Object.keys(levelAssets));
