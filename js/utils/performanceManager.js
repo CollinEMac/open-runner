@@ -1,6 +1,6 @@
 // js/utils/performanceManager.js
 
-import { createLogger } from './logger.js';
+import { createLogger } from './logger.js'; // Path remains correct
 
 const logger = createLogger('PerformanceManager');
 
@@ -74,6 +74,8 @@ class PerformanceManager {
         this.adaptiveQualityCooldown = 5000; // ms between adaptive quality changes
         this.lastQualityChange = 0;
         this.onSettingsChanged = null; // Callback for when settings change
+        this._resizeListenerAdded = false; // Flag to track if resize listener is added
+        this._resizeTimeout = null; // For debouncing resize events
     }
 
     /**
@@ -98,9 +100,13 @@ class PerformanceManager {
      * Detect device capabilities and set appropriate quality preset
      */
     detectDeviceCapabilities() {
-        // Check if running on mobile - only use user agent and touch capability
-        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
-                         ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (navigator.msMaxTouchPoints > 0);
+        // Import the isMobileDevice function from deviceUtils
+        // We're using a more direct approach here to avoid circular dependencies
+        const mobileRegex = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i;
+        const isMobileByUserAgent = mobileRegex.test(navigator.userAgent);
+        const hasTouchScreen = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (navigator.msMaxTouchPoints > 0);
+        const isMobileByScreenSize = window.matchMedia && window.matchMedia('(max-width: 768px)').matches;
+        const isMobile = isMobileByUserAgent || (isMobileByScreenSize && hasTouchScreen);
 
         // Check GPU capabilities via WebGL
         const canvas = document.createElement('canvas');
@@ -115,26 +121,60 @@ class PerformanceManager {
         // Get WebGL info
         const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
         const renderer = debugInfo ? gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) : '';
+        const vendor = debugInfo ? gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL) : '';
 
-        logger.debug(`Detected renderer: ${renderer}`);
+        logger.debug(`Detected renderer: ${renderer}, vendor: ${vendor}`);
 
-        // Determine quality based on device and renderer
+        // Check for WebGL 2 support
+        const hasWebGL2 = !!window.WebGL2RenderingContext && !!canvas.getContext('webgl2');
+
+        // Check memory (if available)
+        let deviceMemory = navigator.deviceMemory || 4; // Default to 4GB if not available
+
+        // Check for high-end mobile GPUs
+        const isHighEndMobile = renderer.includes('Apple') ||
+                               renderer.includes('Mali-G7') ||
+                               renderer.includes('Mali-G8') ||
+                               renderer.includes('Adreno 6') ||
+                               renderer.includes('Adreno 7');
+
+        // Check for high-end desktop GPUs
+        const isHighEndDesktop = renderer.includes('NVIDIA RTX') ||
+                                renderer.includes('AMD Radeon RX') ||
+                                renderer.includes('Radeon Pro');
+
+        // Check for mid-range desktop GPUs
+        const isMidRangeDesktop = renderer.includes('NVIDIA GTX') ||
+                                 renderer.includes('AMD Radeon') ||
+                                 renderer.includes('Intel Iris');
+
+        // Determine quality based on all factors
         if (isMobile) {
-            // Mobile devices
-            if (renderer.includes('Apple') || renderer.includes('Mali-G') || renderer.includes('Adreno 6') || renderer.includes('Adreno 7')) {
+            if (isHighEndMobile && hasWebGL2 && deviceMemory >= 4) {
                 this.setQuality(QualityPresets.MEDIUM);
+                logger.debug('Setting MEDIUM quality for high-end mobile device');
             } else {
                 this.setQuality(QualityPresets.LOW);
+                logger.debug('Setting LOW quality for standard mobile device');
             }
         } else {
             // Desktop devices
-            if (renderer.includes('NVIDIA') || renderer.includes('AMD') || renderer.includes('Radeon')) {
+            if (isHighEndDesktop && hasWebGL2 && deviceMemory >= 8) {
                 this.setQuality(QualityPresets.HIGH);
-            } else if (renderer.includes('Intel')) {
+                logger.debug('Setting HIGH quality for high-end desktop');
+            } else if (isMidRangeDesktop && hasWebGL2 && deviceMemory >= 4) {
                 this.setQuality(QualityPresets.MEDIUM);
+                logger.debug('Setting MEDIUM quality for mid-range desktop');
             } else {
-                this.setQuality(QualityPresets.MEDIUM);
+                this.setQuality(QualityPresets.LOW);
+                logger.debug('Setting LOW quality for standard desktop');
             }
+        }
+
+        // Add a listener for window resize to potentially adjust quality
+        if (!this._resizeListenerAdded) {
+            window.addEventListener('resize', this._handleResize.bind(this));
+            this._resizeListenerAdded = true;
         }
     }
 
@@ -302,6 +342,38 @@ class PerformanceManager {
      */
     setOnSettingsChanged(callback) {
         this.onSettingsChanged = callback;
+    }
+
+    /**
+     * Handle window resize events to potentially adjust quality settings
+     * Uses debouncing to prevent excessive quality changes during resize
+     * @private
+     */
+    _handleResize() {
+        // Clear any existing timeout
+        if (this._resizeTimeout) {
+            clearTimeout(this._resizeTimeout);
+        }
+
+        // Set a new timeout to debounce the resize event
+        this._resizeTimeout = setTimeout(() => {
+            logger.debug('Window resized, re-detecting device capabilities');
+
+            // Only re-detect if we're using AUTO quality or if the window size changed significantly
+            if (this.currentQuality === QualityPresets.AUTO) {
+                this.detectDeviceCapabilities();
+            } else {
+                // Check if we've switched between mobile and desktop view
+                const isMobileView = window.matchMedia && window.matchMedia('(max-width: 768px)').matches;
+                const isMobileQuality = this.currentQuality === QualityPresets.LOW;
+
+                // If there's a mismatch between view and quality, re-detect
+                if ((isMobileView && !isMobileQuality) || (!isMobileView && isMobileQuality)) {
+                    logger.debug('Device view mode changed, re-detecting capabilities');
+                    this.detectDeviceCapabilities();
+                }
+            }
+        }, 500); // Wait 500ms after resize stops before re-detecting
     }
 }
 

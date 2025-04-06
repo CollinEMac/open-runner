@@ -1,6 +1,6 @@
 // js/utils/mathUtils.js
 
-import * as THREE from 'three';
+import * as THREE from 'three'; // Re-enabled THREE import
 
 /**
  * Utility functions for common mathematical operations
@@ -95,27 +95,27 @@ export function createPositionDrift(options = {}) {
     const config = {
         amplitude: options.amplitude || new THREE.Vector3(1, 1, 1),
         period: options.period || new THREE.Vector3(10, 10, 10),
-        center: options.center || new THREE.Vector3(),
+        center: options.center || new THREE.Vector3(0, 0, 0),
         smoothingFactor: options.smoothingFactor || 0.95
     };
-    
+
     const originalPosition = config.center.clone();
     let elapsedTime = 0;
-    const targetPosition = new THREE.Vector3();
-    
+    const targetPosition = config.center.clone();
+    const currentPosition = config.center.clone();
+
     return (deltaTime) => {
         elapsedTime += deltaTime;
-        
+
         // Calculate the target position with sinusoidal drift
-        targetPosition.copy(originalPosition).add(
-            new THREE.Vector3(
-                Math.sin(elapsedTime * (Math.PI * 2) / config.period.x) * config.amplitude.x,
-                Math.sin(elapsedTime * (Math.PI * 2) / config.period.y) * config.amplitude.y,
-                Math.sin(elapsedTime * (Math.PI * 2) / config.period.z) * config.amplitude.z
-            )
-        );
-        
-        return targetPosition;
+        targetPosition.x = originalPosition.x + Math.sin(elapsedTime * (Math.PI * 2) / config.period.x) * config.amplitude.x;
+        targetPosition.y = originalPosition.y + Math.sin(elapsedTime * (Math.PI * 2) / config.period.y) * config.amplitude.y;
+        targetPosition.z = originalPosition.z + Math.sin(elapsedTime * (Math.PI * 2) / config.period.z) * config.amplitude.z;
+
+        // Apply smoothing
+        currentPosition.lerp(targetPosition, 1 - config.smoothingFactor);
+
+        return currentPosition;
     };
 }
 
@@ -147,22 +147,28 @@ export function slerpQuaternions(qa, qb, t) {
 }
 
 /**
- * Calculates the distance between two Vector3 points
- * @param {THREE.Vector3} a - First point
- * @param {THREE.Vector3} b - Second point
+ * Calculates the distance between two points {x, y?, z?}
+ * @param {{x: number, y?: number, z?: number}} a - First point
+ * @param {{x: number, y?: number, z?: number}} b - Second point
  * @returns {number} Distance between points
  */
 export function distance(a, b) {
-    return a.distanceTo(b);
+    const dx = a.x - b.x;
+    const dy = (a.y || 0) - (b.y || 0);
+    const dz = (a.z || 0) - (b.z || 0);
+    return Math.sqrt(dx * dx + dy * dy + dz * dz);
 }
 
 /**
  * Calculates the squared distance between two Vector3 points
  * (More efficient than distance when only comparing distances)
- * @param {THREE.Vector3} a - First point
- * @param {THREE.Vector3} b - Second point
+ * @param {{x: number, y?: number, z?: number}} a - First point
+ * @param {{x: number, y?: number, z?: number}} b - Second point
  * @returns {number} Squared distance between points
  */
 export function distanceSquared(a, b) {
-    return a.distanceToSquared(b);
+    const dx = a.x - b.x;
+    const dy = (a.y || 0) - (b.y || 0);
+    const dz = (a.z || 0) - (b.z || 0);
+    return dx * dx + dy * dy + dz * dz;
 }

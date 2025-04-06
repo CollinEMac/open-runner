@@ -1,6 +1,6 @@
 // js/utils/deviceUtils.js
 
-import { createLogger } from './logger.js';
+import { createLogger } from './logger.js'; // Path remains correct
 
 const logger = createLogger('DeviceUtils');
 
@@ -30,12 +30,6 @@ export function isMobileDevice() {
     const result = isMobileByUserAgent || (isMobileByScreenSize && hasTouchScreen);
 
     // Add more detailed logging
-    console.log(`DEVICE DETECTION: isMobile=${result}`);
-    console.log(`- User Agent: ${navigator.userAgent}`);
-    console.log(`- Is Mobile by User Agent: ${isMobileByUserAgent}`);
-    console.log(`- Has Touch Screen: ${hasTouchScreen}`);
-    console.log(`- Is Mobile by Screen Size: ${isMobileByScreenSize}`);
-    console.log(`- Screen Width: ${window.innerWidth}px`);
 
     logger.debug(`Device detection: isMobile=${result} (userAgent=${isMobileByUserAgent}, touchScreen=${hasTouchScreen}, screenSize=${isMobileByScreenSize})`);
 
@@ -62,15 +56,31 @@ export function setDeviceClass() {
 }
 
 // Add a resize listener to update device class when window size changes
-window.addEventListener('resize', () => {
-    logger.debug('Window resized, updating device class');
-    setDeviceClass();
+// Use a flag to ensure we only add the listener once
+let resizeListenerAdded = false;
 
-    // If we're in a game state that should show mobile controls, update them
-    if (document.body.classList.contains('show-mobile-controls')) {
-        updateMobileControlsVisibility();
-    }
-});
+/**
+ * Sets up the resize event listener if it hasn't been added yet
+ */
+export function setupResizeListener() {
+    if (resizeListenerAdded) return;
+
+    window.addEventListener('resize', () => {
+        logger.debug('Window resized, updating device class');
+        setDeviceClass();
+
+        // If we're in a game state that should show mobile controls, update them
+        if (document.body.classList.contains('show-mobile-controls')) {
+            updateMobileControlsVisibility();
+        }
+    });
+
+    resizeListenerAdded = true;
+    logger.debug('Resize listener added');
+}
+
+// Set up the resize listener when this module is imported
+setupResizeListener();
 
 /**
  * Updates the mobile controls visibility based on device type
@@ -88,34 +98,23 @@ export function updateMobileControlsVisibility(forceShow = false, forceHide = fa
         // Force hide mobile controls
         document.body.classList.remove('show-mobile-controls');
         logger.debug('Mobile controls forcibly hidden');
-        console.log('MOBILE CONTROLS: Forcibly hidden');
     } else if (forceShow) {
         // Force show mobile controls
         document.body.classList.add('show-mobile-controls');
         logger.debug('Mobile controls forcibly shown');
-        console.log('MOBILE CONTROLS: Forcibly shown');
     } else {
         // Normal behavior - only show on mobile
         if (isMobileDevice()) {
             document.body.classList.add('show-mobile-controls');
             logger.debug('Mobile controls enabled for mobile device');
-            console.log('MOBILE CONTROLS: Enabled for mobile device');
         } else {
             document.body.classList.remove('show-mobile-controls');
             logger.debug('Mobile controls disabled for desktop device');
-            console.log('MOBILE CONTROLS: Disabled for desktop device');
         }
     }
 
     // Debug the current state
-    if (mobileControls) {
-        setTimeout(() => {
-            const computedStyle = window.getComputedStyle(mobileControls);
-            console.log('MOBILE CONTROLS STATE:');
-            console.log(`- Display: ${computedStyle.display}`);
-            console.log(`- Opacity: ${computedStyle.opacity}`);
-            console.log(`- Visibility: ${computedStyle.visibility}`);
-            console.log(`- Has 'show-mobile-controls' class: ${document.body.classList.contains('show-mobile-controls')}`);
-        }, 100); // Small delay to let styles apply
-    }
+    // if (mobileControls) { // Removed debug block
+    //     setTimeout(() => {
+    // }
 }

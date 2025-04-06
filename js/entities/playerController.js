@@ -1,0 +1,145 @@
+// js/entities/playerController.js
+import * as THREE from 'three';
+import { createLogger } from '../utils/logger.js'; // Import logger
+// Import specific constants
+import {
+    PLAYER_SPEED_INCREASE_RATE, PLAYER_KEY_TURN_SPEED, PLAYER_TILT_FACTOR, PLAYER_TILT_SMOOTHING,
+    PLAYER_ANIMATION_BASE_SPEED, PLAYER_MAX_ANIMATION_SPEED_FACTOR,
+    PLAYER_RAYCAST_ORIGIN_OFFSET, PLAYER_RAYCAST_STRIDE_OFFSET, PLAYER_HEIGHT_OFFSET,
+    TURN_SOUND_THRESHOLD // New constant
+} from '../config/config.js'; // Moved to config
+import * as AudioManager from '../managers/audioManager.js'; // Moved to managers
+import { animatePlayerCharacter } from './playerCharacter.js'; // Stays in entities
+import { keyLeftPressed, keyRightPressed, mouseLeftPressed, mouseRightPressed, touchLeftPressed, touchRightPressed } from '../input/controlsSetup.js'; // Moved to input
+
+const logger = createLogger('PlayerController'); // Instantiate logger
+
+// Helper vectors (consider making these local if not needed elsewhere)
+const forwardVector = new THREE.Vector3(0, 0, -1);
+const playerDirection = new THREE.Vector3();
+const playerQuaternion = new THREE.Quaternion();
+const downVector = new THREE.Vector3(0, -1, 0); // For terrain raycasting
+// Reusable vectors for raycasting origins
+const _rayOriginFront = new THREE.Vector3();
+const _rayOriginBack = new THREE.Vector3();
+
+// Raycaster instance (passed in for efficiency)
+let _raycaster;
+
+/**
+ * Initializes the player controller with necessary dependencies.
+ * @param {THREE.Raycaster} raycasterInstance - The shared raycaster instance.
+ */
+export function initPlayerController(raycasterInstance) {
+    _raycaster = raycasterInstance;
+}
+
+/**
+ * Updates the player's state, including position, rotation, animation, and terrain following.
+ * @param {object} playerObj - The player object containing model, modelParts, currentSpeed.
+ * @param {number} deltaTime - Time elapsed since the last frame.
+ * @param {number} elapsedTime - Total time elapsed.
+ * @param {ChunkManager} chunkManager - For terrain height checks.
+ * @param {function} updateCameraFollowFunc - Function to update camera position based on player.
+ *                                          Pass null during camera transitions.
+ */
+export function updatePlayer(playerObj, deltaTime, animationTime, chunkManager, updateCameraFollowFunc) {
+    if (!playerObj || !playerObj.model || !_raycaster) {
+        logger.warn("Player object or raycaster not properly initialized for updatePlayer.");
+        return;
+    }
+
+    const playerModel = playerObj.model; // Convenience reference to the THREE.Group
+    const playerParts = playerObj.modelParts; // Convenience reference to animatable parts
+
+    // --- Update Speed (Uncapped) ---
+    playerObj.currentSpeed += PLAYER_SPEED_INCREASE_RATE * deltaTime; // Use imported constant
+
+    // 1. Calculate Rotation Deltas based on combined keyboard, mouse, and touch input
+    let rotationInput = 0; // -1 for right, 0 for none, 1 for left
+    if (keyLeftPressed || mouseLeftPressed || touchLeftPressed) {
+        rotationInput += 1;
+    }
+
+    if (keyRightPressed || mouseRightPressed || touchRightPressed) {
+        rotationInput -= 1;
+    }
+
+    // Calculate total rotation applied this frame
+    const totalRotationDelta = rotationInput * PLAYER_KEY_TURN_SPEED * deltaTime; // Use imported constant
+
+    // Apply total rotation
+    if (Math.abs(totalRotationDelta) > TURN_SOUND_THRESHOLD) { // Use imported constant
+        playerModel.rotation.y += totalRotationDelta;
+        AudioManager.playTurnSound();
+    } else {
+        playerModel.rotation.y += totalRotationDelta; // Apply small adjustments without sound
+    }
+
+    // 2. Handle Tilting (Roll) based on TOTAL rotation speed
+    const totalRotationRate = (deltaTime > 0) ? totalRotationDelta / deltaTime : 0;
+    const targetTilt = -totalRotationRate * PLAYER_TILT_FACTOR; // Use imported constant
+    const tiltSmoothingFactor = 1.0 - Math.pow(PLAYER_TILT_SMOOTHING, deltaTime); // Use imported constant
+    playerModel.rotation.z = THREE.MathUtils.lerp(playerModel.rotation.z, targetTilt, tiltSmoothingFactor);
+
+    // 3. Animate Limbs
+    // Note: Config.PLAYER_SPEED is not directly available via named imports, assuming it's accessible if needed elsewhere or refactor if required.
+    // For now, assuming playerObj.currentSpeed increase rate implies base speed is handled.
+    const cappedSpeedFactor = Math.min(playerObj.currentSpeed / 15.0, PLAYER_MAX_ANIMATION_SPEED_FACTOR); // Use 15.0 as placeholder for base speed if Config.PLAYER_SPEED isn't imported
+    const dynamicAnimSpeed = PLAYER_ANIMATION_BASE_SPEED * cappedSpeedFactor; // Use imported constants
+    animatePlayerCharacter(playerParts, animationTime, dynamicAnimSpeed);
+
+    // 4. Move Forward (in the direction the player is facing)
+    const moveDistance = playerObj.currentSpeed * deltaTime;
+    playerModel.getWorldQuaternion(playerQuaternion);
+    playerDirection.copy(forwardVector).applyQuaternion(playerQuaternion).normalize();
+    playerModel.position.addScaledVector(playerDirection, moveDistance);
+
+    // 5. Terrain Following (using two rays)
+    if (chunkManager) {
+        const currentPosition = playerModel.position;
+        const nearbyMeshes = chunkManager.getTerrainMeshesNear(currentPosition);
+        let highestGroundY = -Infinity;
+        let groundFound = false;
+
+        // Ray 1: Front (Use reusable vector)
+        _rayOriginFront.set(
+            currentPosition.x,
+            currentPosition.y + PLAYER_RAYCAST_ORIGIN_OFFSET, // Use imported constant
+            currentPosition.z - PLAYER_RAYCAST_STRIDE_OFFSET // Use imported constant
+        );
+        _raycaster.set(_rayOriginFront, downVector);
+        const intersectsFront = _raycaster.intersectObjects(nearbyMeshes);
+        if (intersectsFront.length > 0) {
+            highestGroundY = Math.max(highestGroundY, intersectsFront[0].point.y);
+            groundFound = true;
+        }
+
+        // Ray 2: Back (Use reusable vector)
+        _rayOriginBack.set(
+            currentPosition.x,
+            currentPosition.y + PLAYER_RAYCAST_ORIGIN_OFFSET, // Use imported constant
+            currentPosition.z + PLAYER_RAYCAST_STRIDE_OFFSET // Use imported constant
+        );
+        _raycaster.set(_rayOriginBack, downVector);
+        const intersectsBack = _raycaster.intersectObjects(nearbyMeshes);
+        if (intersectsBack.length > 0) {
+            highestGroundY = Math.max(highestGroundY, intersectsBack[0].point.y);
+            groundFound = true;
+        }
+
+        // Set player Y position based on highest ground found
+        if (groundFound) {
+            playerModel.position.y = highestGroundY + PLAYER_HEIGHT_OFFSET; // Use imported constant
+        } else {
+            // Optional: Implement falling physics or handle edge cases
+        }
+    }
+
+    // 6. Camera Following (Call the passed-in function if provided)
+    // During camera transitions, updateCameraFollowFunc will be null intentionally
+    if (updateCameraFollowFunc) {
+        updateCameraFollowFunc(playerObj, deltaTime);
+    }
+    // No warning needed for null camera follow function during transitions
+}

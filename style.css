@@ -79,7 +79,6 @@ html, body {
     left: 0;
     width: 100%;
     height: 100%;
-    display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
@@ -585,4 +584,131 @@ html, body {
     font-size: 0.9em;
     color: var(--text-muted);
     font-family: var(--body-font);
+}
+
+/* --- Styles moved from uiManager.js --- */
+.high-score {
+    position: fixed;
+    top: 15px;
+    right: 15px;
+    color: gold;
+    font-size: 20px; /* Larger font */
+    font-weight: 700; /* Bolder font */
+    font-family: var(--body-font);
+    text-shadow: var(--text-shadow), 0 0 5px rgba(255, 215, 0, 0.5); /* Gold glow */
+    background-color: rgba(0, 0, 0, 0.7); /* Darker, more opaque background */
+    padding: 12px 18px; /* Increased padding */
+    border-radius: 10px; /* More rounded corners */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5); /* Stronger shadow */
+    border-right: 4px solid gold; /* Thicker border */
+    letter-spacing: 0.5px;
+    z-index: 10;
+    transition: transform var(--transition-fast), opacity 0.3s ease;
+}
+
+/* Animation for high score when it updates during gameplay */
+@keyframes highScorePulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
+
+.high-score-pulse {
+    animation: highScorePulse 0.5s ease-in-out;
+    text-shadow: var(--text-shadow), 0 0 15px rgba(255, 215, 0, 0.8); /* Enhanced gold glow */
+}
+
+.notification {
+    position: fixed;
+    top: 30px; /* Moved up even further from 40px */
+    right: 50px; /* Moved more to the right on desktop (was 40px) */
+    left: auto; /* Override left positioning */
+    margin: 0; /* Remove auto margins */
+    width: fit-content;
+    background: linear-gradient(135deg, rgba(40, 40, 40, 0.9), rgba(20, 20, 20, 0.9));
+    color: var(--text-light);
+    padding: 15px 25px;
+    border-radius: 12px;
+    font-size: 20px;
+    font-family: var(--body-font);
+    font-weight: 600;
+    z-index: 1000;
+    text-align: center;
+    box-shadow: var(--box-shadow);
+    backdrop-filter: blur(4px);
+    border-bottom: 3px solid var(--primary-color);
+    min-width: 300px;
+    max-width: 80%;
+    animation: fadeIn 0.3s ease-out;
+    transform: translateY(0); /* Ensure initial position is correct */
+}
+
+/* Center notification on mobile devices */
+@media (max-width: 768px), (pointer: coarse) {
+    .notification {
+        right: 0;
+        left: 0;
+        margin: 0 auto; /* Center horizontally */
+    }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.high-score-notification {
+    color: gold;
+    font-weight: bold;
+    border-bottom-color: gold;
+}
+
+/* Additional positioning for high score notification on desktop */
+@media (min-width: 769px) and (pointer: fine) {
+    .high-score-notification {
+        right: 50px; /* Position even more to the right on desktop */
+    }
+}
+
+.level-unlock-notification {
+    color: #7cfc00;
+    font-weight: bold;
+    border-bottom-color: #7cfc00;
+}
+
+.game-over-score, .game-over-high-score {
+    font-size: 28px;
+    margin: 15px 0;
+    font-family: var(--body-font);
+    font-weight: 600;
+    text-shadow: var(--text-shadow);
+    background-color: rgba(0, 0, 0, 0.3);
+    padding: 10px 20px;
+    border-radius: 8px;
+    display: inline-block;
+}
+
+.game-over-high-score {
+    color: gold;
+    border-left: 3px solid gold;
+}
+
+.game-over-score {
+    border-left: 3px solid var(--primary-color);
+}
+
+.game-over-instruction {
+    margin-top: 30px;
+    font-size: 20px;
+    opacity: 0.9;
+    font-family: var(--body-font);
+    color: var(--text-light);
+    text-shadow: var(--text-shadow);
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 0.7; }
+    50% { opacity: 1; }
+    100% { opacity: 0.7; }
 }
