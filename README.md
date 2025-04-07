@@ -1,7 +1,5 @@
 # Open Runner
 
-![Open Runner Game](data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏃</text></svg>)
-
 Open Runner is a 3D endless runner game built with Three.js. Race through procedurally generated terrain, collect coins, avoid obstacles, and see how far you can go!
 
 ## Features
@@ -36,7 +34,7 @@ Open Runner is a 3D endless runner game built with Three.js. Race through proced
 ### Controls
 
 - **Desktop**:
-  - **WASD** or **Arrow Keys**: Move/turn the player
+  - **AD** or **Arrow Keys**: Turn the player
   - **ESC**: Pause game
   - **R**: Restart after game over
   - **F**: Toggle FPS counter
