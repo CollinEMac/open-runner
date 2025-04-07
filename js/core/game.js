@@ -12,6 +12,7 @@ import { controlsConfig } from '../config/controls.js';
 import configManager, { getConfig } from '../config/config.js';
 import { playerConfig } from '../config/player.js'; // Needed for _loadLevel
 import { worldConfig } from '../config/world.js'; // Needed for startGame
+import { gameplayConfig } from '../config/gameplay.js'; // Needed for powerup effects
 import { resetInputStates, initInputStateManager } from '../input/controlsSetup.js'; // Needed for startGame and event handlers
 import { updateMobileControlsVisibility } from '../utils/deviceUtils.js'; // Needed for startGame and event handlers
 // Import managers needed for dependency object in _setupEventSubscriptions
@@ -172,9 +173,46 @@ class Game {
             // Removed score/timer getters/setters
         });
 
-        // Example event listeners for powerup effects (if needed here)
-        // eventBus.subscribe('applyPowerupEffect', ({ type, player }) => { ... });
-        // eventBus.subscribe('removePowerupEffect', ({ type, player }) => { ... });
+        // Event listeners for powerup effects
+        eventBus.subscribe('applyPowerupEffect', ({ type, player }) => {
+            if (type === gameplayConfig.POWERUP_TYPE_MAGNET && player && player.model) {
+                logger.info(`Applying ${type} powerup visual effect to player`);
+
+                // Create a new material for the magnet powerup effect
+                const magnetMaterial = new THREE.MeshStandardMaterial({
+                    color: gameplayConfig.MAGNET_EFFECT_COLOR,
+                    emissive: gameplayConfig.MAGNET_EFFECT_EMISSIVE,
+                    metalness: gameplayConfig.MAGNET_EFFECT_METALNESS,
+                    roughness: gameplayConfig.MAGNET_EFFECT_ROUGHNESS
+                });
+
+                // Apply the material to all meshes in the player model
+                player.model.traverse(child => {
+                    if (child instanceof THREE.Mesh) {
+                        // Store the original material if not already stored
+                        if (!child.userData.originalMaterial) {
+                            child.userData.originalMaterial = child.material;
+                        }
+                        child.material = magnetMaterial;
+                    }
+                });
+            }
+        });
+
+        eventBus.subscribe('removePowerupEffect', ({ type, player }) => {
+            if (type === gameplayConfig.POWERUP_TYPE_MAGNET && player && player.model) {
+                logger.info(`Removing ${type} powerup visual effect from player`);
+
+                // Restore original materials
+                player.model.traverse(child => {
+                    if (child instanceof THREE.Mesh && child.userData.originalMaterial) {
+                        child.material = child.userData.originalMaterial;
+                        // Clear the stored material reference
+                        delete child.userData.originalMaterial;
+                    }
+                });
+            }
+        });
     }
 
     /**
