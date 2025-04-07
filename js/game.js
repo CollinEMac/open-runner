@@ -510,7 +510,12 @@ class Game {
         this.cameraTransitionStartTime = this.clock.getElapsedTime();
         this.isCameraTransitioning = true;
 
-        // 7. Set to PLAYING state
+        // 7. start the game music
+        if (!this.audioManager.isMusicActive()) {
+            this.audioManager.playMusic();
+        }
+
+        // 8. Set to PLAYING state
         this.gameStateManager.setGameState(GameStates.PLAYING);
     }
 
