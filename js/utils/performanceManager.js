@@ -1,6 +1,6 @@
 // js/utils/performanceManager.js
 
-import { createLogger } from './logger.js'; // Path remains correct
+import { createLogger, LogLevel } from './logger.js'; // Import LogLevel as well
 
 const logger = createLogger('PerformanceManager');
 
@@ -123,7 +123,10 @@ class PerformanceManager {
         const renderer = debugInfo ? gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) : '';
         const vendor = debugInfo ? gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL) : '';
 
-        logger.debug(`Detected renderer: ${renderer}, vendor: ${vendor}`);
+        // Only log renderer info at ERROR level for debugging purposes
+        if (logger.minLevel <= LogLevel.ERROR) {
+            logger.error(`Detected renderer: ${renderer}, vendor: ${vendor}`);
+        }
 
         // Check for WebGL 2 support
         const hasWebGL2 = !!window.WebGL2RenderingContext && !!canvas.getContext('webgl2');
@@ -152,22 +155,17 @@ class PerformanceManager {
         if (isMobile) {
             if (isHighEndMobile && hasWebGL2 && deviceMemory >= 4) {
                 this.setQuality(QualityPresets.MEDIUM);
-                logger.debug('Setting MEDIUM quality for high-end mobile device');
             } else {
                 this.setQuality(QualityPresets.LOW);
-                logger.debug('Setting LOW quality for standard mobile device');
             }
         } else {
             // Desktop devices
             if (isHighEndDesktop && hasWebGL2 && deviceMemory >= 8) {
                 this.setQuality(QualityPresets.HIGH);
-                logger.debug('Setting HIGH quality for high-end desktop');
             } else if (isMidRangeDesktop && hasWebGL2 && deviceMemory >= 4) {
                 this.setQuality(QualityPresets.MEDIUM);
-                logger.debug('Setting MEDIUM quality for mid-range desktop');
             } else {
                 this.setQuality(QualityPresets.LOW);
-                logger.debug('Setting LOW quality for standard desktop');
             }
         }
 
@@ -260,7 +258,6 @@ class PerformanceManager {
 
         if (currentIndex > 0) {
             const newQuality = qualityLevels[currentIndex - 1];
-            logger.debug(`Decreasing quality from ${this.currentQuality} to ${newQuality} due to low FPS`);
             this.setQuality(newQuality);
         }
     }
@@ -274,7 +271,6 @@ class PerformanceManager {
 
         if (currentIndex < qualityLevels.length - 1) {
             const newQuality = qualityLevels[currentIndex + 1];
-            logger.debug(`Increasing quality from ${this.currentQuality} to ${newQuality} due to high FPS`);
             this.setQuality(newQuality);
         }
     }
@@ -291,8 +287,6 @@ class PerformanceManager {
 
         this.currentQuality = quality;
         this.settings = { ...qualitySettings[quality] };
-
-        logger.debug(`Quality set to ${quality}`, this.settings);
 
         // Notify listeners
         if (this.onSettingsChanged) {
@@ -333,7 +327,6 @@ class PerformanceManager {
      */
     setAdaptiveQuality(enabled) {
         this.adaptiveQualityEnabled = enabled;
-        logger.debug(`Adaptive quality ${enabled ? 'enabled' : 'disabled'}`);
     }
 
     /**
@@ -357,8 +350,6 @@ class PerformanceManager {
 
         // Set a new timeout to debounce the resize event
         this._resizeTimeout = setTimeout(() => {
-            logger.debug('Window resized, re-detecting device capabilities');
-
             // Only re-detect if we're using AUTO quality or if the window size changed significantly
             if (this.currentQuality === QualityPresets.AUTO) {
                 this.detectDeviceCapabilities();
@@ -369,7 +360,6 @@ class PerformanceManager {
 
                 // If there's a mismatch between view and quality, re-detect
                 if ((isMobileView && !isMobileQuality) || (!isMobileView && isMobileQuality)) {
-                    logger.debug('Device view mode changed, re-detecting capabilities');
                     this.detectDeviceCapabilities();
                 }
             }

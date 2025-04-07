@@ -45,7 +45,6 @@ export function initCollisionManager(spatialGridInstance, chunkManagerInstance) 
  */
 export function checkCollisions(player) {
     if (!player || !player.model) {
-        logger.warn('Player or player model is undefined in checkCollisions');
         return;
     }
     const playerPosition = player.model.position;
@@ -73,10 +72,8 @@ export function checkCollisions(player) {
 
             // Verify this is actually a coin by checking its geometry
             if (!mesh.geometry || !mesh.geometry.parameters || !mesh.geometry.parameters.radiusBottom) {
-                logger.warn(`[CollisionManager] Object marked as coin but has invalid geometry:`, mesh);
                 // Fix the object type if it's not actually a coin
                 if (mesh.geometry && mesh.geometry.type !== 'CylinderGeometry') {
-                    logger.warn(`[CollisionManager] Fixing incorrect objectType for non-coin object`);
                     // Try to determine the correct type based on the mesh
                     if (mesh.name && mesh.name.includes('magnet')) {
                         mesh.userData.objectType = 'magnet';
@@ -102,9 +99,7 @@ export function checkCollisions(player) {
                 // This must be larger than the minSafeDistanceSq
                 collisionThresholdSq = (playerCollisionRadius + coinCollisionRadius * gameplayConfig.COIN_COLLECTION_RADIUS_FACTOR) ** 2; // Use constant factor
 
-                // Debug logging to help diagnose collection issues
-                if (distanceSq < (playerCollisionRadius * 0.5) ** 2) {
-                }
+
 
                 // Force collect any coins that somehow got too close to the player
                 // This is a safety measure to prevent coins from getting stuck
@@ -141,17 +136,14 @@ export function checkCollisions(player) {
             // Verify this is actually a magnet by checking its structure
             // Magnets are typically groups with multiple child meshes
             if (!(mesh instanceof THREE.Group) && !mesh.name.includes('magnet')) {
-                logger.warn(`[CollisionManager] Object marked as magnet but doesn't appear to be one:`, mesh);
                 // If it's a cylinder, it's probably a coin with incorrect type
                 if (mesh.geometry && mesh.geometry.type === 'CylinderGeometry') {
-                    logger.warn(`[CollisionManager] Fixing incorrect objectType from magnet to coin`);
                     mesh.userData.objectType = 'coin';
                     continue; // Skip to next iteration so it's processed as a coin
                 }
             }
 
             if (!mesh.position) {
-                logger.warn('Mesh missing position:', mesh);
                 continue;
             }
             const dx = playerPosition.x - mesh.position.x;
@@ -253,11 +245,7 @@ export function checkCollisions(player) {
                      const approxWidth = enemyConfig.TORSO_WIDTH * enemyConfig.COLLISION_WIDTH_FACTOR;
                      const approxDepth = enemyConfig.TORSO_DEPTH * enemyConfig.COLLISION_DEPTH_FACTOR;
                      enemyRadius = (approxWidth + approxDepth) / 4; // Average estimate
-                } else {
-                     logger.warn(`Missing collision radius or dimensions/factors for enemy type: ${enemyType}`);
                 }
-            } else {
-                 logger.warn(`Missing model config for enemy type: ${enemyType}`);
             }
             const collisionThresholdSqEnemy = (playerCollisionRadius + enemyRadius) ** 2;
 

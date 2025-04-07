@@ -10,7 +10,7 @@ const logger = createLogger('EventBus'); // Instantiate logger
 class EventBus {
     constructor() {
         this.listeners = new Map();
-        this.debugMode = false; // Can be toggled for verbose logging
+        this.debugMode = false; // Disabled by default for better performance
     }
 
     /**
@@ -145,7 +145,10 @@ class EventBus {
             }
         });
 
-        this._debugLog(`Emitted ${eventName} to ${successCount}/${listenerCount} listeners`);
+        // Only log if there were errors or in debug mode
+        if (hasErrors || this.debugMode) {
+            this._debugLog(`Emitted ${eventName} to ${successCount}/${listenerCount} listeners`);
+        }
         return !hasErrors;
     }
 

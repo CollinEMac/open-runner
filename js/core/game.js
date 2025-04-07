@@ -288,7 +288,6 @@ class Game {
      * @returns {Promise<void>}
      */
     async startGame(levelId) {
-        logger.info(`[Game] startGame called for level: ${levelId}`); // Log invocation
         logger.info(`Starting level: ${levelId}`);
 
         resetInputStates();
@@ -342,42 +341,33 @@ class Game {
      * @private
      */
     async _loadLevel(levelId) {
-        logger.info(`[_loadLevel] Starting execution for level ID: ${levelId}`);
         try {
             this.gameStateManager.setGameState(GameStates.LOADING_LEVEL);
-            logger.info(`[_loadLevel] Loading level ${levelId}...`);
+            logger.info(`Loading level ${levelId}...`);
 
             const playerCurrentParent = this.player.model?.parent;
 
             // Unload previous level assets/state
-            logger.info("Unloading current level assets and state...");
             this.enemyManager.removeAllEnemies();
             this.chunkManager.clearAllChunks();
             this.atmosphericManager.clearElements();
             if (this.levelManager.getCurrentLevelId() && this.levelManager.getCurrentLevelId() !== levelId) {
                 this.levelManager.unloadCurrentLevel();
-            } else {
-                logger.info("Skipping asset disposal (first level or restarting same level).");
             }
 
             // Ensure config is loaded/set
             this.currentLevelConfig = this.levelManager.getCurrentConfig();
             if (!this.currentLevelConfig || this.levelManager.getCurrentLevelId() !== levelId) {
-                logger.info(`Loading new level config for ${levelId}...`);
                 const levelLoaded = await this.levelManager.loadLevel(levelId);
                 if (!levelLoaded) throw new Error(`Failed to load level config for ${levelId}.`);
                 this.currentLevelConfig = this.levelManager.getCurrentConfig();
             }
 
             // Initialize Assets, Scene, Player, Chunks
-            logger.info("Initializing new level assets...");
             await this.assetManager.initLevelAssets(this.currentLevelConfig);
             this.atmosphericManager.addElementsForLevel(levelId, this.gameplayScene);
-            logger.info("Updating scene appearance...");
             this._updateSceneAppearance(this.currentLevelConfig, this.gameplayScene);
             this.chunkManager.setLevelConfig(this.currentLevelConfig);
-
-            logger.info("Resetting player state...");
             if (this.player.model) {
                 if (playerCurrentParent && playerCurrentParent !== this.gameplayScene) {
                     playerCurrentParent.remove(this.player.model);
@@ -391,9 +381,8 @@ class Game {
                         this.gameplayScene.add(this.player.model);
                     }
                     this.player.model.visible = true;
-                    logger.debug(`Player model added to scene. Visibility: ${this.player.model.visible}`);
                 } else {
-                    logger.error("[_loadLevel] Cannot add player model, gameplayScene is null!");
+                    logger.error("Cannot add player model, gameplayScene is null!");
                 }
             } else {
                 logger.error("Player model is null when trying to reset for new level.");
@@ -407,8 +396,7 @@ class Game {
             if (this.powerupTimer) clearTimeout(this.powerupTimer);
             this.powerupTimer = null;
 
-            logger.debug("[_loadLevel] Step 8: Loading initial chunks...");
-            logger.info("Loading initial chunks for new level...");
+            // Load initial chunks
             await this.chunkManager.loadInitialChunks((loaded, total) => {
                  this.uiManager.updateLoadingProgress(loaded, total);
             });
@@ -417,10 +405,8 @@ class Game {
             this.chunkManager.lastCameraChunkX = initialPlayerChunkX;
             this.chunkManager.lastCameraChunkZ = initialPlayerChunkZ;
 
-            logger.info(`[_loadLevel] Level ${levelId} loaded successfully.`);
-
         } catch (error) {
-            logger.error(`[_loadLevel] CRITICAL ERROR during level load for ${levelId}:`, error);
+            logger.error(`CRITICAL ERROR during level load for ${levelId}:`, error);
             this.gameStateManager.setGameState(GameStates.TITLE);
             this.uiManager.displayError(new Error(`Failed to load level ${levelId}. Returning to title.`));
         }

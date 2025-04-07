@@ -52,7 +52,6 @@ export class SpatialGrid {
      */
     add(objectRef, cellKey = null) {
         if (!objectRef || !objectRef.position) {
-            logger.warn("[SpatialGrid] Attempted to add object without position.", objectRef);
             return;
         }
 
@@ -67,8 +66,6 @@ export class SpatialGrid {
             // Store the mapping from object ID to cell key
             if (objectRef.id) { // Ensure object has an ID
                  this.objectCellMap.set(objectRef.id, key);
-            } else {
-                 logger.warn("[SpatialGrid] Added object missing 'id' property, cannot track in objectCellMap.", objectRef);
             }
         }
         // Store the current cell key on the object's userData for efficient removal/update (optional, but kept for now)
@@ -96,7 +93,6 @@ export class SpatialGrid {
         }
 
         if (!key) {
-             logger.warn("[SpatialGrid] Cannot remove object - missing ID, userData key, or position.", objectRef);
              return;
         }
 
@@ -127,12 +123,10 @@ export class SpatialGrid {
      */
     update(objectRef) {
         if (!objectRef?.position) {
-             logger.warn("[SpatialGrid] Cannot update object - missing position.", objectRef);
              return;
         }
         if (!objectRef?.id) {
-             logger.warn("[SpatialGrid] Cannot update object - missing id.", objectRef);
-             // If it has position but no id/key, try adding it (will warn about missing id)
+             // If it has position but no id/key, try adding it
              this.add(objectRef);
              return;
         }

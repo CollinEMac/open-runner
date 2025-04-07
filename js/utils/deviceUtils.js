@@ -29,9 +29,11 @@ export function isMobileDevice() {
     // 3. Otherwise, it's desktop (even if it has touch or small screen alone)
     const result = isMobileByUserAgent || (isMobileByScreenSize && hasTouchScreen);
 
-    // Add more detailed logging
-
-    logger.debug(`Device detection: isMobile=${result} (userAgent=${isMobileByUserAgent}, touchScreen=${hasTouchScreen}, screenSize=${isMobileByScreenSize})`);
+    // Only log on first detection or when result changes
+    if (!window._lastMobileDetectionResult || window._lastMobileDetectionResult !== result) {
+        logger.debug(`Device detection: isMobile=${result}`);
+        window._lastMobileDetectionResult = result;
+    }
 
     return result;
 }
@@ -48,10 +50,8 @@ export function setDeviceClass() {
     // Add the appropriate device class
     if (isMobile) {
         document.body.classList.add('mobile-device');
-        logger.debug('Device class set to mobile');
     } else {
         document.body.classList.add('desktop-device');
-        logger.debug('Device class set to desktop');
     }
 }
 
@@ -66,7 +66,6 @@ export function setupResizeListener() {
     if (resizeListenerAdded) return;
 
     window.addEventListener('resize', () => {
-        logger.debug('Window resized, updating device class');
         setDeviceClass();
 
         // If we're in a game state that should show mobile controls, update them
@@ -76,7 +75,6 @@ export function setupResizeListener() {
     });
 
     resizeListenerAdded = true;
-    logger.debug('Resize listener added');
 }
 
 // Set up the resize listener when this module is imported
@@ -91,28 +89,18 @@ export function updateMobileControlsVisibility(forceShow = false, forceHide = fa
     // First ensure the device class is set
     setDeviceClass();
 
-    // Get reference to mobile controls for debugging
-    const mobileControls = document.getElementById('mobileControls');
-
     if (forceHide) {
         // Force hide mobile controls
         document.body.classList.remove('show-mobile-controls');
-        logger.debug('Mobile controls forcibly hidden');
     } else if (forceShow) {
         // Force show mobile controls
         document.body.classList.add('show-mobile-controls');
-        logger.debug('Mobile controls forcibly shown');
     } else {
         // Normal behavior - only show on mobile
         if (isMobileDevice()) {
             document.body.classList.add('show-mobile-controls');
-            logger.debug('Mobile controls enabled for mobile device');
         } else {
             document.body.classList.remove('show-mobile-controls');
-            logger.debug('Mobile controls disabled for desktop device');
         }
     }
-
-    // Debug the current state if needed
-    logger.debug(`Mobile controls visibility updated. Show class: ${document.body.classList.contains('show-mobile-controls')}`);
 }
