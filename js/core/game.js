@@ -248,6 +248,8 @@ class Game {
             updateFpsCounter(this.fpsCounter, performanceManager.getCurrentFps());
         }
 
+        // Update camera manager
+        logger.debug(`Updating camera manager with state: ${currentState}`);
         this.cameraManager.update(deltaTime, currentState, this.player);
 
         if (currentState === GameStates.PLAYING) {

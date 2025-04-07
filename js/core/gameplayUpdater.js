@@ -39,9 +39,21 @@ export function updateGameplay(dependencies, deltaTime, elapsedTime) {
 
     // Update player controller with camera follow function
     if (player.model) {
+        logger.debug("Passing camera follow function to player controller");
+        // Create a bound function reference to ensure proper 'this' context
+        const boundCameraFollow = cameraManager.updateCameraFollow.bind(cameraManager);
+
+        // Verify the bound function is valid
+        if (typeof boundCameraFollow === 'function') {
+            logger.debug("Camera follow function successfully bound");
+        } else {
+            logger.error("Failed to bind camera follow function");
+        }
+
         // Pass the camera manager's updateCameraFollow method as the camera update function
-        playerController.updatePlayer(player, deltaTime, playerAnimationTime, chunkManager,
-            cameraManager.updateCameraFollow.bind(cameraManager));
+        playerController.updatePlayer(player, deltaTime, playerAnimationTime, chunkManager, boundCameraFollow);
+    } else {
+        logger.warn("Cannot update player: player model is missing");
     }
 
     // Update managers that depend on player position

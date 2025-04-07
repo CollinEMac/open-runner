@@ -146,7 +146,11 @@ class CameraManager {
 
 
     updateCameraFollow(playerObj, deltaTime) {
-        if (!this.camera || !playerObj || !playerObj.model) return;
+        logger.debug("updateCameraFollow called with deltaTime: " + deltaTime);
+        if (!this.camera || !playerObj || !playerObj.model) {
+            logger.warn("Camera follow skipped: missing camera, player, or player model");
+            return;
+        }
 
         const { position: targetCameraPosition, lookAt: lookAtPosition } = this._calculateGameplayCameraTarget(playerObj.model);
 

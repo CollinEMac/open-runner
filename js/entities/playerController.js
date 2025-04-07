@@ -139,7 +139,13 @@ export function updatePlayer(playerObj, deltaTime, animationTime, chunkManager, 
     // 6. Camera Following (Call the passed-in function if provided)
     // During camera transitions, updateCameraFollowFunc will be null intentionally
     if (updateCameraFollowFunc) {
-        updateCameraFollowFunc(playerObj, deltaTime);
+        logger.debug("Calling updateCameraFollowFunc from playerController");
+        try {
+            updateCameraFollowFunc(playerObj, deltaTime);
+        } catch (error) {
+            logger.error("Error calling camera follow function:", error);
+        }
+    } else {
+        logger.debug("No camera follow function provided to playerController");
     }
-    // No warning needed for null camera follow function during transitions
 }
