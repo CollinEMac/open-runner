@@ -152,67 +152,56 @@ class CameraManager {
             return;
         }
 
+        // Calculate the target position based on the player's position
         const { position: targetCameraPosition, lookAt: lookAtPosition } = this._calculateGameplayCameraTarget(playerObj.model);
 
-        // Special handling for the first few frames after transition
-        // If we have a last gameplay position from the transition, use it as a starting point
-        if (this._lastGameplayPosition && this._lastGameplayLookAt) {
-            if (deltaTime === 0 || (this._justCompletedTransition && this._frameCountAfterTransition < 2)) {
-                // For the very first frame or the first couple frames after transition,
-                // use the exact last position to prevent any initial jerking
-                logger.debug("Using last gameplay position from transition");
-                this.camera.position.copy(this._lastGameplayPosition);
-                this.camera.lookAt(this._lastGameplayLookAt);
+        // Force camera to follow player directly after transition
+        if (this._justCompletedTransition) {
+            // For the first frame after transition, use a direct follow
+            if (this._frameCountAfterTransition === 0) {
+                logger.debug("First frame after transition - direct camera positioning");
+                // Position the camera directly behind the player
+                this.camera.position.copy(targetCameraPosition);
+                this.camera.lookAt(lookAtPosition);
 
-                // Don't clear the stored positions yet - keep using them for a few frames
-                // to ensure smooth transition
+                // Store these positions for the next frame
+                this._lastGameplayPosition = targetCameraPosition.clone();
+                this._lastGameplayLookAt = lookAtPosition.clone();
+
+                // Increment frame counter
+                this._frameCountAfterTransition++;
                 return;
             }
-        }
 
-        // Apply extra smoothing for a few frames after transition
-        let smoothFactor;
-        if (this._justCompletedTransition && this._frameCountAfterTransition < this._smoothingFramesAfterTransition) {
-            // Use a much smaller smoothing factor for the first few frames after transition
-            // This creates a more gradual transition to normal camera following
-            const transitionProgress = this._frameCountAfterTransition / this._smoothingFramesAfterTransition;
+            // For subsequent frames, gradually blend to normal camera following
+            const progress = Math.min(this._frameCountAfterTransition / this._smoothingFramesAfterTransition, 1.0);
+            const easedProgress = this._easeInOutCubic(progress);
+
+            // Start with a very small smoothing factor and gradually increase
             const normalSmoothFactor = 1.0 - Math.pow(cameraConfig.SMOOTHING_FACTOR, deltaTime);
+            const smoothFactor = normalSmoothFactor * easedProgress;
 
-            // Calculate a smoothing factor that gradually increases from very small to normal
-            // Use a cubic easing function for smoother acceleration
-            const easedProgress = this._easeInOutCubic(transitionProgress);
-            smoothFactor = this._initialSmoothingFactor + (normalSmoothFactor - this._initialSmoothingFactor) * easedProgress;
+            // Apply smoothing
+            this.camera.position.lerp(targetCameraPosition, smoothFactor);
+            this.camera.lookAt(lookAtPosition);
 
-            // For the first few frames, use an even smaller factor to prevent any sudden movements
-            if (this._frameCountAfterTransition < 3) {
-                smoothFactor *= 0.3;
-            }
-
-            // Increment the frame counter
+            // Increment frame counter
             this._frameCountAfterTransition++;
 
-            // If we've reached the end of the extra smoothing period, reset the flags
+            // If we've reached the end of the smoothing period, reset transition flags
             if (this._frameCountAfterTransition >= this._smoothingFramesAfterTransition) {
+                logger.debug("Transition smoothing complete, returning to normal camera follow");
                 this._justCompletedTransition = false;
                 this._frameCountAfterTransition = 0;
                 this._lastGameplayPosition = null;
                 this._lastGameplayLookAt = null;
-                logger.debug("Extra smoothing period complete, returning to normal camera follow");
             }
         } else {
-            // Normal smoothing factor
-            smoothFactor = 1.0 - Math.pow(cameraConfig.SMOOTHING_FACTOR, deltaTime);
-
-            // Clear any remaining transition data
-            if (this._lastGameplayPosition) {
-                this._lastGameplayPosition = null;
-                this._lastGameplayLookAt = null;
-            }
+            // Normal camera following with standard smoothing
+            const smoothFactor = 1.0 - Math.pow(cameraConfig.SMOOTHING_FACTOR, deltaTime);
+            this.camera.position.lerp(targetCameraPosition, smoothFactor);
+            this.camera.lookAt(lookAtPosition);
         }
-
-        // Apply the smoothing
-        this.camera.position.lerp(targetCameraPosition, smoothFactor);
-        this.camera.lookAt(lookAtPosition);
     }
 
     // --- Title Screen Camera Drift Logic ---
@@ -340,10 +329,9 @@ class CameraManager {
             this._lastGameplayLookAt = lookAtPosition.clone();
         } else {
             logger.info("Camera transition to player complete.");
-            // Instead of directly setting the final position, do one final lerp with a high factor
-            // This ensures the camera is very close to but not exactly at the target position
-            // which helps prevent a sudden "snap" when transitioning to normal camera following
-            this.camera.position.lerp(targetCameraPosition, 0.95);
+            // Position the camera exactly at the target position
+            // We'll handle the smoothing in updateCameraFollow
+            this.camera.position.copy(targetCameraPosition);
             this.camera.lookAt(lookAtPosition);
 
             // Store the final position and lookAt for the first frame of normal gameplay
@@ -358,7 +346,7 @@ class CameraManager {
             // This will be used to ensure smooth camera movement in the next few frames
             this._justCompletedTransition = true;
             this._transitionCompletionTime = Date.now();
-            this._smoothingFramesAfterTransition = 30; // Apply extra smoothing for 30 frames
+            this._smoothingFramesAfterTransition = 60; // Apply extra smoothing for 60 frames
             this._frameCountAfterTransition = 0; // Reset frame counter
 
             eventBus.emit('cameraTransitionComplete', 'toGameplay');
