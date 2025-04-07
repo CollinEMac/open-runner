@@ -1,4 +1,7 @@
 // js/utils/logger.js
+// Default log level is set to INFO to reduce verbosity
+// For debugging, you can use the URL parameter ?logLevel=DEBUG to enable more detailed logging
+
 
 /**
  * Log levels enum
@@ -96,7 +99,7 @@ class Logger {
      * @param {string} [moduleName=''] - Name of the module using this logger
      * @param {LogLevel} [minLevel=LogLevel.INFO] - Minimum level to log
      */
-    constructor(moduleName = '', minLevel = LogLevel.DEBUG) { // Default level changed to DEBUG
+    constructor(moduleName = '', minLevel = LogLevel.INFO) { // Default level set to INFO to reduce verbosity
         this.moduleName = moduleName;
         this.minLevel = minLevel;
         this.enabled = true;
@@ -246,7 +249,7 @@ class Logger {
 
 // --- Global Logger Management ---
 
-const defaultLogger = new Logger('App'); // Default level is set in constructor now
+const defaultLogger = new Logger('App', LogLevel.INFO); // Explicitly set to INFO to reduce verbosity
 
 // --- Check for URL override ---
 // Allows enabling verbose logging via URL parameter, e.g., ?logLevel=DEBUG

@@ -2,7 +2,7 @@
 // Main configuration file - Imports section configs and registers them with ConfigManager
 
 import configManager from '../utils/configManager.js';
-import { createLogger } from '../utils/logger.js';
+import { createLogger, setGlobalLogLevel, LogLevel } from '../utils/logger.js';
 import performanceManager from '../utils/performanceManager.js';
 
 // Import individual config sections
@@ -78,6 +78,16 @@ configManager.registerConfig(SECTIONS.FALLBACK_GEOMETRIES, fallbackGeometriesCon
 configManager.registerConfig(SECTIONS.DEBUG, debugConfig);
 
 logger.debug('Game configuration sections registered');
+
+// Apply log level from debug config
+const logLevelString = debugConfig.LOG_LEVEL || 'INFO';
+if (LogLevel.hasOwnProperty(logLevelString)) {
+    setGlobalLogLevel(LogLevel[logLevelString]);
+    logger.info(`Set global log level to ${logLevelString}`);
+} else {
+    logger.warn(`Invalid log level in config: ${logLevelString}, using INFO`);
+    setGlobalLogLevel(LogLevel.INFO);
+}
 
 // --- Helper Functions for Accessing Config ---
 

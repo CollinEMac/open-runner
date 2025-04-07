@@ -5,7 +5,7 @@ import { GameStates } from '../core/gameStateManager.js'; // Moved to core
 import { createLogger, LogLevel } from '../utils/logger.js'; // Stays in utils, import LogLevel
 import eventBus from '../core/eventBus.js'; // Moved to core
 
-const logger = createLogger('CameraManager', LogLevel.DEBUG); // Use logger instance, set level to DEBUG
+const logger = createLogger('CameraManager', LogLevel.INFO); // Use logger instance, set level to INFO
 
 // Constants for camera transitions
 const TITLE_LOOK_AT_TARGET = new THREE.Vector3(0, 0, 0);

@@ -4,7 +4,7 @@ import { createLogger, LogLevel } from '../utils/logger.js'; // Stays in utils, 
 import eventBus from '../core/eventBus.js'; // Moved to core
 import cameraManager from './cameraManager.js'; // Import CameraManager
 
-const logger = createLogger('SceneTransitionManager', LogLevel.DEBUG); // Use logger instance, set level to DEBUG
+const logger = createLogger('SceneTransitionManager', LogLevel.INFO); // Use logger instance, set level to INFO
 
 class SceneTransitionManager {
     constructor() {
