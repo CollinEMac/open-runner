@@ -235,10 +235,12 @@ export function initUIManager() {
     if (!highScoreElement) {
         highScoreElement = document.createElement('div');
         highScoreElement.id = 'highScoreDisplay';
-        highScoreElement.className = 'game-ui high-score';
+        highScoreElement.className = 'high-score';
         // Use getConfig here as well for consistency during creation
         highScoreElement.innerHTML = `${getConfig('ui.HIGH_SCORE_PREFIX', 'High Score: ')}0`;
         document.body.appendChild(highScoreElement);
+        // Initially hide the high score display until we have a score
+        highScoreElement.style.display = 'none';
     }
 
     gameOverScoreElement = document.getElementById('gameOverScore');
@@ -317,16 +319,29 @@ export function updateLoadingProgress(loadedCount, totalCount) {
     }
 }
 
-/** Hides the loading screen overlay with a smooth fade out. */
+/**
+ * Hides the loading screen overlay with a smooth fade out.
+ */
 export function hideLoadingScreen() {
-    if (loadingScreenElement) {
-        const fadeDurationMs = getConfig('ui.LOADING_HIDE_DELAY_MS', 400);
-        loadingScreenElement.style.opacity = getConfig('ui.OPACITY_HIDDEN', '0');
-        setTimeout(() => {
-            loadingScreenElement.style.display = 'none';
-            loadingScreenElement.style.opacity = getConfig('ui.OPACITY_VISIBLE', '1');
-        }, fadeDurationMs);
+    if (!loadingScreenElement) {
+        logger.warn('Loading screen element not found when trying to hide it');
+        return;
     }
+
+    logger.debug('Hiding loading screen with fade out');
+
+    // Set transition properties
+    const fadeDurationMs = getConfig('ui.LOADING_HIDE_DELAY_MS', 400);
+    loadingScreenElement.style.transition = `opacity ${fadeDurationMs / 1000}s ease`;
+    loadingScreenElement.style.opacity = '0';
+
+    // After the transition completes, hide the element and reset opacity for next time
+    setTimeout(() => {
+        loadingScreenElement.style.display = 'none';
+        // Reset opacity after hiding (won't be visible due to display:none)
+        loadingScreenElement.style.opacity = '1';
+        logger.debug('Loading screen hidden');
+    }, fadeDurationMs);
 }
 
 /**
@@ -334,11 +349,21 @@ export function hideLoadingScreen() {
  * @param {string} [message='Loading...'] - Optional message to display.
  */
 export function showLoadingScreen(message = 'Loading...') {
-    if (loadingScreenElement) {
-        loadingScreenElement.style.opacity = getConfig('ui.OPACITY_VISIBLE', '1');
-        loadingScreenElement.style.display = 'flex';
+    if (!loadingScreenElement) {
+        logger.warn('Loading screen element not found when trying to show it');
+        return;
     }
 
+    logger.debug(`Showing loading screen with message: ${message}`);
+
+    // Reset any transition that might be in progress
+    loadingScreenElement.style.transition = 'none';
+
+    // Set to fully visible before displaying
+    loadingScreenElement.style.opacity = '1';
+    loadingScreenElement.style.display = 'flex';
+
+    // Update the progress text and bar
     if (progressTextElement) {
         progressTextElement.textContent = message;
     }
@@ -379,13 +404,17 @@ export function showGameScreen() {
     if (highScoreElement) {
         const highScore = ScoreManager.getGlobalHighScore();
         if (highScore > 0) {
+            // Update the high score display with the current high score
+            updateHighScoreDisplay(highScore);
+            // Make the high score element visible with a smooth transition
             highScoreElement.style.display = 'block';
             highScoreElement.style.opacity = opacityVisible;
             highScoreElement.style.transition = `opacity ${fadeDurationMs / 1000}s`;
-            updateHighScoreDisplay(highScore);
         } else {
             highScoreElement.style.display = 'none';
         }
+    } else {
+        logger.warn('High score element not found when trying to show game screen');
     }
 
     updateMobileControlsVisibility();
@@ -617,24 +646,49 @@ export function hidePauseMenu() {
  * @param {function} onReturnToTitle - Function to call when Return to Title button is clicked.
  */
 export function setupPauseMenuButtons(onResume, onRestart, onReturnToTitle) {
+    logger.info("Setting up pause menu buttons");
+
+    // Make sure we have the latest references to the buttons
+    resumeButtonElement = document.getElementById('resumeButton');
+    restartButtonElement = document.getElementById('restartButton');
+    returnToTitleButtonElement = document.getElementById('returnToTitleButton');
+
     const setupButton = (buttonElement, id, callback) => {
-        let element = buttonElement;
-        if (element && callback) {
-            element.replaceWith(element.cloneNode(true));
-            element = document.getElementById(id);
-            if (element) {
-                 element.addEventListener('click', callback);
-            } else {
-                 displayError(new Error(`Pause menu button #${id} not found after clone.`));
-            }
-            return element;
+        if (!buttonElement) {
+            logger.error(`Pause menu button #${id} not found`);
+            return null;
         }
-        return buttonElement;
+
+        if (!callback) {
+            logger.error(`Callback for pause menu button #${id} is missing`);
+            return buttonElement;
+        }
+
+        // Clone the button to remove any existing event listeners
+        const newButton = buttonElement.cloneNode(true);
+        buttonElement.parentNode.replaceChild(newButton, buttonElement);
+
+        // Get the new reference and add the event listener
+        const updatedButton = document.getElementById(id);
+        if (updatedButton) {
+            updatedButton.addEventListener('click', () => {
+                logger.debug(`Pause menu button #${id} clicked`);
+                eventBus.emit('uiButtonClicked');
+                callback();
+            });
+            logger.debug(`Event listener added to pause menu button #${id}`);
+            return updatedButton;
+        } else {
+            displayError(new Error(`Pause menu button #${id} not found after clone`));
+            return null;
+        }
     };
 
     resumeButtonElement = setupButton(resumeButtonElement, 'resumeButton', onResume);
     restartButtonElement = setupButton(restartButtonElement, 'restartButton', onRestart);
     returnToTitleButtonElement = setupButton(returnToTitleButtonElement, 'returnToTitleButton', onReturnToTitle);
+
+    logger.info("Pause menu buttons setup complete");
 }
 
 /**
@@ -643,23 +697,47 @@ export function setupPauseMenuButtons(onResume, onRestart, onReturnToTitle) {
  * @param {function} onReturnToTitle - Function to call when Return to Title button is clicked.
  */
 export function setupGameOverButtons(onRestart, onReturnToTitle) {
+    logger.info("Setting up game over buttons");
+
+    // Make sure we have the latest references to the buttons
+    gameOverRestartButtonElement = document.getElementById('gameOverRestartButton');
+    gameOverTitleButtonElement = document.getElementById('gameOverTitleButton');
+
     const setupButton = (buttonElement, id, callback) => {
-        let element = buttonElement;
-        if (element && callback) {
-            element.replaceWith(element.cloneNode(true));
-            element = document.getElementById(id);
-            if (element) {
-                 element.addEventListener('click', callback);
-            } else {
-                 displayError(new Error(`Game over button #${id} not found after clone.`));
-            }
-            return element;
+        if (!buttonElement) {
+            logger.error(`Game over button #${id} not found`);
+            return null;
         }
-        return buttonElement;
+
+        if (!callback) {
+            logger.error(`Callback for game over button #${id} is missing`);
+            return buttonElement;
+        }
+
+        // Clone the button to remove any existing event listeners
+        const newButton = buttonElement.cloneNode(true);
+        buttonElement.parentNode.replaceChild(newButton, buttonElement);
+
+        // Get the new reference and add the event listener
+        const updatedButton = document.getElementById(id);
+        if (updatedButton) {
+            updatedButton.addEventListener('click', () => {
+                logger.debug(`Game over button #${id} clicked`);
+                eventBus.emit('uiButtonClicked');
+                callback();
+            });
+            logger.debug(`Event listener added to game over button #${id}`);
+            return updatedButton;
+        } else {
+            displayError(new Error(`Game over button #${id} not found after clone`));
+            return null;
+        }
     };
 
     gameOverRestartButtonElement = setupButton(gameOverRestartButtonElement, 'gameOverRestartButton', onRestart);
     gameOverTitleButtonElement = setupButton(gameOverTitleButtonElement, 'gameOverTitleButton', onReturnToTitle);
+
+    logger.info("Game over buttons setup complete");
 }
 
 /**
@@ -772,26 +850,43 @@ export function displayError(error) {
  * Updates the level selection screen with unlocked levels
  */
 export function updateUnlockedLevels() {
-    if (!levelListElement) return;
-
-    levelListElement.innerHTML = '';
-
-    const levelData = LevelManager.getAvailableLevels();
-    if (!levelData) {
-        logger.error("Could not retrieve level data from LevelManager.");
+    if (!levelListElement) {
+        logger.error("Level list element not found when trying to update unlocked levels");
         return;
     }
 
+    // Clear existing level buttons
+    levelListElement.innerHTML = '';
+
+    const levelData = LevelManager.getAvailableLevels();
+    if (!levelData || !Array.isArray(levelData) || levelData.length === 0) {
+        logger.error("Could not retrieve level data from LevelManager or data is empty.");
+        // Add a fallback level button for level1 if no data is available
+        const fallbackButton = document.createElement('div');
+        fallbackButton.className = 'level-button';
+        fallbackButton.innerHTML = '<h3>Forest</h3><p>Run through the lush forest landscape</p>';
+        fallbackButton.addEventListener('click', () => {
+            eventBus.emit('uiButtonClicked');
+            eventBus.emit('requestLevelTransition', 'level1');
+        });
+        levelListElement.appendChild(fallbackButton);
+        return;
+    }
+
+    // Create a button for each level
     levelData.forEach(data => {
         const levelButton = document.createElement('div');
         levelButton.className = 'level-button';
-        const isUnlocked = ScoreManager.isLevelUnlocked(data.id);
+
+        // Check if level is unlocked
+        const isUnlocked = data.id === 'level1' || ScoreManager.isLevelUnlocked(data.id);
+
         if (!isUnlocked) {
             levelButton.classList.add('locked');
         }
 
         const levelName = document.createElement('h3');
-        levelName.textContent = data.name;
+        levelName.textContent = data.name || `Level ${data.id}`;
 
         const levelDesc = document.createElement('p');
         levelDesc.textContent = isUnlocked ? (data.description || '') : getConfig('ui.LOCKED_LEVEL_TEXT', 'Locked');
@@ -808,5 +903,7 @@ export function updateUnlockedLevels() {
 
         levelListElement.appendChild(levelButton);
     });
+
+    logger.info(`Updated level select screen with ${levelData.length} levels`);
 }
 

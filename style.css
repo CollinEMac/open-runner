@@ -496,6 +496,8 @@ html, body {
     pointer-events: none; /* Allow clicks to pass through the container */
     opacity: 0; /* Start fully transparent */
     transition: opacity 0.3s ease; /* Smooth transition */
+    justify-content: space-between; /* Ensure buttons are spaced properly */
+    flex-direction: column; /* Stack elements vertically */
 }
 
 /* Only show mobile controls when the class is present */
@@ -547,6 +549,8 @@ html, body {
     pointer-events: auto; /* Make buttons clickable */
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
     transition: background-color 0.2s, transform 0.1s;
+    user-select: none; /* Prevent text selection */
+    touch-action: manipulation; /* Optimize for touch */
 }
 
 .mobile-button:active {
@@ -554,12 +558,20 @@ html, body {
     transform: scale(0.95);
 }
 
+/* Add hover effect for non-touch devices */
+@media (hover: hover) {
+    .mobile-button:hover {
+        background-color: rgba(76, 175, 80, 0.2);
+        transform: scale(1.05);
+    }
+}
+
 .mobile-pause {
     position: absolute;
     top: 15px; /* Position at top */
     left: 50%; /* Center horizontally */
     transform: translateX(-50%); /* Center adjustment */
-    width: 60px; /* Slightly larger */
+    width: 60px; /* Slightly smaller */
     height: 60px;
     font-size: 24px;
     z-index: 16; /* Ensure it's above other mobile controls */

@@ -49,104 +49,156 @@ export class SpatialGrid {
      * A more robust version might add to multiple cells if the object spans boundaries.
      * @param {any} objectRef The object reference to store (e.g., THREE.Mesh). Requires objectRef.position.
      * @param {string} [cellKey=null] Optional: Pre-calculated cell key to avoid recalculation.
+     * @returns {boolean} True if the object was successfully added, false otherwise.
      */
     add(objectRef, cellKey = null) {
-        if (!objectRef || !objectRef.position) {
-            return;
+        if (!objectRef) {
+            logger.warn('SpatialGrid.add: Attempted to add null or undefined object');
+            return false;
         }
 
-        const key = cellKey || this._getCellKey(this._getGridCoords(objectRef.position).gridX, this._getGridCoords(objectRef.position).gridZ);
+        if (!objectRef.position) {
+            logger.warn('SpatialGrid.add: Object has no position property');
+            return false;
+        }
 
+        // Calculate the cell key if not provided
+        let key;
+        if (cellKey) {
+            key = cellKey;
+        } else {
+            const coords = this._getGridCoords(objectRef.position);
+            key = this._getCellKey(coords.gridX, coords.gridZ);
+        }
+
+        // Create a new cell if it doesn't exist
         if (!this.grid.has(key)) {
             this.grid.set(key, new Set());
         }
+
+        // Get the cell and add the object
         const cell = this.grid.get(key);
-        if (!cell.has(objectRef)) { // Avoid adding duplicates to the cell
-            cell.add(objectRef);
-            // Store the mapping from object ID to cell key
-            if (objectRef.id) { // Ensure object has an ID
-                 this.objectCellMap.set(objectRef.id, key);
-            }
+        const wasAdded = !cell.has(objectRef); // Track if this is a new addition
+
+        cell.add(objectRef);
+
+        // Store the mapping from object ID to cell key if the object has an ID
+        if (objectRef.id) {
+            this.objectCellMap.set(objectRef.id, key);
         }
-        // Store the current cell key on the object's userData for efficient removal/update (optional, but kept for now)
-        if (!objectRef.userData) objectRef.userData = {};
+
+        // Store the current cell key on the object's userData for efficient removal/update
+        if (!objectRef.userData) {
+            objectRef.userData = {};
+        }
         objectRef.userData.spatialGridKey = key;
+
+        return wasAdded;
     }
 
     /**
      * Removes an object reference from the grid cell it was last known to be in.
      * Uses the stored key in objectRef.userData.spatialGridKey for efficiency.
      * @param {any} objectRef The object reference to remove. Requires objectRef.userData.spatialGridKey.
+     * @returns {boolean} True if the object was successfully removed, false otherwise.
      */
     remove(objectRef) {
+        if (!objectRef) {
+            logger.warn('SpatialGrid.remove: Attempted to remove null or undefined object');
+            return false;
+        }
+
         // Use objectCellMap first if available and object has ID
         let key = null;
-        if (objectRef?.id && this.objectCellMap.has(objectRef.id)) {
+        if (objectRef.id && this.objectCellMap.has(objectRef.id)) {
             key = this.objectCellMap.get(objectRef.id);
-        } else if (objectRef?.userData?.spatialGridKey) {
+        } else if (objectRef.userData?.spatialGridKey) {
             // Fallback to userData key
             key = objectRef.userData.spatialGridKey;
-        } else if (objectRef?.position) {
+        } else if (objectRef.position) {
             // Fallback to calculating key (less efficient)
             const coords = this._getGridCoords(objectRef.position);
             key = this._getCellKey(coords.gridX, coords.gridZ);
         }
 
         if (!key) {
-             return;
+            logger.debug('SpatialGrid.remove: Could not determine cell key for object');
+            return false;
         }
+
+        let removed = false;
 
         // Remove from grid cell
         if (this.grid.has(key)) {
             const cell = this.grid.get(key);
-            cell.delete(objectRef);
+            removed = cell.delete(objectRef);
+
             if (cell.size === 0) {
                 this.grid.delete(key); // Clean up empty cell
             }
         } else {
+            logger.debug(`SpatialGrid.remove: Cell key ${key} not found in grid`);
         }
 
         // Remove from objectCellMap
-        if (objectRef?.id) {
+        if (objectRef.id) {
             this.objectCellMap.delete(objectRef.id);
         }
 
         // Clear the stored userData key if it exists
-        if (objectRef?.userData?.spatialGridKey) {
+        if (objectRef.userData?.spatialGridKey) {
             delete objectRef.userData.spatialGridKey;
         }
+
+        return removed;
     }
 
     /**
      * Updates an object's position in the grid if it has moved to a new cell.
-     * @param {any} objectRef The object reference to update. Requires objectRef.position and objectRef.userData.spatialGridKey.
+     * @param {any} objectRef The object reference to update. Requires objectRef.position.
+     * @returns {boolean} True if the object was successfully updated or added, false otherwise.
      */
     update(objectRef) {
-        if (!objectRef?.position) {
-             return;
+        if (!objectRef) {
+            logger.warn('SpatialGrid.update: Attempted to update null or undefined object');
+            return false;
         }
-        if (!objectRef?.id) {
-             // If it has position but no id/key, try adding it
-             this.add(objectRef);
-             return;
+
+        if (!objectRef.position) {
+            logger.warn('SpatialGrid.update: Object has no position property');
+            return false;
+        }
+
+        // If object has no ID, we can't track it in objectCellMap, so just add it
+        if (!objectRef.id) {
+            logger.debug('SpatialGrid.update: Object has no ID, adding directly');
+            this.add(objectRef);
+            return true;
         }
 
         const currentKey = this.objectCellMap.get(objectRef.id);
-        // If object wasn't tracked, try adding it
+
+        // If object wasn't tracked, add it
         if (!currentKey) {
-             this.add(objectRef);
-             return;
+            logger.debug(`SpatialGrid.update: Object ID ${objectRef.id} not found in objectCellMap, adding`);
+            this.add(objectRef);
+            return true;
         }
 
-        // const currentKey = objectRef.userData.spatialGridKey; // Now using objectCellMap
+        // Calculate the new cell key based on current position
         const { gridX, gridZ } = this._getGridCoords(objectRef.position);
         const newKey = this._getCellKey(gridX, gridZ);
 
+        // Only update if the object has moved to a new cell
         if (newKey !== currentKey) {
+            logger.debug(`SpatialGrid.update: Object moved from cell ${currentKey} to ${newKey}`);
             this.remove(objectRef); // Removes from old cell using stored key
             this.add(objectRef, newKey); // Adds to new cell and updates stored key
+            return true;
         }
-        // Else: object hasn't changed cells, do nothing
+
+        // Object hasn't changed cells, no update needed
+        return false;
     }
 
     /**
@@ -157,20 +209,35 @@ export class SpatialGrid {
      * @returns {Set<any>} A Set containing unique object references found in the nearby cells.
      */
     queryNearby(position) {
+        if (!position || typeof position.x !== 'number' || typeof position.z !== 'number') {
+            logger.warn('SpatialGrid.queryNearby: Invalid position provided', position);
+            return new Set(); // Return empty set
+        }
+
         const { gridX: centerGridX, gridZ: centerGridZ } = this._getGridCoords(position);
         const nearbyObjects = new Set();
+        let cellsChecked = 0;
+        let objectsFound = 0;
 
         // Iterate through the 3x3 grid of cells
         for (let x = centerGridX - 1; x <= centerGridX + 1; x++) {
             for (let z = centerGridZ - 1; z <= centerGridZ + 1; z++) {
                 const key = this._getCellKey(x, z);
+                cellsChecked++;
+
                 if (this.grid.has(key)) {
                     const cell = this.grid.get(key);
-                    cell.forEach(obj => nearbyObjects.add(obj));
-                } else {
+                    cell.forEach(obj => {
+                        if (obj) { // Only add non-null objects
+                            nearbyObjects.add(obj);
+                            objectsFound++;
+                        }
+                    });
                 }
             }
         }
+
+        logger.debug(`SpatialGrid.queryNearby: Checked ${cellsChecked} cells, found ${objectsFound} objects`);
         return nearbyObjects;
     }
 

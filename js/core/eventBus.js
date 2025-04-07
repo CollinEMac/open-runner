@@ -129,9 +129,14 @@ class EventBus {
         const listeners = this.listeners.get(eventName);
         const listenerCount = listeners.size;
 
-        listeners.forEach(callback => {
+        // Create a copy of the listeners to avoid issues if a listener unsubscribes during emission
+        const listenersCopy = Array.from(listeners);
+
+        listenersCopy.forEach(callback => {
             if (typeof callback !== 'function') {
                 logger.error(`[EventBus] Invalid listener for ${eventName}: not a function`);
+                // Remove invalid listeners to prevent future errors
+                listeners.delete(callback);
                 hasErrors = true;
                 return;
             }
@@ -142,8 +147,16 @@ class EventBus {
             } catch (error) {
                 hasErrors = true;
                 logger.error(`[EventBus] Error in listener for ${eventName}:`, error);
+                // Optionally remove listeners that throw errors to prevent future errors
+                // Uncomment the next line if you want to automatically remove problematic listeners
+                // listeners.delete(callback);
             }
         });
+
+        // Clean up empty event sets
+        if (listeners.size === 0) {
+            this.listeners.delete(eventName);
+        }
 
         // Only log if there were errors or in debug mode
         if (hasErrors || this.debugMode) {

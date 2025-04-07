@@ -42,23 +42,53 @@ export function initCollisionManager(spatialGridInstance, chunkManagerInstance) 
 /**
  * Checks for collisions between the player and nearby objects.
  * @param {Object} player - The player object containing position data.
+ * @returns {boolean} True if collision checking was performed, false if skipped.
  */
 export function checkCollisions(player) {
-    if (!player || !player.model) {
-        return;
+    // Validate player object
+    if (!player) {
+        logger.warn('checkCollisions: Player object is null or undefined');
+        return false;
     }
+
+    if (!player.model) {
+        logger.warn('checkCollisions: Player model is null or undefined');
+        return false;
+    }
+
+    if (!player.model.position) {
+        logger.warn('checkCollisions: Player model has no position property');
+        return false;
+    }
+
     const playerPosition = player.model.position;
-    // Removed checks for callbacks, only check for core dependencies and game state
-    if (gameStateManager.getCurrentState() !== GameStates.PLAYING || !_spatialGrid || !_chunkManager) {
-        // Only check collisions during 'playing' state and if initialized
-        return;
+
+    // Check game state and dependencies
+    if (gameStateManager.getCurrentState() !== GameStates.PLAYING) {
+        // Only check collisions during 'playing' state
+        return false;
+    }
+
+    if (!_spatialGrid) {
+        logger.error('checkCollisions: Spatial grid not initialized');
+        return false;
+    }
+
+    if (!_chunkManager) {
+        logger.error('checkCollisions: Chunk manager not initialized');
+        return false;
     }
 
     // --- Query Spatial Grid for Nearby Objects ---
     const nearbyObjects = _spatialGrid.queryNearby(playerPosition);
 
+    if (!nearbyObjects || nearbyObjects.size === 0) {
+        // No nearby objects to check
+        return true;
+    }
+
     // --- Process Nearby Objects ---
-    const nearbyArray = Array.from(nearbyObjects);
+    const nearbyArray = Array.from(nearbyObjects).filter(obj => obj != null);
 
     // Check Collectibles first (iterating backwards for safe removal)
     for (let i = nearbyArray.length - 1; i >= 0; i--) {
@@ -68,18 +98,24 @@ export function checkCollisions(player) {
         if (!mesh.position) continue;
 
         // handle coins
-        if (mesh.userData.objectType === 'coin' && !mesh.userData.collidable) {
-
+        if (mesh && mesh.userData && mesh.userData.objectType === 'coin' && !mesh.userData.collidable) {
             // Verify this is actually a coin by checking its geometry
             if (!mesh.geometry || !mesh.geometry.parameters || !mesh.geometry.parameters.radiusBottom) {
                 // Fix the object type if it's not actually a coin
                 if (mesh.geometry && mesh.geometry.type !== 'CylinderGeometry') {
                     // Try to determine the correct type based on the mesh
                     if (mesh.name && mesh.name.includes('magnet')) {
+                        logger.debug(`Correcting object type from 'coin' to 'magnet' for mesh ${mesh.id}`);
                         mesh.userData.objectType = 'magnet';
                         continue; // Skip to next iteration so it's processed as a magnet
                     }
                 }
+            }
+
+            // Ensure mesh has a valid position
+            if (!mesh.position) {
+                logger.warn(`Coin mesh ${mesh.id || 'unknown'} has no position property`);
+                continue;
             }
 
             const dx = playerPosition.x - mesh.position.x;
@@ -99,17 +135,22 @@ export function checkCollisions(player) {
                 // This must be larger than the minSafeDistanceSq
                 collisionThresholdSq = (playerCollisionRadius + coinCollisionRadius * gameplayConfig.COIN_COLLECTION_RADIUS_FACTOR) ** 2; // Use constant factor
 
-
-
                 // Force collect any coins that somehow got too close to the player
                 // This is a safety measure to prevent coins from getting stuck
                 if (distanceSq < minSafeDistanceSq) {
+                    // Ensure mesh has the required userData properties
+                    if (!mesh.userData.chunkKey || mesh.userData.objectIndex === undefined) {
+                        logger.warn(`Coin mesh ${mesh.id || 'unknown'} missing required userData properties`);
+                        continue;
+                    }
+
                     const { chunkKey, objectIndex, scoreValue } = mesh.userData;
                     const collected = _chunkManager.collectObject(chunkKey, objectIndex);
 
                     if (collected) {
                         eventBus.emit('scoreChanged', scoreValue || gameplayConfig.DEFAULT_COIN_SCORE); // Use constant default
                         nearbyArray.splice(i, 1);
+                        logger.debug(`Collected coin (magnet force collect) with value ${scoreValue || gameplayConfig.DEFAULT_COIN_SCORE}`);
                     }
                     continue; // Skip to next object
                 }
@@ -119,6 +160,12 @@ export function checkCollisions(player) {
             }
 
             if (distanceSq < collisionThresholdSq) {
+                // Ensure mesh has the required userData properties
+                if (!mesh.userData.chunkKey || mesh.userData.objectIndex === undefined) {
+                    logger.warn(`Coin mesh ${mesh.id || 'unknown'} missing required userData properties`);
+                    continue;
+                }
+
                 const { chunkKey, objectIndex, scoreValue } = mesh.userData;
                 const collected = _chunkManager.collectObject(chunkKey, objectIndex);
 
@@ -126,40 +173,53 @@ export function checkCollisions(player) {
                     // Emit score change event instead of calling callback
                     eventBus.emit('scoreChanged', scoreValue || gameplayConfig.DEFAULT_COIN_SCORE); // Use constant default
                     nearbyArray.splice(i, 1); // Remove from local array for this check
+                    logger.debug(`Collected coin with value ${scoreValue || gameplayConfig.DEFAULT_COIN_SCORE}`);
                 }
             }
         }
 
         // handle powerups
-        if (mesh.userData.objectType === 'magnet' && !mesh.userData.collidable) {
-
+        if (mesh && mesh.userData && mesh.userData.objectType === 'magnet' && !mesh.userData.collidable) {
             // Verify this is actually a magnet by checking its structure
             // Magnets are typically groups with multiple child meshes
-            if (!(mesh instanceof THREE.Group) && !mesh.name.includes('magnet')) {
+            if (!(mesh instanceof THREE.Group) && !mesh.name?.includes('magnet')) {
                 // If it's a cylinder, it's probably a coin with incorrect type
                 if (mesh.geometry && mesh.geometry.type === 'CylinderGeometry') {
+                    logger.debug(`Correcting object type from 'magnet' to 'coin' for mesh ${mesh.id}`);
                     mesh.userData.objectType = 'coin';
                     continue; // Skip to next iteration so it's processed as a coin
                 }
             }
 
+            // Ensure mesh has a valid position
             if (!mesh.position) {
+                logger.warn(`Magnet mesh ${mesh.id || 'unknown'} has no position property`);
                 continue;
             }
+
             const dx = playerPosition.x - mesh.position.x;
             const dz = playerPosition.z - mesh.position.z;
             const distanceSq = dx * dx + dz * dz;
+
             // Use collision radius from config
-            const magnetCollisionRadius = modelsConfig.MAGNET.COLLISION_RADIUS || 1.0; // Default if not in config
+            const magnetCollisionRadius = modelsConfig.MAGNET?.COLLISION_RADIUS || 1.0; // Default if not in config
             const collisionThresholdSq = (playerCollisionRadius + magnetCollisionRadius) ** 2;
 
             if (distanceSq < collisionThresholdSq) {
-                const { chunkKey, objectIndex, scoreValue } = mesh.userData;
+                // Ensure mesh has the required userData properties
+                if (!mesh.userData.chunkKey || mesh.userData.objectIndex === undefined) {
+                    logger.warn(`Magnet mesh ${mesh.id || 'unknown'} missing required userData properties`);
+                    continue;
+                }
+
+                const { chunkKey, objectIndex } = mesh.userData;
                 const collected = _chunkManager.collectObject(chunkKey, objectIndex);
 
                 if (collected) {
-                    eventBus.emit('powerupActivated', modelsConfig.MAGNET.POWERUP_TYPE || 'magnet'); // Use constant if defined
+                    const powerupType = modelsConfig.MAGNET?.POWERUP_TYPE || 'magnet'; // Use constant if defined
+                    eventBus.emit('powerupActivated', powerupType);
                     nearbyArray.splice(i, 1); // Remove from local array for this check
+                    logger.debug(`Collected magnet powerup of type ${powerupType}`);
                 }
             }
         }
@@ -167,7 +227,14 @@ export function checkCollisions(player) {
 
     // Now check remaining nearby objects for obstacles and enemies
     for (const mesh of nearbyArray) {
-        if (!mesh || !mesh.userData) continue;
+        if (!mesh || !mesh.userData) {
+            continue;
+        }
+
+        if (!mesh.position) {
+            logger.warn(`Mesh ${mesh.id || 'unknown'} has no position property`);
+            continue;
+        }
 
         const dx = playerPosition.x - mesh.position.x;
         const dz = playerPosition.z - mesh.position.z;
@@ -178,19 +245,36 @@ export function checkCollisions(player) {
         if (mesh.userData.collidable && !mesh.userData.enemyInstance) {
             const objectType = mesh.userData.objectType;
 
+            if (!objectType) {
+                logger.warn(`Collidable mesh ${mesh.id || 'unknown'} has no objectType property`);
+                continue;
+            }
+
             // Special check for Tumbleweed hazard
             if (objectType === tumbleweedConfig.OBJECT_TYPE_NAME) { // Use constant for tumbleweed type name
-                 const tumbleweedRadius = (modelsConfig.TUMBLEWEED_MODEL.COLLISION_RADIUS || 1.0) * mesh.scale.x; // Use constant from config
-                 const collisionThresholdSqTumbleweed = (playerCollisionRadius + tumbleweedRadius) ** 2;
-                 if (distanceSq < collisionThresholdSqTumbleweed) {
-                     eventBus.emit('playerDied'); // Emit player death event
-                     return; // Stop checking
-                 }
+                if (!mesh.scale) {
+                    logger.warn(`Tumbleweed mesh ${mesh.id || 'unknown'} has no scale property`);
+                    continue;
+                }
+
+                const tumbleweedRadius = (modelsConfig.TUMBLEWEED_MODEL?.COLLISION_RADIUS || 1.0) * mesh.scale.x; // Use constant from config
+                const collisionThresholdSqTumbleweed = (playerCollisionRadius + tumbleweedRadius) ** 2;
+
+                if (distanceSq < collisionThresholdSqTumbleweed) {
+                    logger.info(`Player collided with tumbleweed at position (${mesh.position.x.toFixed(2)}, ${mesh.position.z.toFixed(2)})`);
+                    eventBus.emit('playerDied', 'tumbleweed'); // Emit player death event with cause
+                    return true; // Stop checking and return true to indicate collision was processed
+                }
             }
             // Special check for trees to allow walking under foliage
-            else if (objectType === modelsConfig.TREE_PINE.OBJECT_TYPE && modelsConfig.TREE_PINE.ALLOW_WALK_UNDER) { // Use constants
+            else if (objectType === modelsConfig.TREE_PINE?.OBJECT_TYPE && modelsConfig.TREE_PINE?.ALLOW_WALK_UNDER) { // Use constants
+                if (!mesh.scale) {
+                    logger.warn(`Tree mesh ${mesh.id || 'unknown'} has no scale property`);
+                    continue;
+                }
+
                 // Use trunk radius from config
-                const trunkRadius = modelsConfig.TREE_PINE.TRUNK_RADIUS * mesh.scale.x;
+                const trunkRadius = modelsConfig.TREE_PINE?.TRUNK_RADIUS * mesh.scale.x || 0.5;
                 const collisionThresholdSqTrunk = (playerCollisionRadius + trunkRadius) ** 2;
 
                 // Only check for collision with the trunk if we're close enough horizontally
@@ -200,37 +284,49 @@ export function checkCollisions(player) {
                     const treeBaseY = mesh.position.y;
 
                     // Tree trunk height from config
-                    const trunkHeight = modelsConfig.TREE_PINE.TRUNK_HEIGHT * mesh.scale.y;
+                    const trunkHeight = modelsConfig.TREE_PINE?.TRUNK_HEIGHT * mesh.scale.y || 1.0;
                     const trunkTopY = treeBaseY + trunkHeight;
 
                     // Calculate player's feet position
                     const playerFeetY = playerY - playerConfig.HEIGHT_OFFSET; // Use imported constant
 
-
                     // Only trigger collision if player's feet are below the top of the trunk
                     // Add a small buffer using constant
-                    if (playerFeetY < trunkTopY - gameplayConfig.TREE_COLLISION_BUFFER) {
-                        eventBus.emit('playerDied'); // Emit player death event
-                        return; // Stop checking
+                    if (playerFeetY < trunkTopY - (gameplayConfig.TREE_COLLISION_BUFFER || 0.1)) {
+                        logger.info(`Player collided with tree trunk at position (${mesh.position.x.toFixed(2)}, ${mesh.position.z.toFixed(2)})`);
+                        eventBus.emit('playerDied', 'tree'); // Emit player death event with cause
+                        return true; // Stop checking and return true to indicate collision was processed
                     }
                     // Otherwise player is above trunk height and can walk under foliage
+                    logger.debug(`Player is above tree trunk height at position (${mesh.position.x.toFixed(2)}, ${mesh.position.z.toFixed(2)})`);
                 }
             }
             // Check for other static obstacles
             else {
+                if (!mesh.scale) {
+                    logger.warn(`Obstacle mesh ${mesh.id || 'unknown'} has no scale property`);
+                    continue;
+                }
+
                 // Get radius from MODELS config, fallback to 1.0
                 const modelConfig = modelsConfig[objectType.toUpperCase()]; // Find config based on type name
                 const obstacleRadius = (modelConfig?.COLLISION_RADIUS || 1.0) * mesh.scale.x;
                 const collisionThresholdSqObstacle = (playerCollisionRadius + obstacleRadius) ** 2;
 
                 if (distanceSq < collisionThresholdSqObstacle) {
-                    eventBus.emit('playerDied'); // Emit player death event
-                    return; // Stop checking
+                    logger.info(`Player collided with obstacle of type ${objectType} at position (${mesh.position.x.toFixed(2)}, ${mesh.position.z.toFixed(2)})`);
+                    eventBus.emit('playerDied', objectType); // Emit player death event with cause
+                    return true; // Stop checking and return true to indicate collision was processed
                 }
             }
         }
         // Check if it's an Enemy
         else if (mesh.userData.enemyInstance) {
+            if (!mesh.userData.enemyInstance.type) {
+                logger.warn(`Enemy mesh ${mesh.id || 'unknown'} has no type property`);
+                continue;
+            }
+
             const enemyType = mesh.userData.enemyInstance.type;
             let enemyRadius = 0.5; // Default fallback
             const enemyConfig = modelsConfig[enemyType.toUpperCase()]; // Find config based on type name
@@ -241,18 +337,22 @@ export function checkCollisions(player) {
                     enemyRadius = enemyConfig.COLLISION_RADIUS;
                 }
                 // Otherwise, estimate from width/depth factors if available
-                else if (enemyConfig.COLLISION_WIDTH_FACTOR && enemyConfig.COLLISION_DEPTH_FACTOR && enemyConfig.TORSO_WIDTH && enemyConfig.TORSO_DEPTH) {
-                     const approxWidth = enemyConfig.TORSO_WIDTH * enemyConfig.COLLISION_WIDTH_FACTOR;
-                     const approxDepth = enemyConfig.TORSO_DEPTH * enemyConfig.COLLISION_DEPTH_FACTOR;
-                     enemyRadius = (approxWidth + approxDepth) / 4; // Average estimate
+                else if (enemyConfig.COLLISION_WIDTH_FACTOR && enemyConfig.COLLISION_DEPTH_FACTOR &&
+                         enemyConfig.TORSO_WIDTH && enemyConfig.TORSO_DEPTH) {
+                    const approxWidth = enemyConfig.TORSO_WIDTH * enemyConfig.COLLISION_WIDTH_FACTOR;
+                    const approxDepth = enemyConfig.TORSO_DEPTH * enemyConfig.COLLISION_DEPTH_FACTOR;
+                    enemyRadius = (approxWidth + approxDepth) / 4; // Average estimate
                 }
             }
             const collisionThresholdSqEnemy = (playerCollisionRadius + enemyRadius) ** 2;
 
             if (distanceSq < collisionThresholdSqEnemy) {
-                 eventBus.emit('playerDied'); // Emit player death event
-                return; // Stop checking
+                logger.info(`Player collided with enemy of type ${enemyType} at position (${mesh.position.x.toFixed(2)}, ${mesh.position.z.toFixed(2)})`);
+                eventBus.emit('playerDied', 'enemy'); // Emit player death event with cause
+                return true; // Stop checking and return true to indicate collision was processed
             }
         }
     }
+
+    return true; // Return true to indicate collision checking was performed
 }

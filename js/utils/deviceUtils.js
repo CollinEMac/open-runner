@@ -92,15 +92,25 @@ export function updateMobileControlsVisibility(forceShow = false, forceHide = fa
     if (forceHide) {
         // Force hide mobile controls
         document.body.classList.remove('show-mobile-controls');
+        document.body.classList.remove('force-show-mobile-controls');
     } else if (forceShow) {
         // Force show mobile controls
         document.body.classList.add('show-mobile-controls');
+        document.body.classList.add('force-show-mobile-controls');
     } else {
         // Normal behavior - only show on mobile
+        document.body.classList.remove('force-show-mobile-controls');
         if (isMobileDevice()) {
             document.body.classList.add('show-mobile-controls');
         } else {
             document.body.classList.remove('show-mobile-controls');
         }
+    }
+
+    // Ensure the mobile controls element exists
+    const mobileControls = document.getElementById('mobileControls');
+    if (!mobileControls) {
+        logger.warn('Mobile controls element not found in the DOM');
+        return;
     }
 }
