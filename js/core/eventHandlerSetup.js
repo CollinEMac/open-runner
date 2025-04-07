@@ -204,17 +204,26 @@ export function setupEventHandlers(dependencies) {
         eventBus.emit('uiButtonClicked');
         updateMobileControlsVisibility(false, true); // Force hide
         atmosphericManager.clearElements();
-        cameraManager.startTransitionToTitle(cameraManager.getCamera().position, cameraManager.getCamera().quaternion);
+
+        // Get the current state before changing it
+        const currentState = gameStateManager.getCurrentState();
+
+        // Only start camera transition if NOT coming from LEVEL_SELECT
+        if (currentState !== GameStates.LEVEL_SELECT) {
+            cameraManager.startTransitionToTitle(cameraManager.getCamera().position, cameraManager.getCamera().quaternion);
+        }
+
         // Player model removal should happen here or be triggered by the state change
         if (player.model && player.model.parent) {
             player.model.parent.remove(player.model);
         }
+
         // Set appropriate state
-         if (gameStateManager.getCurrentState() === GameStates.LEVEL_SELECT) {
-             gameStateManager.setGameState(GameStates.TITLE);
-         } else {
-             gameStateManager.setGameState(GameStates.TRANSITIONING_TO_TITLE);
-         }
+        if (currentState === GameStates.LEVEL_SELECT) {
+            gameStateManager.setGameState(GameStates.TITLE);
+        } else {
+            gameStateManager.setGameState(GameStates.TRANSITIONING_TO_TITLE);
+        }
     });
 
      eventBus.subscribe('requestShowLevelSelect', () => {
