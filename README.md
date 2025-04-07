@@ -63,18 +63,6 @@ Open Runner is a 3D endless runner game built with Three.js. Race through proced
 - Enemies include coyotes, rattlesnakes, and scorpions
 - Watch out for rolling tumbleweeds that can knock you over
 
-## Screenshots
-
-*Screenshots will be added here. To add your own screenshots:*
-
-1. Take a screenshot of the game in action
-2. Save it to the `screenshots` directory
-3. Update this README to include your screenshot using the following format:
-
-```markdown
-![Description of screenshot](screenshots/your-screenshot-filename.png)
-```
-
 ## Technical Details
 
 Open Runner is built with:
