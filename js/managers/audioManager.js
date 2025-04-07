@@ -9,6 +9,9 @@ const logger = createLogger('AudioManager'); // Instantiate logger
 
 let audioContext = null;
 let masterGain = null; // Master gain node for overall volume control
+let musicSource = null;
+let isMusicPlaying = false;
+
 
 /**
  * Sets up the event listeners for the AudioManager.
@@ -306,3 +309,113 @@ export function playTurnSound() {
     osc.start(now);
     osc.stop(now + duration);
 }
+
+/**
+ * Plays background music if it's not already playing.
+ * @param {string} filePath - Path to the music file (default: '/assets/audio/openrunnersong1.wav')
+ * @param {number} volume - Volume level from 0 to 1 (default: 0.3)
+ * @returns {Promise<AudioBufferSourceNode|null>} The audio source node or null if playback failed
+ */
+export async function playMusic(filePath = '/assets/audio/openrunnersong1.wav', volume = 0.3) {
+    // If music is already playing, don't start it again
+    if (isMusicPlaying) {
+        return musicSource;
+    }
+
+    try {
+        // Stop any existing music first (shouldn't happen with the flag check, but just in case)
+        if (musicSource) {
+            stopMusic();
+        }
+        
+        // Play the music file using our wave file player
+        musicSource = await playWaveFile(filePath, volume, true); // true for looping
+        
+        if (musicSource) {
+            isMusicPlaying = true;
+            
+            // Set up an ended event handler to reset our flag if the music stops
+            musicSource.onended = () => {
+                isMusicPlaying = false;
+                musicSource = null;
+            };
+        }
+        
+        return musicSource;
+    } catch (error) {
+        console.error("[AudioManager] Failed to play background music:", error);
+        isMusicPlaying = false;
+        musicSource = null;
+        return null;
+    }
+}
+
+/**
+ * Stops the currently playing background music.
+ */
+export function stopMusic() {
+    if (musicSource) {
+        musicSource.stop();
+        musicSource = null;
+    }
+    isMusicPlaying = false;
+}
+
+/**
+ * Checks if music is currently playing.
+ * @returns {boolean} True if music is playing, false otherwise
+ */
+export function isMusicActive() {
+    return isMusicPlaying;
+}
+
+/**
+ * Plays a wave file from the specified path.
+ * @param {string} filePath - Path to the wave file
+ * @param {number} volume - Volume level from 0 to 1 (default: 0.5)
+ * @param {boolean} loop - Whether to loop the audio (default: false)
+ * @returns {Promise<AudioBufferSourceNode|null>} The audio source node or null if playback failed
+ */
+export async function playWaveFile(filePath, volume = 0.5, loop = false) {
+    if (!audioContext || !masterGain) {
+        console.error("[AudioManager] Cannot play wave file: Audio context not initialized");
+        return null;
+    }
+
+    try {
+        const response = await fetch(filePath);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch audio file: ${response.status} ${response.statusText}`);
+        }
+        
+        // Get the audio data as ArrayBuffer
+        const audioData = await response.arrayBuffer();
+        
+        // Decode the audio data
+        const audioBuffer = await audioContext.decodeAudioData(audioData);
+        
+        // Create a buffer source node
+        const source = audioContext.createBufferSource();
+        source.buffer = audioBuffer;
+        source.loop = loop;
+        
+        // Create a gain node for volume control
+        const gainNode = audioContext.createGain();
+        gainNode.gain.value = volume;
+        
+        // Connect nodes: source -> gain -> masterGain -> destination
+        source.connect(gainNode);
+        gainNode.connect(masterGain);
+        
+        // Start playback
+        source.start(0);
+        
+        // Return the source node so it can be stopped if needed
+        return source;
+        
+    } catch (e) {
+        logger.error("[AudioManager] Error playing wave file:", e);
+        return null;
+    }
+}
+

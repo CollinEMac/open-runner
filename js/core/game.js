@@ -330,6 +330,11 @@ class Game {
         this.sceneTransitionManager.startTransition(this.gameplayScene);
         this.activeScene = this.sceneTransitionManager.getActiveScene();
 
+        // Start the music
+        if (!this.audioManager.isMusicActive()) {
+            this.audioManager.playMusic();
+        }
+
         // Set intermediate state
         this.gameStateManager.setGameState(GameStates.TRANSITIONING_TO_GAMEPLAY);
     }
