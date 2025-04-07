@@ -104,8 +104,8 @@ function handleGameStateChange(eventData) {
             if (scoreElement) scoreElement.style.display = 'none';
             break;
         case GameStates.LEVEL_TRANSITION:
-            showLoadingScreen("Transitioning...");
-             if (scoreElement) scoreElement.style.display = 'none';
+            showLoadingScreen("Level Transition in Progress...");
+            if (scoreElement) scoreElement.style.display = 'none';
             break;
         default:
             logger.warn(`Unhandled game state for UI: ${newState}`);
@@ -338,9 +338,11 @@ export function showLoadingScreen(message = 'Loading...') {
         loadingScreenElement.style.opacity = getConfig('ui.OPACITY_VISIBLE', '1');
         loadingScreenElement.style.display = 'flex';
     }
+
     if (progressTextElement) {
         progressTextElement.textContent = message;
     }
+
     if (progressBarElement) {
         progressBarElement.style.width = '0%';
     }

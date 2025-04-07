@@ -75,16 +75,20 @@ export class GameStateManager {
             logger.warn(`[GameStateManager] Attempted to set invalid game state: ${newState}`);
             return false;
         }
+
         if (this.currentState === newState) {
             return false;
         }
+
         const oldState = this.currentState;
         this.currentState = newState;
         this.stateChangeTime = Date.now();
         this.stateHistory.push(newState);
+
         if (this.stateHistory.length > this.maxHistoryLength) {
             this.stateHistory.shift();
         }
+
         eventBus.emit('gameStateChanged', { newState: newState, oldState: oldState });
         return true;
     }

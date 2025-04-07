@@ -55,15 +55,36 @@ export function setupEventHandlers(dependencies) {
     // --- Event Subscriptions ---
 
     eventBus.subscribe('scoreChanged', (scoreIncrement) => {
-        ScoreManager.updateCurrentScore(scoreIncrement); // Use imported module
+        // Store the old score before updating
+        const oldScore = ScoreManager.getCurrentScore();
 
+        // Update the score
+        ScoreManager.updateCurrentScore(scoreIncrement);
+
+        // Get current values after update
         const currentLevelId = levelManager.getCurrentLevelId();
-        const currentScore = ScoreManager.getCurrentScore(); // Use imported module
+        const currentScore = ScoreManager.getCurrentScore();
         const transitionScore = getConfig('LEVEL1_TRANSITION_SCORE', 300);
+        const currentState = gameStateManager.getCurrentState();
 
-        if (currentLevelId === 'level1' && currentScore >= transitionScore && gameStateManager.getCurrentState() === GameStates.PLAYING) {
-             logger.info(`Score threshold reached (${currentScore}/${transitionScore}), requesting level transition to level2.`);
-             eventBus.emit('requestLevelTransition', 'level2');
+        // Only proceed with level transition logic if we're in level1 and in PLAYING state
+        if (currentLevelId === 'level1' && currentState === GameStates.PLAYING) {
+            // Check if we've just crossed the threshold or score is already above threshold
+            if (currentScore >= transitionScore) {
+                logger.info(`Score threshold reached (${currentScore}/${transitionScore}), transitioning to level2`);
+
+                // Small delay to ensure all score updates are processed
+                setTimeout(() => {
+                    // Double-check we're still in PLAYING state
+                    if (gameStateManager.getCurrentState() === GameStates.PLAYING) {
+                        // Set game state to LEVEL_TRANSITION first
+                        gameStateManager.setGameState(GameStates.LEVEL_TRANSITION);
+
+                        // Directly call startGameCallback for level2
+                        startGameCallback('level2');
+                    }
+                }, 50);
+            }
         }
     });
 
@@ -134,7 +155,17 @@ export function setupEventHandlers(dependencies) {
 
     eventBus.subscribe('requestLevelTransition', (levelId) => {
         logger.info(`Received requestLevelTransition event for: ${levelId}`);
-        loadLevelCallback(levelId);
+        try {
+            // Set game state to LEVEL_TRANSITION
+            gameStateManager.setGameState(GameStates.LEVEL_TRANSITION);
+
+            // Use startGameCallback to ensure proper level initialization
+            startGameCallback(levelId);
+        } catch (error) {
+            logger.error(`Error during level transition to ${levelId}:`, error);
+            // Try to recover by returning to title screen
+            gameStateManager.setGameState(GameStates.TITLE);
+        }
     });
 
     eventBus.subscribe('requestPause', () => {

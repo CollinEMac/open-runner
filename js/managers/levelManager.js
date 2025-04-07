@@ -21,6 +21,7 @@ let enemyManagerInstance = null; // Reference to EnemyManager
  * @returns {Promise<boolean>} True if loading was successful, false otherwise.
  */
 export async function loadLevel(levelId) { // levelId is now a string
+    logger.info(`Loading level: ${levelId}`);
     let configModule;
     try {
         switch (levelId) {
@@ -124,7 +125,6 @@ export function unloadCurrentLevel() {
 
     // TODO: Clear other level-specific states if necessary (e.g., UI elements specific to the level?)
 
-    const unloadedId = currentLevelId; // Store before nulling
     currentLevelId = null;
     currentLevelConfig = null;
 }

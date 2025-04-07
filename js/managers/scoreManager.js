@@ -93,13 +93,14 @@ export function updateCurrentScore(increment) {
         logger.warn(`Invalid score increment received: ${increment}`);
         return;
     }
+
     currentScore += increment;
     logger.debug(`Score updated by ${increment}. New score: ${currentScore}`);
+
     // Emit event for UI and other listeners
     eventBus.emit('currentScoreUpdated', {
         score: currentScore,
-        levelId: LevelManager.getCurrentLevelId() // Now LevelManager is imported
-        // TODO: Fix LevelManager dependency if needed here, or pass levelId with the event
+        levelId: LevelManager.getCurrentLevelId()
     });
 }
 
