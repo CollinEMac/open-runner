@@ -319,7 +319,6 @@ export function playTurnSound() {
 export async function playMusic(filePath = '/assets/audio/openrunnersong1.wav', volume = 0.3) {
     // If music is already playing, don't start it again
     if (isMusicPlaying) {
-        console.log("[AudioManager] Music is already playing, skipping playback");
         return musicSource;
     }
 
@@ -337,12 +336,9 @@ export async function playMusic(filePath = '/assets/audio/openrunnersong1.wav', 
             
             // Set up an ended event handler to reset our flag if the music stops
             musicSource.onended = () => {
-                console.log("[AudioManager] Music playback ended");
                 isMusicPlaying = false;
                 musicSource = null;
             };
-            
-            console.log("[AudioManager] Background music started");
         }
         
         return musicSource;
@@ -359,7 +355,6 @@ export async function playMusic(filePath = '/assets/audio/openrunnersong1.wav', 
  */
 export function stopMusic() {
     if (musicSource) {
-        console.log("[AudioManager] Stopping background music");
         musicSource.stop();
         musicSource = null;
     }
@@ -388,9 +383,6 @@ export async function playWaveFile(filePath, volume = 0.5, loop = false) {
     }
 
     try {
-        console.log(`[AudioManager] Loading wave file: ${filePath}`);
-        
-        // Fetch the audio file
         const response = await fetch(filePath);
         if (!response.ok) {
             throw new Error(`Failed to fetch audio file: ${response.status} ${response.statusText}`);
@@ -417,17 +409,13 @@ export async function playWaveFile(filePath, volume = 0.5, loop = false) {
         
         // Start playback
         source.start(0);
-        console.log(`[AudioManager] Playing wave file: ${filePath}`);
         
         // Return the source node so it can be stopped if needed
         return source;
         
-    } catch (error) {
-        console.error("[AudioManager] Error playing wave file:", error);
-        UIManager.displayError(new Error(`Failed to play audio file: ${error.message}`));
+    } catch (e) {
+        logger.error("[AudioManager] Error playing wave file:", e);
         return null;
     }
 }
 
-console.log('audioManager.js loaded');
-}
