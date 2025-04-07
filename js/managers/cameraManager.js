@@ -193,9 +193,9 @@ class CameraManager {
 
         // Force camera to follow player directly after transition
         if (this._justCompletedTransition) {
-            // For the first few frames after transition, use a direct follow
+            // For the first several frames after transition, use a direct follow
             // This helps with the initial terrain adjustment
-            if (this._frameCountAfterTransition < 3) {
+            if (this._frameCountAfterTransition < 5) {
                 logger.debug("Initial frames after transition - direct camera positioning");
                 // Position the camera directly behind the player
                 this.camera.position.copy(targetCameraPosition);
@@ -391,6 +391,7 @@ class CameraManager {
             this.camera.lookAt(lookAtPosition);
 
             // Store the final position and lookAt for the first frame of normal gameplay
+            // Make a deep clone to ensure we don't have reference issues
             this._lastGameplayPosition = targetCameraPosition.clone();
             this._lastGameplayLookAt = lookAtPosition.clone();
 

@@ -314,6 +314,9 @@ class Game {
              this._updateSceneAppearance(this.currentLevelConfig, this.gameplayScene);
         }
 
+        // Position player on terrain before starting camera transition
+        await this._positionPlayerOnTerrain();
+
         // Start camera transition
         this.cameraManager.startTransitionToGameplay(this.camera.position, this.camera.quaternion);
 
@@ -407,6 +410,9 @@ class Game {
             await this.chunkManager.loadInitialChunks((loaded, total) => {
                  this.uiManager.updateLoadingProgress(loaded, total);
             });
+
+            // Position player on terrain after chunks are loaded
+            await this._positionPlayerOnTerrain();
             const initialPlayerChunkX = Math.floor(playerConfig.INITIAL_POS_X / this.chunkManager.chunkSize);
             const initialPlayerChunkZ = Math.floor(playerConfig.INITIAL_POS_Z / this.chunkManager.chunkSize);
             this.chunkManager.lastCameraChunkX = initialPlayerChunkX;
@@ -480,6 +486,55 @@ class Game {
     }
 
     // _updateGameplay method is now removed, its logic is in gameplayUpdater.js
+
+    /**
+     * Positions the player on the terrain by calculating the terrain height at the player's position
+     * and adjusting the player's Y coordinate accordingly.
+     * @returns {Promise<void>}
+     * @private
+     */
+    async _positionPlayerOnTerrain() {
+        if (!this.player || !this.player.model) {
+            logger.error("Cannot position player on terrain: player or player model is missing");
+            return;
+        }
+
+        if (!this.currentLevelConfig) {
+            logger.error("Cannot position player on terrain: level config is missing");
+            return;
+        }
+
+        if (!this.chunkManager) {
+            logger.error("Cannot position player on terrain: chunk manager is missing");
+            return;
+        }
+
+        // Import the noise2D function for terrain height calculation
+        const { noise2D } = await import('../rendering/terrainGenerator.js');
+
+        // Get player position
+        const playerPos = this.player.model.position;
+
+        // Calculate terrain height at player position
+        const terrainY = noise2D(
+            playerPos.x * this.currentLevelConfig.NOISE_FREQUENCY,
+            playerPos.z * this.currentLevelConfig.NOISE_FREQUENCY
+        ) * this.currentLevelConfig.NOISE_AMPLITUDE;
+
+        // Set player Y position to terrain height plus offset
+        playerPos.y = terrainY + playerConfig.HEIGHT_OFFSET;
+
+        logger.info(`Player positioned on terrain at height ${playerPos.y}`);
+
+        // Ensure chunks are loaded around player
+        await this.chunkManager.loadInitialChunks();
+
+        // Force an update of nearby terrain meshes
+        const nearbyMeshes = this.chunkManager.getTerrainMeshesNear(playerPos);
+        if (nearbyMeshes.length === 0) {
+            logger.warn("No terrain meshes found near player position");
+        }
+    }
 }
 
 export { Game };
