@@ -9,5 +9,5 @@ export const cameraConfig = {
     FOLLOW_OFFSET_Y: 15,
     FOLLOW_OFFSET_Z: 30,
     LOOK_AT_OFFSET_Y: 2,
-    SMOOTHING_FACTOR: 0.05, // Increased for better camera following
+    SMOOTHING_FACTOR: 0.1, // Increased for more responsive camera following
 };

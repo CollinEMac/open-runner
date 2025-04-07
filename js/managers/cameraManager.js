@@ -46,6 +46,9 @@ class CameraManager {
         this._frameCountAfterTransition = 0;
         this._initialSmoothingFactor = 0.05; // Initial smoothing factor after transition
 
+        // Player movement tracking for adaptive camera following
+        this._lastPlayerPosition = null;
+
         logger.info("CameraManager instantiated");
     }
 
@@ -155,6 +158,25 @@ class CameraManager {
         // Calculate the target position based on the player's position
         const { position: targetCameraPosition, lookAt: lookAtPosition } = this._calculateGameplayCameraTarget(playerObj.model);
 
+        // Store current player position to detect movement
+        if (!this._lastPlayerPosition) {
+            this._lastPlayerPosition = new THREE.Vector3();
+            playerObj.model.getWorldPosition(this._lastPlayerPosition);
+        }
+
+        // Get current player position
+        const currentPlayerPosition = new THREE.Vector3();
+        playerObj.model.getWorldPosition(currentPlayerPosition);
+
+        // Calculate player movement since last frame
+        const playerMovement = currentPlayerPosition.distanceTo(this._lastPlayerPosition);
+
+        // Update last player position
+        this._lastPlayerPosition.copy(currentPlayerPosition);
+
+        // Determine if player is moving significantly
+        const isPlayerMoving = playerMovement > 0.01; // Threshold for significant movement
+
         // Force camera to follow player directly after transition
         if (this._justCompletedTransition) {
             // For the first frame after transition, use a direct follow
@@ -177,9 +199,18 @@ class CameraManager {
             const progress = Math.min(this._frameCountAfterTransition / this._smoothingFramesAfterTransition, 1.0);
             const easedProgress = this._easeInOutCubic(progress);
 
-            // Start with a very small smoothing factor and gradually increase
+            // Start with a higher smoothing factor and gradually decrease to normal
             const normalSmoothFactor = 1.0 - Math.pow(cameraConfig.SMOOTHING_FACTOR, deltaTime);
-            const smoothFactor = normalSmoothFactor * easedProgress;
+
+            // Use a higher smoothing factor if the player is moving
+            let smoothFactor;
+            if (isPlayerMoving) {
+                // More responsive following when player is moving
+                smoothFactor = Math.max(normalSmoothFactor, 0.3);
+            } else {
+                // Normal smoothing when player is stationary
+                smoothFactor = normalSmoothFactor * easedProgress;
+            }
 
             // Apply smoothing
             this.camera.position.lerp(targetCameraPosition, smoothFactor);
@@ -197,8 +228,18 @@ class CameraManager {
                 this._lastGameplayLookAt = null;
             }
         } else {
-            // Normal camera following with standard smoothing
-            const smoothFactor = 1.0 - Math.pow(cameraConfig.SMOOTHING_FACTOR, deltaTime);
+            // Normal camera following with adaptive smoothing
+            let smoothFactor;
+
+            if (isPlayerMoving) {
+                // More responsive following when player is moving
+                // Higher value = more responsive camera
+                smoothFactor = 1.0 - Math.pow(cameraConfig.SMOOTHING_FACTOR * 0.5, deltaTime);
+            } else {
+                // Normal smoothing when player is stationary
+                smoothFactor = 1.0 - Math.pow(cameraConfig.SMOOTHING_FACTOR, deltaTime);
+            }
+
             this.camera.position.lerp(targetCameraPosition, smoothFactor);
             this.camera.lookAt(lookAtPosition);
         }
@@ -346,8 +387,12 @@ class CameraManager {
             // This will be used to ensure smooth camera movement in the next few frames
             this._justCompletedTransition = true;
             this._transitionCompletionTime = Date.now();
-            this._smoothingFramesAfterTransition = 60; // Apply extra smoothing for 60 frames
+            this._smoothingFramesAfterTransition = 30; // Apply extra smoothing for 30 frames
             this._frameCountAfterTransition = 0; // Reset frame counter
+
+            // Reset player position tracking for movement detection
+            this._lastPlayerPosition = new THREE.Vector3();
+            player.model.getWorldPosition(this._lastPlayerPosition);
 
             eventBus.emit('cameraTransitionComplete', 'toGameplay');
         }
