@@ -406,8 +406,9 @@ class Game {
             }
             // Reset score via ScoreManager
             ScoreManager.resetCurrentScore();
-            // The 'currentScoreUpdated' event is now emitted by ScoreManager.updateCurrentScore
-            // this.eventBus.emit('currentScoreUpdated', { score: 0, levelId: levelId }); // Removed redundant event emit
+            // Also directly update the UI score display to ensure it's reset
+            this.uiManager.updateScoreDisplay(0);
+            // The 'currentScoreUpdated' event is now emitted by ScoreManager.resetCurrentScore
             this.playerAnimationTime = 0;
             if (this.powerupTimer) clearTimeout(this.powerupTimer);
             this.powerupTimer = null;

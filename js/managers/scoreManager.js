@@ -75,12 +75,17 @@ export function getCurrentScore() {
 
 /**
  * Resets the current live score to 0.
+ * Emits 'currentScoreUpdated' event to update UI.
  */
 export function resetCurrentScore() {
     currentScore = 0;
     logger.debug('Current score reset to 0');
-    // Optionally emit an event if UI needs to react directly to reset
-    // eventBus.emit('currentScoreUpdated', { score: 0, levelId: LevelManager.getCurrentLevelId() }); // Consider if needed
+
+    // Emit event to update UI
+    eventBus.emit('currentScoreUpdated', {
+        score: 0,
+        levelId: LevelManager.getCurrentLevelId()
+    });
 }
 
 /**

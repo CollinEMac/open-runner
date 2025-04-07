@@ -36,7 +36,7 @@ export function setupEventHandlers(dependencies) {
         player,
         levelManager,
         scoreManager,
-        // uiManager, // Removed from destructuring
+        uiManager, // Re-added for score display updates
         cameraManager,
         sceneTransitionManager,
         atmosphericManager,
@@ -48,8 +48,13 @@ export function setupEventHandlers(dependencies) {
 
     // Simplified dependency check
     if (!player || !levelManager || !scoreManager || !cameraManager || !sceneTransitionManager || !atmosphericManager || !startGameCallback || !loadLevelCallback || !resetInputStates || !updateMobileControlsVisibility) {
-        logger.error("Cannot setup event handlers: Missing one or more dependencies.");
+        logger.error("Cannot setup event handlers: Missing one or more required dependencies.");
         return;
+    }
+
+    // uiManager is optional for score display updates
+    if (!uiManager) {
+        logger.warn("UIManager not provided to event handlers. Some UI updates may not work properly.");
     }
 
     // --- Event Subscriptions ---
@@ -148,6 +153,31 @@ export function setupEventHandlers(dependencies) {
             // Player model removal is handled by requestReturnToTitle handler
             // Camera drift reset is handled by CameraManager
             // UI updates (like populating level select) should be handled by UIManager listening for this event
+
+            // Double-check that score and powerup are reset when reaching TITLE state
+            // This is a safety measure in case requestReturnToTitle wasn't the trigger
+            ScoreManager.resetCurrentScore();
+
+            // Also directly update the UI score display
+            if (uiManager) {
+                uiManager.updateScoreDisplay(0);
+            }
+
+            if (player.powerup) {
+                const currentPowerup = player.powerup;
+                player.powerup = '';
+                logger.debug(`Powerup ${currentPowerup} reset on TITLE state change`);
+
+                // Remove powerup visual effect
+                eventBus.emit('removePowerupEffect', { type: currentPowerup, player });
+            }
+
+            // Clear any active powerup timeout
+            if (powerupTimeout) {
+                clearTimeout(powerupTimeout);
+                powerupTimeout = null;
+                logger.debug("Powerup timeout cleared on TITLE state change");
+            }
         } else if (newState === GameStates.PLAYING) {
              // Player animation time reset should be handled by Game class or PlayerManager
         }
@@ -208,6 +238,31 @@ export function setupEventHandlers(dependencies) {
         // Get the current state before changing it
         const currentState = gameStateManager.getCurrentState();
 
+        // Reset score
+        ScoreManager.resetCurrentScore();
+        // Also directly update the UI score display to ensure it's reset
+        if (dependencies.uiManager) {
+            dependencies.uiManager.updateScoreDisplay(0);
+        }
+        logger.debug("Score reset when returning to title");
+
+        // Reset powerup status
+        if (player.powerup) {
+            const currentPowerup = player.powerup;
+            player.powerup = '';
+            logger.debug(`Powerup ${currentPowerup} reset when returning to title`);
+
+            // Remove powerup visual effect
+            eventBus.emit('removePowerupEffect', { type: currentPowerup, player });
+        }
+
+        // Clear any active powerup timeout
+        if (powerupTimeout) {
+            clearTimeout(powerupTimeout);
+            powerupTimeout = null;
+            logger.debug("Powerup timeout cleared when returning to title");
+        }
+
         // Only start camera transition if NOT coming from LEVEL_SELECT
         if (currentState !== GameStates.LEVEL_SELECT) {
             cameraManager.startTransitionToTitle(cameraManager.getCamera().position, cameraManager.getCamera().quaternion);
@@ -239,6 +294,9 @@ export function setupEventHandlers(dependencies) {
     eventBus.subscribe('cameraTransitionComplete', (transitionType) => {
         if (transitionType === 'toTitle') {
             logger.info("Camera transition to title complete, setting state to TITLE.");
+
+            // The gameStateChanged event handler will handle additional cleanup
+            // when the state changes to TITLE
             gameStateManager.setGameState(GameStates.TITLE);
         } else if (transitionType === 'toGameplay') {
              logger.info("Camera transition to gameplay complete, setting state to PLAYING.");
