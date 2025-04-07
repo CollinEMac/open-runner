@@ -41,7 +41,7 @@ export const level1Config = {
             aggroRadius: 40.0,
             deaggroRadius: 40.0,
             color: 0x8B4513, // Brown
-            minDistance: 25.0,
+            minDistance: 20.0, // Reduced from 25.0
             verticalOffset: 0.1,
             maxPlacementAttempts: 15
         },
@@ -83,7 +83,7 @@ export const level1Config = {
         {
             type: 'magnet',
             density: 0.00013, // Set to optimal value between 0.000087 and 0.00015
-            minDistance: 20.0, // Further reduced to make placement easier
+            minDistance: 15.0, // Reduced from 20.0
             verticalOffset: 1.5,
             scaleRange: [1.2, 1.5],
             randomRotationY: true,
@@ -101,7 +101,7 @@ export const level1Config = {
             randomRotationY: true,
             collidable: true,
             scoreValue: 0,
-            maxPlacementAttempts: 8,
+            maxPlacementAttempts: 12, // Increased from 8
         },
         {
             type: 'rock_large',
