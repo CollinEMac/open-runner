@@ -1,5 +1,6 @@
 // js/core/gameplayUpdater.js
 import { createLogger } from '../utils/logger.js';
+import cameraManager from '../managers/cameraManager.js';
 
 const logger = createLogger('GameplayUpdater');
 
@@ -36,9 +37,11 @@ export function updateGameplay(dependencies, deltaTime, elapsedTime) {
         return;
     }
 
-    // Update player controller (pass null for camera update func as it's handled by CameraManager)
+    // Update player controller with camera follow function
     if (player.model) {
-        playerController.updatePlayer(player, deltaTime, playerAnimationTime, chunkManager, null);
+        // Pass the camera manager's updateCameraFollow method as the camera update function
+        playerController.updatePlayer(player, deltaTime, playerAnimationTime, chunkManager,
+            cameraManager.updateCameraFollow.bind(cameraManager));
     }
 
     // Update managers that depend on player position
