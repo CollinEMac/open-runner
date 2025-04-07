@@ -6,8 +6,8 @@ import { createLogger } from '../utils/logger.js'; // Import logger
 const logger = createLogger('LevelManager'); // Instantiate logger
 // Define available levels
 const AVAILABLE_LEVELS = [
-    { id: 'level1', name: 'Forest' },
-    { id: 'level2', name: 'Desert' }
+    { id: 'level1', name: 'Forest', description: 'Run through the lush forest landscape' },
+    { id: 'level2', name: 'Desert', description: 'Navigate the hot desert terrain' }
     // Add more levels in AVAILABLE_LEVELS as they are created
 ];
 

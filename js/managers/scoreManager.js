@@ -179,5 +179,27 @@ export function updateHighScore(score, levelId = null) {
     return isNewHighScore;
 }
 
+/**
+ * Check if a level is unlocked for play
+ * @param {string} levelId - The level ID to check
+ * @returns {boolean} Whether the level is unlocked
+ */
+export function isLevelUnlocked(levelId) {
+    // Level 1 is always unlocked
+    if (levelId === 'level1') {
+        return true;
+    }
+
+    // For level2, check if player has a score in level1
+    if (levelId === 'level2') {
+        return highScoresByLevel['level1'] > 0 || globalHighScore > 0;
+    }
+
+    // For future levels, can implement more complex unlocking logic
+    // For now, default to false for any unknown levels
+    logger.warn(`Unknown level ID in isLevelUnlocked: ${levelId}`);
+    return false;
+}
+
 // Initialize on module load
 init();

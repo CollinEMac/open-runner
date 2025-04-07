@@ -535,7 +535,11 @@ export function setupBackToTitleButton(returnToTitleCallback) {
 
 /** Shows the level select screen overlay. */
 export function showLevelSelectScreen() {
-    if (levelSelectScreenElement) levelSelectScreenElement.style.display = 'flex';
+    if (levelSelectScreenElement) {
+        levelSelectScreenElement.style.display = 'flex';
+        // Update the level list with current unlock status
+        updateUnlockedLevels();
+    }
 }
 
 /** Hides the level select screen overlay. */
@@ -766,9 +770,8 @@ export function displayError(error) {
 
 /**
  * Updates the level selection screen with unlocked levels
- * @param {Array<string>} unlockedLevels - Array of unlocked level IDs
  */
-export function updateUnlockedLevels(unlockedLevels) {
+export function updateUnlockedLevels() {
     if (!levelListElement) return;
 
     levelListElement.innerHTML = '';
