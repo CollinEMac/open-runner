@@ -165,6 +165,10 @@ export default class Tumbleweed /* extends GameObject */ { // Removed inheritanc
     update(deltaTime, elapsedTime, playerPosition) {
         if (!this.active) return;
 
+        // FIRST: Update terrain height to ensure we start above ground
+        // This is crucial to prevent sinking
+        this._updateTerrainHeight();
+
         // Call base update (updates components)
         // super.update(deltaTime, elapsedTime); // Base class removed, update components manually
         this.components.forEach(component => {
@@ -188,7 +192,12 @@ export default class Tumbleweed /* extends GameObject */ { // Removed inheritanc
             this._updateMovement(deltaTime, playerPosition);
         }
 
-        // Update terrain height to stay on ground
+        // Update physics for the tumbleweed
+        if (this.physics) {
+            this.physics.update(deltaTime);
+        }
+
+        // Update terrain height AGAIN after physics to ensure we stay above ground
         this._updateTerrainHeight();
     }
 
@@ -199,6 +208,10 @@ export default class Tumbleweed /* extends GameObject */ { // Removed inheritanc
      */
     _activate(playerPosition) {
         this.isActive = true;
+
+        // First, ensure the tumbleweed is properly positioned above the terrain
+        // This is crucial to prevent it from starting below the ground
+        this._updateTerrainHeight();
 
         // Calculate initial direction toward player's path using reusable objects
         const playerDirection = this._tempVec3_1.set(0, 0, -1).applyQuaternion(
@@ -221,9 +234,11 @@ export default class Tumbleweed /* extends GameObject */ { // Removed inheritanc
         // Set initial velocity using constants and reusable vector
         const initialSpeedFactor = randomRange(C.TW_INITIAL_SPEED_FACTOR_MIN, C.TW_INITIAL_SPEED_FACTOR_MAX);
         const initialSpeed = this.rollSpeed * initialSpeedFactor;
-        this.physics.setVelocity(
-            this._tempVec3_1.copy(this.targetDirection).multiplyScalar(initialSpeed) // Use tempVec3_1
-        );
+
+        // Set velocity with a slight upward component to help it stay above ground
+        const velocity = this._tempVec3_1.copy(this.targetDirection).multiplyScalar(initialSpeed);
+        velocity.y = Math.abs(velocity.y) + 1.0; // Add a small upward velocity
+        this.physics.setVelocity(velocity);
     }
 
     /**
@@ -244,6 +259,10 @@ export default class Tumbleweed /* extends GameObject */ { // Removed inheritanc
     _updateMovement(deltaTime, playerPosition) {
         // Get current velocity using reusable vector
         const velocity = this._tempVec3_1.copy(this.physics.velocity);
+
+        // Add a small upward force to help keep the tumbleweed above ground
+        // This counteracts gravity and helps prevent sinking
+        this.physics.applyForce(this._tempVec3_2.set(0, 2.0, 0));
 
         // Only adjust direction if we have some velocity (use constant)
         if (velocity.lengthSq() > C.TW_MIN_VELOCITY_SQ_THRESHOLD) {
@@ -315,14 +334,34 @@ export default class Tumbleweed /* extends GameObject */ { // Removed inheritanc
             pos.z * this.levelConfig.NOISE_FREQUENCY
         ) * this.levelConfig.NOISE_AMPLITUDE;
 
-        // Only adjust if we're below terrain or too far above (use constant)
-        if (pos.y < terrainY + C.TW_TERRAIN_ADJUST_THRESHOLD) {
-            pos.y = terrainY + C.TW_TERRAIN_ADJUST_THRESHOLD;
+        // ALWAYS force the tumbleweed to stay above the terrain
+        // This is a hard constraint that prevents it from ever sinking
+        const desiredY = terrainY + C.TW_TERRAIN_ADJUST_THRESHOLD;
 
-            // If we hit the ground, bounce a little (use constant)
+        // Force position to be at or above the desired height
+        if (pos.y < desiredY) {
+            pos.y = desiredY;
+
+            // If we were moving downward, bounce
             if (this.physics.velocity.y < 0) {
-                this.physics.velocity.y = Math.abs(this.physics.velocity.y) * C.TW_GROUND_BOUNCE_FACTOR;
+                // More aggressive bounce to keep it visible
+                this.physics.velocity.y = Math.abs(this.physics.velocity.y) * C.TW_GROUND_BOUNCE_FACTOR + 0.5;
+            } else {
+                // If we weren't moving downward but still below terrain, add upward velocity
+                this.physics.velocity.y += 0.5;
             }
+        }
+
+        // Prevent the tumbleweed from ever having too much downward velocity
+        // This helps prevent it from tunneling through the terrain
+        if (this.physics.velocity.y < -5) {
+            this.physics.velocity.y = -5;
+        }
+
+        // Apply a minimum upward velocity if close to the ground
+        // This helps keep it visible above the terrain
+        if (pos.y < desiredY + 0.5 && this.physics.velocity.y < 0.2) {
+            this.physics.velocity.y = 0.2;
         }
     }
 

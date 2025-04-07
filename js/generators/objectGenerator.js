@@ -239,9 +239,48 @@ export function createObjectVisual(objectData, levelConfig) {
                 material = AssetManager.getAsset('cabinMaterial');
                 break;
             case 'rock_desert':
-                 geometry = AssetManager.getAsset('rockDesertGeo');
-                 material = AssetManager.getAsset('rockMaterial');
-                 break;
+                // Create a simple mesh directly for better control
+                geometry = AssetManager.getAsset('rockDesertGeo');
+                material = AssetManager.getAsset('rockMaterial');
+
+                if (geometry && material) {
+                    mesh = new THREE.Mesh(geometry, material);
+
+                    // Calculate terrain height and position the rock above it
+                    if (objectData.position) {
+                        const terrainY = noise2D(
+                            objectData.position.x * levelConfig.NOISE_FREQUENCY,
+                            objectData.position.z * levelConfig.NOISE_FREQUENCY
+                        ) * levelConfig.NOISE_AMPLITUDE;
+
+                        // Use a fixed vertical offset
+                        const verticalOffset = 0.6;
+                        objectData.position.y = terrainY + verticalOffset;
+
+                        // Set the rock's position
+                        mesh.position.copy(objectData.position);
+                    }
+
+                    // Set userData directly on the mesh
+                    mesh.userData = {
+                        objectType: 'rock_desert',
+                        stayAlignedWithTerrain: true,
+                        verticalOffset: 0.6,
+                        collidable: true
+                    };
+
+                    mesh.name = 'rock_desert_visual';
+                    mesh.castShadow = true;
+                    mesh.receiveShadow = true;
+
+                    // Don't use the ModelFactory approach
+                    geometry = null; material = null;
+
+                    logger.debug(`Created rock_desert at position (${mesh.position.x.toFixed(2)}, ${mesh.position.y.toFixed(2)}, ${mesh.position.z.toFixed(2)})`);
+                } else {
+                    logger.warn(`Missing geometry or material for rock_desert`);
+                }
+                break;
             case 'cactus_saguaro':
                 mesh = ModelFactory.createCactusSaguaroModel(objectData); // Use factory
                 geometry = null; material = null;

@@ -118,6 +118,20 @@ export function createRockDesertModel(properties) {
          mesh.castShadow = true;
          mesh.receiveShadow = true;
          group.add(mesh);
+
+         // Set a flag to indicate this is a rock that should stay aligned with terrain
+         group.userData.stayAlignedWithTerrain = true;
+         group.userData.verticalOffset = properties?.verticalOffset || 0.6; // Default vertical offset
+         group.userData.objectType = 'rock_desert'; // Ensure objectType is set on the group
+
+         // Also set on the mesh to ensure it's available at all levels
+         mesh.userData = {
+             objectType: 'rock_desert',
+             stayAlignedWithTerrain: true,
+             verticalOffset: properties?.verticalOffset || 0.6
+         };
+
+         logger.debug(`Created rock_desert model with verticalOffset: ${group.userData.verticalOffset}`);
      } else {
          logger.warn(`Missing geometry (${config.GEO_KEY}) or material (${config.MATERIAL_KEY}) for rock_desert`);
      }

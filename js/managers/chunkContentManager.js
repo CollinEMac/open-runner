@@ -11,6 +11,7 @@ import { gameplayConfig } from '../config/gameplay.js'; // Needed for collection
 import { playerConfig } from '../config/player.js'; // Needed for collection logic
 import eventBus from '../core/eventBus.js'; // Needed for scoreChanged event in updateCollectibles
 import { modelsConfig as C_MODELS } from '../config/models.js'; // Needed for tree configuration
+import { noise2D } from '../rendering/terrainGenerator.js'; // Needed for terrain height calculation
 
 const logger = createLogger('ChunkContentManager');
 
@@ -196,6 +197,27 @@ export class ChunkContentManager {
 
                     if (objectData.collidable) {
                         collidableMeshes.push(mesh);
+
+                        // Special handling for desert rocks to ensure they stay above ground
+                        if (objectData.type === 'rock_desert') {
+                            // Make sure the rock is properly positioned above the terrain
+                            const pos = mesh.position;
+                            const terrainY = noise2D(
+                                pos.x * this.levelConfig.NOISE_FREQUENCY,
+                                pos.z * this.levelConfig.NOISE_FREQUENCY
+                            ) * this.levelConfig.NOISE_AMPLITUDE;
+
+                            // Use a fixed vertical offset for desert rocks
+                            const verticalOffset = 0.6;
+                            mesh.position.y = terrainY + verticalOffset;
+
+                            // Ensure userData is set correctly
+                            mesh.userData.objectType = 'rock_desert';
+                            mesh.userData.stayAlignedWithTerrain = true;
+                            mesh.userData.verticalOffset = verticalOffset;
+
+                            logger.debug(`Positioned rock_desert at (${pos.x.toFixed(2)}, ${pos.z.toFixed(2)}) with y=${mesh.position.y.toFixed(2)}`);
+                        }
                     } else {
                         collectibleMeshes.push(mesh);
                     }
@@ -293,6 +315,9 @@ export class ChunkContentManager {
         const magnetForce = gameplayConfig.MAGNET_POWERUP_FORCE;
 
         for (const [key, chunkData] of loadedChunks.entries()) {
+            // Update static objects that need to stay aligned with terrain
+            this._updateTerrainAlignedObjects(chunkData);
+
             // Use the contentManagerData references for iteration
             const collectibles = chunkData.contentManagerData?.collectibles;
             if (collectibles && collectibles.length > 0) {
@@ -370,13 +395,20 @@ export class ChunkContentManager {
     }
 
     /**
-     * Updates all active Tumbleweeds.
+     * Updates all active Tumbleweeds and terrain-aligned objects.
      * @param {Map<string, object>} loadedChunks - Map of currently loaded chunk data.
      * @param {number} deltaTime - Time since last frame.
      * @param {number} elapsedTime - Total elapsed time.
      * @param {THREE.Vector3} playerPosition - Current player position.
      */
     updateTumbleweeds(loadedChunks, deltaTime, elapsedTime, playerPosition) {
+        // Static counter to track frames for rock updates
+        if (!this._rockUpdateCounter) this._rockUpdateCounter = 0;
+        this._rockUpdateCounter++;
+
+        // Update rocks every frame to ensure they stay above ground
+        const updateRocksThisFrame = true;
+
         for (const [key, chunkData] of loadedChunks.entries()) {
             // Use the contentManagerData references for iteration
             const tumbleweeds = chunkData.contentManagerData?.tumbleweeds;
@@ -388,6 +420,72 @@ export class ChunkContentManager {
                     }
                 });
             }
+
+            // Update static objects that need to stay aligned with terrain
+            if (updateRocksThisFrame) {
+                this._updateTerrainAlignedObjects(chunkData);
+            }
         }
+    }
+
+    /**
+     * Updates objects that need to stay aligned with the terrain.
+     * @param {object} chunkData - The chunk data containing objects to update.
+     * @private
+     */
+    _updateTerrainAlignedObjects(chunkData) {
+        if (!chunkData || !this.levelConfig) return;
+
+        // First check objects array for any rock_desert objects
+        if (chunkData.objects) {
+            for (const objectData of chunkData.objects) {
+                if (objectData && objectData.type === 'rock_desert' && objectData.mesh) {
+                    this._updateRockPosition(objectData.mesh);
+                }
+            }
+        }
+
+        // Then check collidables array as a backup
+        const collidables = chunkData.contentManagerData?.collidables;
+        if (collidables && collidables.length > 0) {
+            for (const mesh of collidables) {
+                if (mesh && mesh.userData &&
+                    (mesh.userData.objectType === 'rock_desert' ||
+                     mesh.name?.includes('rock_desert'))) {
+                    this._updateRockPosition(mesh);
+                }
+            }
+        }
+    }
+
+    /**
+     * Updates the position of a rock to stay aligned with the terrain.
+     * @param {THREE.Object3D} mesh - The rock mesh to update.
+     * @private
+     */
+    _updateRockPosition(mesh) {
+        if (!mesh || !this.levelConfig) return;
+
+        // Force all desert rocks to stay aligned with terrain
+        const pos = mesh.position;
+        const terrainY = noise2D(
+            pos.x * this.levelConfig.NOISE_FREQUENCY,
+            pos.z * this.levelConfig.NOISE_FREQUENCY
+        ) * this.levelConfig.NOISE_AMPLITUDE;
+
+        // Use a fixed vertical offset for desert rocks
+        const verticalOffset = 0.6;
+        mesh.position.y = terrainY + verticalOffset;
+
+        // Ensure userData is set correctly
+        mesh.userData.objectType = 'rock_desert';
+        mesh.userData.stayAlignedWithTerrain = true;
+        mesh.userData.verticalOffset = verticalOffset;
+
+        // Update the spatial grid with the new position
+        this.spatialGrid.update(mesh);
+
+        // Log for debugging
+        logger.debug(`Updated rock_desert position at (${pos.x.toFixed(2)}, ${pos.z.toFixed(2)}) to y=${mesh.position.y.toFixed(2)}`);
     }
 }

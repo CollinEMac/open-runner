@@ -22,15 +22,15 @@ export const tumbleweedConfig = {
     MAX_SPEED_FACTOR: 1.0, // Multiplier for rollSpeed to get max speed limit
     WOBBLE_FACTOR: 0.1,
     MIN_VELOCITY_SQ_THRESHOLD: 0.1, // Min velocity squared to apply steering/rotation
-    TERRAIN_ADJUST_THRESHOLD: 0.5, // How far above terrain to float
-    GROUND_BOUNCE_FACTOR: 0.3,
+    TERRAIN_ADJUST_THRESHOLD: 1.0, // How far above terrain to float - increased to prevent sinking
+    GROUND_BOUNCE_FACTOR: 0.7, // Increased to make tumbleweeds bounce more when they hit the ground
 
-    // Physics
-    MASS: 0.5,
+    // Physics - adjusted to prevent sinking
+    MASS: 0.3, // Reduced mass to make it less likely to sink
     FRICTION: 0.2,
-    RESTITUTION: 0.3,
+    RESTITUTION: 0.5, // Increased to make it bounce more
     USE_GRAVITY: true,
-    GRAVITY_FORCE: 9.8,
+    GRAVITY_FORCE: 5.0, // Reduced gravity to make it less likely to sink
 
     // Visuals
     SCALE_MIN: 0.8, // Example: Add min/max scale if needed later

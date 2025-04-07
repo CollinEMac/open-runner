@@ -230,7 +230,7 @@ export const level2Config = {
             type: 'tumbleweed', // Hazard - dynamic rolling hazard
             density: 0.00045, // Further increased density for more tumbleweeds
             minDistance: 30.0, // Increased to spawn further from path
-            verticalOffset: 0.8, // Start slightly above ground
+            verticalOffset: 1.5, // Start higher above ground to prevent sinking
             scaleRange: [0.8, 1.8], // Increased max scale for more variety
             randomRotationY: true,
             collidable: true, // Will be handled by physics/collision
