@@ -74,6 +74,21 @@ export class ObjectPoolManager { // Add named export
 
         const objectType = object.userData?.objectType || object.type || 'unknown';
 
+        // Special validation for tree_pine objects
+        if (objectType === 'tree_pine') {
+            let hasTrunk = false, hasFoliage = false;
+            object.traverse((child) => {
+                if (child.name === 'treeTrunk') hasTrunk = true;
+                if (child.name === 'treeFoliage') hasFoliage = true;
+            });
+
+            if (!hasTrunk || !hasFoliage) {
+                logger.warn(`Tree missing parts when adding to pool. Creating a new tree instead of pooling.`);
+                this._disposeObject(object, poolName);
+                return; // Don't add incomplete trees to the pool
+            }
+        }
+
         // Hide the object but keep it in memory
         if (object.visible !== undefined) { // For THREE.Object3D based objects
             object.visible = false;
@@ -121,7 +136,39 @@ export class ObjectPoolManager { // Add named export
         if (!object) return;
 
         try {
-            if (poolName === 'tumbleweeds' && typeof object.dispose === 'function') {
+            // Special handling for tree_pine objects to preserve their structure
+            if (object.userData?.objectType === 'tree_pine') {
+                // Only dispose materials and geometries, but keep the structure intact
+                object.traverse((child) => {
+                    if (child instanceof THREE.Mesh) {
+                        // Only dispose the geometry and material, not the mesh itself
+                        child.geometry?.dispose();
+                        if (child.material) {
+                            if (Array.isArray(child.material)) {
+                                child.material.forEach(mat => mat?.dispose());
+                            } else {
+                                child.material.dispose();
+                            }
+                        }
+                    }
+                });
+
+                // Check if the tree has all its parts before disposal
+                let hasTrunk = false, hasFoliage = false;
+                object.traverse((child) => {
+                    if (child.name === 'treeTrunk') hasTrunk = true;
+                    if (child.name === 'treeFoliage') hasFoliage = true;
+                });
+
+                if (!hasTrunk || !hasFoliage) {
+                    logger.warn(`Tree missing parts during disposal. This may cause visual glitches.`);
+                }
+
+                // Ensure the object itself is removed if it was somehow still parented
+                if(object.parent) {
+                    object.parent.remove(object);
+                }
+            } else if (poolName === 'tumbleweeds' && typeof object.dispose === 'function') {
                 object.dispose(); // Call GameObject dispose method if available
             } else if (object instanceof THREE.Object3D) { // Handle Meshes and Groups
                 object.traverse((child) => {

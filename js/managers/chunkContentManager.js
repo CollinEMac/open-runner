@@ -10,6 +10,7 @@ import { createObjectVisual } from '../generators/objectGenerator.js'; // Remove
 import { gameplayConfig } from '../config/gameplay.js'; // Needed for collection/magnet logic
 import { playerConfig } from '../config/player.js'; // Needed for collection logic
 import eventBus from '../core/eventBus.js'; // Needed for scoreChanged event in updateCollectibles
+import { modelsConfig as C_MODELS } from '../config/models.js'; // Needed for tree configuration
 
 const logger = createLogger('ChunkContentManager');
 
@@ -116,14 +117,38 @@ export class ChunkContentManager {
 
                 if (objectData.type === 'tree_pine' && mesh) {
                     let hasTrunk = false, hasFoliage = false;
+                    let trunkMesh = null, foliageMesh = null;
+
                     mesh.traverse((child) => {
-                        if (child.name === 'treeTrunk') hasTrunk = true;
-                        if (child.name === 'treeFoliage') hasFoliage = true;
+                        if (child.name === 'treeTrunk') {
+                            hasTrunk = true;
+                            trunkMesh = child;
+                        }
+                        if (child.name === 'treeFoliage') {
+                            hasFoliage = true;
+                            foliageMesh = child;
+                        }
                     });
+
                     if (!hasTrunk || !hasFoliage) {
-                        logger.warn(`Pooled tree missing parts. Creating new tree.`);
-                        this.objectPoolManager.addToPool('obstacles', mesh);
+                        logger.warn(`Pooled tree missing parts (trunk: ${hasTrunk}, foliage: ${hasFoliage}). Creating new tree.`);
+                        // Don't add back to pool - it's already incomplete
+                        if (mesh.parent) {
+                            mesh.parent.remove(mesh);
+                        }
                         mesh = null;
+                    } else {
+                        // Ensure the foliage is properly positioned relative to the trunk
+                        // This fixes any potential positioning issues that might have occurred
+                        const config = C_MODELS.TREE_PINE;
+                        const trunkHeight = config.TRUNK_HEIGHT * mesh.scale.y;
+                        const foliageHeight = config.FOLIAGE_HEIGHT * mesh.scale.y;
+
+                        // Reset the foliage position to be on top of the trunk
+                        foliageMesh.position.y = trunkHeight + foliageHeight / 2;
+
+                        // Verify the tree is properly set up
+                        mesh.userData.isCompleteTree = true;
                     }
                 }
 

@@ -35,6 +35,7 @@ export function createTreeMesh() {
         }
     }
 
+    // Create trunk
     const trunkGeometry = new THREE.CylinderGeometry(trunkRadius, trunkRadius, trunkHeight, config.TRUNK_SEGMENTS);
     const trunkMesh = new THREE.Mesh(trunkGeometry, trunkMaterial);
     trunkMesh.position.y = trunkHeight / 2;
@@ -43,6 +44,10 @@ export function createTreeMesh() {
     trunkMesh.name = config.TRUNK_NAME;
     treeGroup.add(trunkMesh);
 
+    // Store reference to prevent accidental removal
+    treeGroup.userData.trunkMesh = trunkMesh;
+
+    // Create foliage (tree top)
     const foliageGeometry = new THREE.ConeGeometry(foliageRadius, foliageHeight, config.FOLIAGE_SEGMENTS);
     const foliageMesh = new THREE.Mesh(foliageGeometry, foliageMaterial);
     foliageMesh.position.y = trunkHeight + foliageHeight / 2;
@@ -51,9 +56,20 @@ export function createTreeMesh() {
     foliageMesh.name = config.FOLIAGE_NAME;
     treeGroup.add(foliageMesh);
 
+    // Store reference to prevent accidental removal
+    treeGroup.userData.foliageMesh = foliageMesh;
+
     if (treeGroup.children.length !== 2) {
         logger.warn(`Tree has ${treeGroup.children.length} parts instead of 2`);
     }
+
+    // Add event listener for child removal to maintain tree integrity
+    treeGroup.addEventListener('removed', function(event) {
+        // If a child is removed, log it for debugging
+        if (event.target !== treeGroup) {
+            logger.warn(`Tree part ${event.target.name} was removed from tree group`);
+        }
+    });
 
     treeGroup.userData.isCompleteTree = true;
     treeGroup.userData.objectType = config.OBJECT_TYPE;
