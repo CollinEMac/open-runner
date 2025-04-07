@@ -138,23 +138,41 @@ export class ChunkContentManager {
                         }
                         mesh = null;
                     } else {
+                        // First set the position and scale of the tree group
+                        if (objectData.position) mesh.position.copy(objectData.position);
+                        mesh.rotation.set(0, objectData.rotationY ?? 0, 0);
+
+                        // Important: Reset scale to 1 before adjusting child positions
+                        mesh.scale.set(1, 1, 1);
+
                         // Ensure the foliage is properly positioned relative to the trunk
                         // This fixes any potential positioning issues that might have occurred
                         const config = C_MODELS.TREE_PINE;
-                        const trunkHeight = config.TRUNK_HEIGHT * mesh.scale.y;
-                        const foliageHeight = config.FOLIAGE_HEIGHT * mesh.scale.y;
+                        const trunkHeight = config.TRUNK_HEIGHT;
+                        const foliageHeight = config.FOLIAGE_HEIGHT;
 
-                        // Reset the foliage position to be on top of the trunk
+                        // Reset the trunk and foliage positions to their original values
+                        trunkMesh.position.y = trunkHeight / 2;
                         foliageMesh.position.y = trunkHeight + foliageHeight / 2;
+
+                        // Now apply the scale to the entire tree group
+                        mesh.scale.set(objectData.scale?.x ?? 1, objectData.scale?.y ?? 1, objectData.scale?.z ?? 1);
+
+                        // Make the tree visible
+                        mesh.visible = true;
 
                         // Verify the tree is properly set up
                         mesh.userData.isCompleteTree = true;
+
+                        // Skip the generic position/scale setting below since we've already done it
+                        objectData.positionSet = true;
                     }
                 }
 
                 if (!mesh) {
                     mesh = createObjectVisual(objectData, this.levelConfig);
-                } else {
+                } else if (!objectData.positionSet) {
+                    // Only set position/rotation/scale if not already set (for trees)
                     if (objectData.position) mesh.position.copy(objectData.position);
                     mesh.rotation.set(0, objectData.rotationY ?? 0, 0);
                     mesh.scale.set(objectData.scale?.x ?? 1, objectData.scale?.y ?? 1, objectData.scale?.z ?? 1);

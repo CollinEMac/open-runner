@@ -2,6 +2,7 @@
 import * as THREE from 'three'; // Re-enabled THREE import as it's used for Object3D checks
 // import { renderingConfig } from '../config/rendering.js'; // Example if needed later
 import { createLogger } from '../utils/logger.js'; // Stays in utils
+import { modelsConfig as C_MODELS } from '../config/models.js'; // Needed for tree configuration
 
 const logger = createLogger('ObjectPoolManager'); // Create logger instance
 
@@ -74,12 +75,20 @@ export class ObjectPoolManager { // Add named export
 
         const objectType = object.userData?.objectType || object.type || 'unknown';
 
-        // Special validation for tree_pine objects
+        // Special validation and preparation for tree_pine objects
         if (objectType === 'tree_pine') {
             let hasTrunk = false, hasFoliage = false;
+            let trunkMesh = null, foliageMesh = null;
+
             object.traverse((child) => {
-                if (child.name === 'treeTrunk') hasTrunk = true;
-                if (child.name === 'treeFoliage') hasFoliage = true;
+                if (child.name === 'treeTrunk') {
+                    hasTrunk = true;
+                    trunkMesh = child;
+                }
+                if (child.name === 'treeFoliage') {
+                    hasFoliage = true;
+                    foliageMesh = child;
+                }
             });
 
             if (!hasTrunk || !hasFoliage) {
@@ -87,6 +96,17 @@ export class ObjectPoolManager { // Add named export
                 this._disposeObject(object, poolName);
                 return; // Don't add incomplete trees to the pool
             }
+
+            // Reset the tree scale to 1 to avoid scaling issues when reused
+            object.scale.set(1, 1, 1);
+
+            // Reset the trunk and foliage positions to their original values
+            const config = C_MODELS.TREE_PINE;
+            const trunkHeight = config.TRUNK_HEIGHT;
+            const foliageHeight = config.FOLIAGE_HEIGHT;
+
+            if (trunkMesh) trunkMesh.position.y = trunkHeight / 2;
+            if (foliageMesh) foliageMesh.position.y = trunkHeight + foliageHeight / 2;
         }
 
         // Hide the object but keep it in memory
