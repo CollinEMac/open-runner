@@ -189,6 +189,14 @@ export class EnemyManager {
     }
 
     /**
+     * Gets the count of currently active enemies.
+     * @returns {number} The number of active enemies.
+     */
+    getActiveEnemiesCount() {
+        return this.activeEnemies.size;
+    }
+
+    /**
      * Removes all active enemies from the scene and clears the manager.
      * Used during level transitions.
      */

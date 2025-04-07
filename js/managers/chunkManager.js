@@ -302,6 +302,18 @@ export class ChunkManager {
 
     // --- Cleanup ---
 
+    /**
+     * Gets the number of currently loaded chunks.
+     * @returns {number} The count of loaded chunks.
+     */
+    getLoadedChunksCount() {
+        return this.loadedChunks.size;
+    }
+
+    /**
+     * Clears all loaded chunks and their content.
+     * Used during level transitions.
+     */
     clearAllChunks() {
         logger.info(`Clearing all ${this.loadedChunks.size} loaded chunks...`);
         this.chunksToLoadQueue.clear();

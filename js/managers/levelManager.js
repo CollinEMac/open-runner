@@ -103,11 +103,15 @@ export function setManagers(chunkMgr, enemyMgr) {
  */
 export function unloadCurrentLevel() {
     if (!currentLevelId) {
+        logger.info("[LevelManager] No current level to unload.");
         return;
     }
 
+    logger.info(`[LevelManager] Unloading level: ${currentLevelId}`);
+
     // Signal ChunkManager to clear chunks
     if (chunkManagerInstance) {
+        logger.info("[LevelManager] Clearing all chunks...");
         chunkManagerInstance.clearAllChunks();
     } else {
         logger.warn("[LevelManager] ChunkManager instance not set, cannot clear chunks.");
@@ -115,16 +119,28 @@ export function unloadCurrentLevel() {
 
     // Signal EnemyManager to remove enemies
     if (enemyManagerInstance) {
+        logger.info("[LevelManager] Removing all enemies...");
         enemyManagerInstance.removeAllEnemies();
     } else {
         logger.warn("[LevelManager] EnemyManager instance not set, cannot remove enemies.");
     }
 
     // Signal AssetManager to dispose level-specific assets
+    logger.info("[LevelManager] Disposing level-specific assets...");
     AssetManager.disposeLevelAssets(); // Called directly via namespace
 
-    // TODO: Clear other level-specific states if necessary (e.g., UI elements specific to the level?)
+    // Double-check that everything is cleared
+    if (chunkManagerInstance && chunkManagerInstance.getLoadedChunksCount && chunkManagerInstance.getLoadedChunksCount() > 0) {
+        logger.warn(`[LevelManager] After cleanup, ${chunkManagerInstance.getLoadedChunksCount()} chunks still loaded. Forcing another cleanup...`);
+        chunkManagerInstance.clearAllChunks();
+    }
 
+    if (enemyManagerInstance && enemyManagerInstance.getActiveEnemiesCount && enemyManagerInstance.getActiveEnemiesCount() > 0) {
+        logger.warn(`[LevelManager] After cleanup, ${enemyManagerInstance.getActiveEnemiesCount()} enemies still active. Forcing another cleanup...`);
+        enemyManagerInstance.removeAllEnemies();
+    }
+
+    logger.info(`[LevelManager] Level ${currentLevelId} unloaded successfully.`);
     currentLevelId = null;
     currentLevelConfig = null;
 }

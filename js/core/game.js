@@ -358,11 +358,32 @@ class Game {
             const playerCurrentParent = this.player.model?.parent;
 
             // Unload previous level assets/state
+            logger.info(`Cleaning up resources before loading level ${levelId}...`);
+
+            // First, remove all enemies
             this.enemyManager.removeAllEnemies();
+
+            // Clear all chunks and their content
             this.chunkManager.clearAllChunks();
+
+            // Clear atmospheric elements
             this.atmosphericManager.clearElements();
-            if (this.levelManager.getCurrentLevelId() && this.levelManager.getCurrentLevelId() !== levelId) {
+
+            // Ensure complete level unloading if we're changing levels
+            const currentLevelId = this.levelManager.getCurrentLevelId();
+            if (currentLevelId && currentLevelId !== levelId) {
+                logger.info(`Unloading current level ${currentLevelId} before loading ${levelId}`);
                 this.levelManager.unloadCurrentLevel();
+            }
+
+            // Force a garbage collection hint
+            if (window.gc) {
+                try {
+                    window.gc();
+                    logger.debug('Garbage collection hint sent');
+                } catch (e) {
+                    // Ignore errors, gc() is not available in all browsers
+                }
             }
 
             // Ensure config is loaded/set

@@ -85,10 +85,16 @@ export function setupEventHandlers(dependencies) {
                         // Set game state to LEVEL_TRANSITION first
                         gameStateManager.setGameState(GameStates.LEVEL_TRANSITION);
 
+                        // Ensure complete cleanup of level1 before starting level2
+                        logger.info('Ensuring complete cleanup of level1 before transitioning to level2');
+                        if (levelManager.getCurrentLevelId() === 'level1') {
+                            levelManager.unloadCurrentLevel();
+                        }
+
                         // Directly call startGameCallback for level2
                         startGameCallback('level2');
                     }
-                }, 50);
+                }, 100); // Increased delay to ensure cleanup completes
             }
         }
     });
@@ -188,6 +194,13 @@ export function setupEventHandlers(dependencies) {
         try {
             // Set game state to LEVEL_TRANSITION
             gameStateManager.setGameState(GameStates.LEVEL_TRANSITION);
+
+            // Ensure complete cleanup of current level before transitioning
+            const currentLevelId = levelManager.getCurrentLevelId();
+            if (currentLevelId && currentLevelId !== levelId) {
+                logger.info(`Ensuring complete cleanup of level ${currentLevelId} before transitioning to ${levelId}`);
+                levelManager.unloadCurrentLevel();
+            }
 
             // Use startGameCallback to ensure proper level initialization
             startGameCallback(levelId);
