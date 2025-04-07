@@ -63,6 +63,30 @@ function _getOrCreateLogContainer() {
  * @param {...any} args - Additional arguments.
  */
 function _appendToDom(level, formattedMessage, ...args) {
+    // Check if DOM logging is enabled in debug config
+    try {
+        // Use a direct check for the URL parameter first for early initialization
+        const urlParams = new URLSearchParams(window.location.search);
+        const debugParam = urlParams.get('debug');
+
+        // If debug parameter is not explicitly set to 'true', check the config
+        if (debugParam !== 'true') {
+            // Try to access config - this might not be available during early initialization
+            const configModule = window.configManager || window.getConfig;
+            if (configModule) {
+                const enableDomLogging = configModule.get ?
+                    configModule.get('debug.ENABLE_DOM_LOGGING') :
+                    (typeof getConfig === 'function' ? getConfig('debug.ENABLE_DOM_LOGGING') : false);
+
+                // Skip DOM logging if explicitly disabled
+                if (enableDomLogging === false) return;
+            }
+        }
+    } catch (e) {
+        // If any error occurs during config check, continue with DOM logging
+        console.warn('Error checking DOM logging config:', e);
+    }
+
     const container = _getOrCreateLogContainer();
     if (!container) return;
 
@@ -84,9 +108,20 @@ function _appendToDom(level, formattedMessage, ...args) {
     container.appendChild(logEntry);
 
     // Limit the number of log entries in the DOM to prevent memory issues
-    const maxEntries = 100;
-    while (container.children.length > maxEntries) {
-        container.removeChild(container.firstChild);
+    const maxEntries = 50; // Reduced from 100 to improve performance
+    if (container.children.length > maxEntries) {
+        // More efficient batch removal when exceeding the limit by a lot
+        if (container.children.length > maxEntries * 2) {
+            // If we have way too many entries, clear all but the most recent maxEntries
+            const toKeep = Array.from(container.children).slice(-maxEntries);
+            container.innerHTML = '';
+            toKeep.forEach(entry => container.appendChild(entry));
+        } else {
+            // Otherwise just remove oldest entries one by one
+            while (container.children.length > maxEntries) {
+                container.removeChild(container.firstChild);
+            }
+        }
     }
 }
 

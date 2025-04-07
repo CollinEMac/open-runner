@@ -269,12 +269,11 @@ class Game {
         this.sceneTransitionManager.update(deltaTime, elapsedTime);
         this.activeScene = this.sceneTransitionManager.getActiveScene() || this.scene;
 
-        // Log active scene and state being rendered
-        logger.debug(`[Animate] State: ${currentState}, Rendering activeScene UUID: ${this.activeScene?.uuid}`);
+        // Only log rendering issues when they occur
         if (this.renderer && this.activeScene && this.camera) {
             this.renderer.render(this.activeScene, this.camera);
         } else {
-             logger.warn("Skipping render: Missing renderer, activeScene, or camera.");
+            logger.warn("Skipping render: Missing renderer, activeScene, or camera.");
         }
     }
 
@@ -347,41 +346,34 @@ class Game {
 
             const playerCurrentParent = this.player.model?.parent;
 
-            logger.debug("[_loadLevel] Step 1: Unloading previous level...");
             // Unload previous level assets/state
-            logger.info("Unloading current level assets and state (if necessary)...");
+            logger.info("Unloading current level assets and state...");
             this.enemyManager.removeAllEnemies();
             this.chunkManager.clearAllChunks();
             this.atmosphericManager.clearElements();
             if (this.levelManager.getCurrentLevelId() && this.levelManager.getCurrentLevelId() !== levelId) {
-                 this.levelManager.unloadCurrentLevel();
+                this.levelManager.unloadCurrentLevel();
             } else {
-                 logger.info("Skipping asset disposal (first level or restarting same level).");
+                logger.info("Skipping asset disposal (first level or restarting same level).");
             }
 
-            logger.debug("[_loadLevel] Step 2: Ensuring level config...");
             // Ensure config is loaded/set
             this.currentLevelConfig = this.levelManager.getCurrentConfig();
             if (!this.currentLevelConfig || this.levelManager.getCurrentLevelId() !== levelId) {
-                 logger.info(`Loading new level config for ${levelId}...`);
-                 const levelLoaded = await this.levelManager.loadLevel(levelId);
-                 if (!levelLoaded) throw new Error(`Failed to load level config for ${levelId}.`);
-                 this.currentLevelConfig = this.levelManager.getCurrentConfig();
+                logger.info(`Loading new level config for ${levelId}...`);
+                const levelLoaded = await this.levelManager.loadLevel(levelId);
+                if (!levelLoaded) throw new Error(`Failed to load level config for ${levelId}.`);
+                this.currentLevelConfig = this.levelManager.getCurrentConfig();
             }
 
-            logger.debug("[_loadLevel] Step 3: Initializing assets...");
             // Initialize Assets, Scene, Player, Chunks
             logger.info("Initializing new level assets...");
             await this.assetManager.initLevelAssets(this.currentLevelConfig);
-            logger.debug("[_loadLevel] Step 4: Adding atmospheric elements...");
             this.atmosphericManager.addElementsForLevel(levelId, this.gameplayScene);
-            logger.debug("[_loadLevel] Step 5: Updating scene appearance...");
             logger.info("Updating scene appearance...");
             this._updateSceneAppearance(this.currentLevelConfig, this.gameplayScene);
-            logger.debug("[_loadLevel] Step 6: Setting chunk manager config...");
             this.chunkManager.setLevelConfig(this.currentLevelConfig);
 
-            logger.debug("[_loadLevel] Step 7: Resetting player state...");
             logger.info("Resetting player state...");
             if (this.player.model) {
                 if (playerCurrentParent && playerCurrentParent !== this.gameplayScene) {
@@ -392,12 +384,11 @@ class Game {
                 this.player.currentSpeed = playerConfig.SPEED;
                 this.player.powerup = '';
                 if (this.gameplayScene) {
-                    logger.debug(`[_loadLevel] Attempting to add player model to gameplayScene (UUID: ${this.gameplayScene.uuid})`);
                     if (this.player.model.parent !== this.gameplayScene) {
                         this.gameplayScene.add(this.player.model);
                     }
                     this.player.model.visible = true;
-                    logger.debug(`[_loadLevel] Player model added. Visibility: ${this.player.model.visible}, Parent UUID: ${this.player.model.parent?.uuid}`);
+                    logger.debug(`Player model added to scene. Visibility: ${this.player.model.visible}`);
                 } else {
                     logger.error("[_loadLevel] Cannot add player model, gameplayScene is null!");
                 }

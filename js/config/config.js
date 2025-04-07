@@ -154,9 +154,10 @@ performanceManager.setOnSettingsChanged((settings) => {
                          settings.quality === 'medium' ? renderingAdvancedConfig.SHADOW_MAP_SIZE_MEDIUM :
                          renderingAdvancedConfig.SHADOW_MAP_SIZE_HIGH; // Default to high for ultra/custom
     updateConfig(SECTIONS.RENDERING_ADVANCED, {
-         // Note: This assumes shadow map size is the only advanced setting tied to quality presets for now
-         // If others are added, update them here too.
-         // We might need a more robust way to map quality presets to advanced settings.
+        // Apply shadow map size based on quality setting
+        SHADOW_MAP_SIZE: shadowQuality
+        // Note: This assumes shadow map size is the only advanced setting tied to quality presets for now
+        // If others are added, update them here too.
     });
 
 

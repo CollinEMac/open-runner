@@ -500,9 +500,10 @@ html, body {
 
 /* Only show mobile controls when the class is present */
 .show-mobile-controls #mobileControls {
-    /* Still hidden by default, even with the class */
-    display: none;
+    /* Prepare for display but still hidden until media query applies */
+    display: flex;
     opacity: 0;
+    pointer-events: none;
 }
 
 /* Only show mobile controls on actual mobile devices with touch capability */

@@ -113,8 +113,6 @@ export function updateMobileControlsVisibility(forceShow = false, forceHide = fa
         }
     }
 
-    // Debug the current state
-    // if (mobileControls) { // Removed debug block
-    //     setTimeout(() => {
-    // }
+    // Debug the current state if needed
+    logger.debug(`Mobile controls visibility updated. Show class: ${document.body.classList.contains('show-mobile-controls')}`);
 }
