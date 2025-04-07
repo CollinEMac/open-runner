@@ -48,6 +48,7 @@ class CameraManager {
 
         // Player movement tracking for adaptive camera following
         this._lastPlayerPosition = null;
+        this._firstPositionFrame = true;
 
         logger.info("CameraManager instantiated");
     }
@@ -162,6 +163,11 @@ class CameraManager {
         if (!this._lastPlayerPosition) {
             this._lastPlayerPosition = new THREE.Vector3();
             playerObj.model.getWorldPosition(this._lastPlayerPosition);
+
+            // First frame - don't calculate movement yet
+            this._firstPositionFrame = true;
+        } else {
+            this._firstPositionFrame = false;
         }
 
         // Get current player position
@@ -169,19 +175,28 @@ class CameraManager {
         playerObj.model.getWorldPosition(currentPlayerPosition);
 
         // Calculate player movement since last frame
-        const playerMovement = currentPlayerPosition.distanceTo(this._lastPlayerPosition);
+        let playerMovement = 0;
+        if (!this._firstPositionFrame) {
+            playerMovement = currentPlayerPosition.distanceTo(this._lastPlayerPosition);
+        }
 
         // Update last player position
         this._lastPlayerPosition.copy(currentPlayerPosition);
 
         // Determine if player is moving significantly
-        const isPlayerMoving = playerMovement > 0.01; // Threshold for significant movement
+        // Ignore vertical movement which is likely terrain adjustment
+        const horizontalMovement = Math.sqrt(
+            Math.pow(currentPlayerPosition.x - this._lastPlayerPosition.x, 2) +
+            Math.pow(currentPlayerPosition.z - this._lastPlayerPosition.z, 2)
+        );
+        const isPlayerMoving = horizontalMovement > 0.01; // Threshold for significant horizontal movement
 
         // Force camera to follow player directly after transition
         if (this._justCompletedTransition) {
-            // For the first frame after transition, use a direct follow
-            if (this._frameCountAfterTransition === 0) {
-                logger.debug("First frame after transition - direct camera positioning");
+            // For the first few frames after transition, use a direct follow
+            // This helps with the initial terrain adjustment
+            if (this._frameCountAfterTransition < 3) {
+                logger.debug("Initial frames after transition - direct camera positioning");
                 // Position the camera directly behind the player
                 this.camera.position.copy(targetCameraPosition);
                 this.camera.lookAt(lookAtPosition);
@@ -387,12 +402,13 @@ class CameraManager {
             // This will be used to ensure smooth camera movement in the next few frames
             this._justCompletedTransition = true;
             this._transitionCompletionTime = Date.now();
-            this._smoothingFramesAfterTransition = 30; // Apply extra smoothing for 30 frames
+            this._smoothingFramesAfterTransition = 15; // Apply extra smoothing for 15 frames (reduced)
             this._frameCountAfterTransition = 0; // Reset frame counter
 
             // Reset player position tracking for movement detection
             this._lastPlayerPosition = new THREE.Vector3();
             player.model.getWorldPosition(this._lastPlayerPosition);
+            this._firstPositionFrame = true; // Mark as first frame to ignore initial terrain adjustment
 
             eventBus.emit('cameraTransitionComplete', 'toGameplay');
         }

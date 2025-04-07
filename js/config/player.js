@@ -36,7 +36,7 @@ export const playerConfig = {
 
     // Initial Position
     INITIAL_POS_X: 0,
-    INITIAL_POS_Y: 10,
+    INITIAL_POS_Y: 5, // Lowered to be closer to terrain height
     INITIAL_POS_Z: 5,
 };
 
