@@ -40,19 +40,35 @@ function _getOrCreateLogContainer() {
     if (logContainerElement) {
         return logContainerElement;
     }
-    if (typeof document !== 'undefined' && document.body) {
-        logContainerElement = document.getElementById(logContainerId);
-        if (!logContainerElement) {
-            console.warn(`[Logger] Log container #${logContainerId} not found. Creating one.`);
-            logContainerElement = document.createElement('div');
-            logContainerElement.id = logContainerId;
-            logContainerElement.style.display = 'none'; // Hidden by default
-            logContainerElement.setAttribute('aria-live', 'polite');
-            document.body.appendChild(logContainerElement);
-        }
-        return logContainerElement;
+
+    // Check if we're in a browser environment
+    if (typeof window === 'undefined' || typeof document === 'undefined') {
+        return null; // Not in a browser environment
     }
-    return null; // Document not ready or not in a browser environment
+
+    // If document.body isn't ready yet, wait for DOMContentLoaded
+    if (!document.body) {
+        // We'll try again when the DOM is fully loaded
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => {
+                // Try to create the container once the DOM is ready
+                _getOrCreateLogContainer();
+            });
+        }
+        return null; // Document not ready yet
+    }
+
+    // Document is ready, try to get or create the container
+    logContainerElement = document.getElementById(logContainerId);
+    if (!logContainerElement) {
+        console.warn(`[Logger] Log container #${logContainerId} not found. Creating one.`);
+        logContainerElement = document.createElement('div');
+        logContainerElement.id = logContainerId;
+        logContainerElement.style.display = 'none'; // Hidden by default
+        logContainerElement.setAttribute('aria-live', 'polite');
+        document.body.appendChild(logContainerElement);
+    }
+    return logContainerElement;
 }
 
 /**
@@ -87,8 +103,21 @@ function _appendToDom(level, formattedMessage, ...args) {
         console.warn('Error checking DOM logging config:', e);
     }
 
+    // Skip DOM logging if we're not in a browser environment
+    if (typeof window === 'undefined' || typeof document === 'undefined') {
+        return;
+    }
+
     const container = _getOrCreateLogContainer();
-    if (!container) return;
+    if (!container) {
+        // If container isn't available yet but we're in a browser, store logs to append later
+        if (!window._pendingLogMessages) {
+            window._pendingLogMessages = [];
+        }
+        // Store the log message to append when container is ready
+        window._pendingLogMessages.push({ level, formattedMessage, args });
+        return;
+    }
 
     const levelName = LOG_LEVEL_NAMES[level] || 'LOG';
     const logEntry = document.createElement('div');
@@ -284,7 +313,7 @@ class Logger {
 
 // --- Global Logger Management ---
 
-const defaultLogger = new Logger('App', LogLevel.INFO); // Explicitly set to INFO to reduce verbosity
+const defaultLogger = new Logger('App', LogLevel.WARN); // Set to WARN to reduce verbosity based on user preference
 
 // --- Check for URL override ---
 // Allows enabling verbose logging via URL parameter, e.g., ?logLevel=DEBUG
@@ -368,3 +397,28 @@ export default defaultLogger;
 
 // Ensure the container is looked for/created when the module loads in a browser
 _getOrCreateLogContainer();
+
+// Process any pending log messages when DOM is ready
+if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+    const processPendingLogs = () => {
+        if (window._pendingLogMessages && window._pendingLogMessages.length > 0) {
+            const container = _getOrCreateLogContainer();
+            if (container) {
+                // Process all pending messages
+                window._pendingLogMessages.forEach(({ level, formattedMessage, args }) => {
+                    _appendToDom(level, formattedMessage, ...args);
+                });
+                // Clear the pending messages
+                window._pendingLogMessages = [];
+            }
+        }
+    };
+
+    // Check if DOM is already loaded
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', processPendingLogs);
+    } else {
+        // DOM is already loaded, process immediately
+        processPendingLogs();
+    }
+}

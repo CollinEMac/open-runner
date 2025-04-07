@@ -64,9 +64,22 @@ class ConfigManager {
         }
 
         // Deep clone to avoid external modifications affecting registered config
-        this.configs.set(section, JSON.parse(JSON.stringify(config)));
-        logger.debug(`Registered config for section "${section}"`, this.configs.get(section));
-        return true;
+        try {
+            this.configs.set(section, this._safeDeepClone(config));
+            logger.debug(`Registered config for section "${section}"`, this.configs.get(section));
+            return true;
+        } catch (e) {
+            logger.error(`Failed to clone config for section "${section}":`, e);
+            // Fall back to JSON method as a last resort
+            try {
+                this.configs.set(section, JSON.parse(JSON.stringify(config)));
+                logger.debug(`Registered config for section "${section}" using JSON method`, this.configs.get(section));
+                return true;
+            } catch (jsonError) {
+                logger.error(`Failed to register config for section "${section}":`, jsonError);
+                return false;
+            }
+        }
     }
 
     /**
@@ -86,13 +99,29 @@ class ConfigManager {
             return false;
         }
 
-        if (!this.configs.has(section)) {
-            logger.debug(`Section "${section}" not found, registering with updates.`);
-            this.configs.set(section, JSON.parse(JSON.stringify(updates)));
-        } else {
-            const currentConfig = this.configs.get(section);
-            // Simple merge (does not handle deep merging within the section)
-            this.configs.set(section, { ...currentConfig, ...JSON.parse(JSON.stringify(updates)) });
+        try {
+            if (!this.configs.has(section)) {
+                logger.debug(`Section "${section}" not found, registering with updates.`);
+                this.configs.set(section, this._safeDeepClone(updates));
+            } else {
+                const currentConfig = this.configs.get(section);
+                // Simple merge (does not handle deep merging within the section)
+                this.configs.set(section, { ...currentConfig, ...this._safeDeepClone(updates) });
+            }
+        } catch (e) {
+            logger.error(`Failed to update config for section "${section}" with safe method:`, e);
+            // Fall back to JSON method
+            try {
+                if (!this.configs.has(section)) {
+                    this.configs.set(section, JSON.parse(JSON.stringify(updates)));
+                } else {
+                    const currentConfig = this.configs.get(section);
+                    this.configs.set(section, { ...currentConfig, ...JSON.parse(JSON.stringify(updates)) });
+                }
+            } catch (jsonError) {
+                logger.error(`Failed to update config for section "${section}" with JSON method:`, jsonError);
+                return false;
+            }
         }
         logger.debug(`Updated config for section "${section}"`, this.configs.get(section));
         return true;
@@ -155,6 +184,32 @@ class ConfigManager {
     }
 
     /**
+     * Safely deep clones an object, handling special cases that JSON.stringify/parse can't handle
+     * @private
+     * @param {Object} obj - Object to clone
+     * @returns {Object} Cloned object
+     */
+    _safeDeepClone(obj) {
+        if (obj === null || obj === undefined || typeof obj !== 'object') {
+            return obj; // Return primitives as is
+        }
+
+        // Handle arrays
+        if (Array.isArray(obj)) {
+            return obj.map(item => this._safeDeepClone(item));
+        }
+
+        // Handle regular objects
+        const clonedObj = {};
+        for (const key in obj) {
+            if (obj.hasOwnProperty(key)) {
+                clonedObj[key] = this._safeDeepClone(obj[key]);
+            }
+        }
+        return clonedObj;
+    }
+
+    /**
      * Gets an entire configuration section, merging defaults and registered values.
      * @param {string} section - Section name
      * @returns {Object|null} Deep cloned configuration section or null if section is invalid.
@@ -178,10 +233,17 @@ class ConfigManager {
 
         // Return a deep clone to prevent modification of internal state
         try {
-            return JSON.parse(JSON.stringify(mergedConfig));
+            // First try the safer custom deep clone
+            return this._safeDeepClone(mergedConfig);
         } catch (e) {
-            logger.error(`Failed to deep clone section "${section}":`, e);
-            return {}; // Return empty object on clone failure
+            logger.error(`Failed to deep clone section "${section}" with safe method:`, e);
+            // Fall back to JSON method as a last resort
+            try {
+                return JSON.parse(JSON.stringify(mergedConfig));
+            } catch (jsonError) {
+                logger.error(`Failed to deep clone section "${section}" with JSON method:`, jsonError);
+                return {}; // Return empty object on clone failure
+            }
         }
     }
 
@@ -200,10 +262,16 @@ class ConfigManager {
 
         // Return a deep clone of the entire result
         try {
-            return JSON.parse(JSON.stringify(result));
+            return this._safeDeepClone(result);
         } catch (e) {
-            logger.error("Failed to deep clone all configs:", e);
-            return {}; // Return empty object on clone failure
+            logger.error("Failed to deep clone all configs with safe method:", e);
+            // Fall back to JSON method
+            try {
+                return JSON.parse(JSON.stringify(result));
+            } catch (jsonError) {
+                logger.error("Failed to deep clone all configs with JSON method:", jsonError);
+                return {}; // Return empty object on clone failure
+            }
         }
     }
 

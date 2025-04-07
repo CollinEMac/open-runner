@@ -74,6 +74,9 @@ class Game {
         this.powerupTimer = null; // Timer managed via event handler
         this.eventBus = eventBus; // Use imported singleton
 
+        // Bind animate method once to prevent memory issues
+        this.boundAnimate = this.animate.bind(this);
+
         logger.info("Game class instantiated");
     }
 
@@ -229,7 +232,7 @@ class Game {
      * @private
      */
     animate() {
-        requestAnimationFrame(this.animate.bind(this));
+        requestAnimationFrame(this.boundAnimate);
 
         let deltaTime = this.clock.getDelta();
         if (isNaN(deltaTime) || !isFinite(deltaTime) || deltaTime <= 0 || deltaTime > 1.0) {

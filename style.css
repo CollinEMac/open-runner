@@ -506,14 +506,21 @@ html, body {
     pointer-events: none;
 }
 
-/* Only show mobile controls on actual mobile devices with touch capability */
-@media (pointer: coarse) {
-    /* On touch devices, show when the class is present */
+/* Show mobile controls on devices with touch capability or when explicitly requested */
+@media (pointer: coarse), (max-width: 768px) {
+    /* On touch devices or small screens, show when the class is present */
     .show-mobile-controls #mobileControls {
         display: flex !important; /* Override the default with !important */
         opacity: 1;
         pointer-events: auto; /* Make buttons clickable */
     }
+}
+
+/* Also show mobile controls when explicitly requested via class, regardless of device */
+.force-show-mobile-controls #mobileControls {
+    display: flex !important;
+    opacity: 1;
+    pointer-events: auto;
 }
 
 .mobile-steering-controls {
@@ -705,10 +712,11 @@ html, body {
     font-family: var(--body-font);
     color: var(--text-light);
     text-shadow: var(--text-shadow);
-    animation: pulse 2s infinite;
+    animation: textPulse 2s infinite;
 }
 
-@keyframes pulse {
+/* Animation for game over instruction text */
+@keyframes textPulse {
     0% { opacity: 0.7; }
     50% { opacity: 1; }
     100% { opacity: 0.7; }

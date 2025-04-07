@@ -16,10 +16,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (mobileControls) {
             if (isMobileDevice()) {
                 logger.debug('Mobile device detected, mobile controls will be shown when appropriate');
-                // Don't set any inline styles, let the CSS handle it
+                document.body.classList.add('show-mobile-controls');
             } else {
                 logger.debug('Desktop device detected, mobile controls will be hidden');
-                // Don't set any inline styles, let the CSS handle it
+                document.body.classList.remove('show-mobile-controls');
             }
         } else {
             logger.warn('Mobile controls element not found in the DOM');
