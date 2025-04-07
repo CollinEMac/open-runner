@@ -138,24 +138,31 @@ export class ChunkContentManager {
                         }
                         mesh = null;
                     } else {
-                        // First set the position and scale of the tree group
-                        if (objectData.position) mesh.position.copy(objectData.position);
-                        mesh.rotation.set(0, objectData.rotationY ?? 0, 0);
-
+                        // First reset the tree to its original state
                         // Important: Reset scale to 1 before adjusting child positions
                         mesh.scale.set(1, 1, 1);
 
-                        // Ensure the foliage is properly positioned relative to the trunk
-                        // This fixes any potential positioning issues that might have occurred
-                        const config = C_MODELS.TREE_PINE;
-                        const trunkHeight = config.TRUNK_HEIGHT;
-                        const foliageHeight = config.FOLIAGE_HEIGHT;
+                        // Use the custom reset method if available, otherwise fall back to manual reset
+                        if (typeof mesh.resetTreeParts === 'function') {
+                            mesh.resetTreeParts();
+                        } else {
+                            // Manual reset as fallback
+                            if (mesh.userData.originalTrunkPosition && mesh.userData.originalFoliagePosition) {
+                                trunkMesh.position.copy(mesh.userData.originalTrunkPosition);
+                                foliageMesh.position.copy(mesh.userData.originalFoliagePosition);
+                            } else {
+                                // Use constants if original positions aren't stored
+                                const config = C_MODELS.TREE_PINE;
+                                trunkMesh.position.y = config.TRUNK_HEIGHT / 2;
+                                foliageMesh.position.y = config.TRUNK_HEIGHT + config.FOLIAGE_HEIGHT / 2;
+                            }
+                        }
 
-                        // Reset the trunk and foliage positions to their original values
-                        trunkMesh.position.y = trunkHeight / 2;
-                        foliageMesh.position.y = trunkHeight + foliageHeight / 2;
+                        // Now set the position and rotation of the tree group
+                        if (objectData.position) mesh.position.copy(objectData.position);
+                        mesh.rotation.set(0, objectData.rotationY ?? 0, 0);
 
-                        // Now apply the scale to the entire tree group
+                        // Apply the scale to the entire tree group
                         mesh.scale.set(objectData.scale?.x ?? 1, objectData.scale?.y ?? 1, objectData.scale?.z ?? 1);
 
                         // Make the tree visible

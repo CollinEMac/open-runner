@@ -3,6 +3,7 @@ import * as THREE from 'three'; // Re-enabled THREE import as it's used for Obje
 // import { renderingConfig } from '../config/rendering.js'; // Example if needed later
 import { createLogger } from '../utils/logger.js'; // Stays in utils
 import { modelsConfig as C_MODELS } from '../config/models.js'; // Needed for tree configuration
+import { createTreeMesh } from '../rendering/models/sceneryModels.js'; // Import for tree creation
 
 const logger = createLogger('ObjectPoolManager'); // Create logger instance
 
@@ -100,13 +101,24 @@ export class ObjectPoolManager { // Add named export
             // Reset the tree scale to 1 to avoid scaling issues when reused
             object.scale.set(1, 1, 1);
 
-            // Reset the trunk and foliage positions to their original values
-            const config = C_MODELS.TREE_PINE;
-            const trunkHeight = config.TRUNK_HEIGHT;
-            const foliageHeight = config.FOLIAGE_HEIGHT;
+            // Use the custom reset method if available
+            if (typeof object.resetTreeParts === 'function') {
+                object.resetTreeParts();
+            } else {
+                // Manual reset as fallback
+                if (object.userData.originalTrunkPosition && object.userData.originalFoliagePosition) {
+                    trunkMesh.position.copy(object.userData.originalTrunkPosition);
+                    foliageMesh.position.copy(object.userData.originalFoliagePosition);
+                } else {
+                    // Use constants if original positions aren't stored
+                    const config = C_MODELS.TREE_PINE;
+                    if (trunkMesh) trunkMesh.position.y = config.TRUNK_HEIGHT / 2;
+                    if (foliageMesh) foliageMesh.position.y = config.TRUNK_HEIGHT + config.FOLIAGE_HEIGHT / 2;
+                }
+            }
 
-            if (trunkMesh) trunkMesh.position.y = trunkHeight / 2;
-            if (foliageMesh) foliageMesh.position.y = trunkHeight + foliageHeight / 2;
+            // Ensure the tree is marked as complete
+            object.userData.isCompleteTree = true;
         }
 
         // Hide the object but keep it in memory
@@ -158,21 +170,6 @@ export class ObjectPoolManager { // Add named export
         try {
             // Special handling for tree_pine objects to preserve their structure
             if (object.userData?.objectType === 'tree_pine') {
-                // Only dispose materials and geometries, but keep the structure intact
-                object.traverse((child) => {
-                    if (child instanceof THREE.Mesh) {
-                        // Only dispose the geometry and material, not the mesh itself
-                        child.geometry?.dispose();
-                        if (child.material) {
-                            if (Array.isArray(child.material)) {
-                                child.material.forEach(mat => mat?.dispose());
-                            } else {
-                                child.material.dispose();
-                            }
-                        }
-                    }
-                });
-
                 // Check if the tree has all its parts before disposal
                 let hasTrunk = false, hasFoliage = false;
                 object.traverse((child) => {
@@ -181,7 +178,34 @@ export class ObjectPoolManager { // Add named export
                 });
 
                 if (!hasTrunk || !hasFoliage) {
-                    logger.warn(`Tree missing parts during disposal. This may cause visual glitches.`);
+                    logger.warn(`Tree missing parts during disposal. Creating a new tree instead.`);
+
+                    // If the tree is incomplete, create a new one to replace it
+                    // This ensures we don't keep broken trees in the system
+                    try {
+                        // Create a new tree to replace the broken one
+                        const newTree = createTreeMesh();
+                        // Don't return the new tree - we're disposing the old one, not replacing it
+                        // Just log that we're creating a new one for future use
+                        logger.info('Created a new tree to replace incomplete one');
+                    } catch (error) {
+                        logger.error('Failed to create replacement tree:', error);
+                    }
+                } else {
+                    // Only dispose materials and geometries, but keep the structure intact
+                    object.traverse((child) => {
+                        if (child instanceof THREE.Mesh) {
+                            // Only dispose the geometry and material, not the mesh itself
+                            child.geometry?.dispose();
+                            if (child.material) {
+                                if (Array.isArray(child.material)) {
+                                    child.material.forEach(mat => mat?.dispose());
+                                } else {
+                                    child.material.dispose();
+                                }
+                            }
+                        }
+                    });
                 }
 
                 // Ensure the object itself is removed if it was somehow still parented

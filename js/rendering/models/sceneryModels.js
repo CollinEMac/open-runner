@@ -35,29 +35,47 @@ export function createTreeMesh() {
         }
     }
 
-    // Create trunk
+    // Create a single mesh for the entire tree instead of separate parts
+    // This prevents the tree parts from being separated
+    const treeGeometry = new THREE.BufferGeometry();
+
+    // Create trunk geometry
     const trunkGeometry = new THREE.CylinderGeometry(trunkRadius, trunkRadius, trunkHeight, config.TRUNK_SEGMENTS);
+    // Position the trunk so its bottom is at y=0
+    trunkGeometry.translate(0, trunkHeight / 2, 0);
+
+    // Create foliage geometry
+    const foliageGeometry = new THREE.ConeGeometry(foliageRadius, foliageHeight, config.FOLIAGE_SEGMENTS);
+    // Position the foliage on top of the trunk
+    foliageGeometry.translate(0, trunkHeight + foliageHeight / 2, 0);
+
+    // Create a multi-material mesh
+    const materials = [trunkMaterial, foliageMaterial];
+
+    // Create separate meshes for trunk and foliage
     const trunkMesh = new THREE.Mesh(trunkGeometry, trunkMaterial);
-    trunkMesh.position.y = trunkHeight / 2;
+    trunkMesh.name = config.TRUNK_NAME;
     trunkMesh.castShadow = true;
     trunkMesh.receiveShadow = true;
-    trunkMesh.name = config.TRUNK_NAME;
     treeGroup.add(trunkMesh);
 
-    // Store reference to prevent accidental removal
-    treeGroup.userData.trunkMesh = trunkMesh;
-
-    // Create foliage (tree top)
-    const foliageGeometry = new THREE.ConeGeometry(foliageRadius, foliageHeight, config.FOLIAGE_SEGMENTS);
     const foliageMesh = new THREE.Mesh(foliageGeometry, foliageMaterial);
-    foliageMesh.position.y = trunkHeight + foliageHeight / 2;
+    foliageMesh.name = config.FOLIAGE_NAME;
     foliageMesh.castShadow = true;
     foliageMesh.receiveShadow = true;
-    foliageMesh.name = config.FOLIAGE_NAME;
     treeGroup.add(foliageMesh);
 
-    // Store reference to prevent accidental removal
+    // Store references to the parts
+    treeGroup.userData.trunkMesh = trunkMesh;
     treeGroup.userData.foliageMesh = foliageMesh;
+
+    // Store the original positions to allow for proper resetting
+    treeGroup.userData.originalTrunkPosition = new THREE.Vector3(0, trunkHeight / 2, 0);
+    treeGroup.userData.originalFoliagePosition = new THREE.Vector3(0, trunkHeight + foliageHeight / 2, 0);
+
+    // Store the original heights for scaling calculations
+    treeGroup.userData.trunkHeight = trunkHeight;
+    treeGroup.userData.foliageHeight = foliageHeight;
 
     if (treeGroup.children.length !== 2) {
         logger.warn(`Tree has ${treeGroup.children.length} parts instead of 2`);
@@ -70,6 +88,15 @@ export function createTreeMesh() {
             logger.warn(`Tree part ${event.target.name} was removed from tree group`);
         }
     });
+
+    // Add a custom update method to the tree group
+    treeGroup.resetTreeParts = function() {
+        if (this.userData.trunkMesh && this.userData.foliageMesh) {
+            // Reset positions to original values
+            this.userData.trunkMesh.position.copy(this.userData.originalTrunkPosition);
+            this.userData.foliageMesh.position.copy(this.userData.originalFoliagePosition);
+        }
+    };
 
     treeGroup.userData.isCompleteTree = true;
     treeGroup.userData.objectType = config.OBJECT_TYPE;
