@@ -26,10 +26,14 @@ function setupEventListeners() {
         playCollisionSound();
     });
 
-    // Listen for game state changes (specifically for Game Over)
+    // Listen for game state changes (specifically for Game Over and Title)
     eventBus.subscribe('gameStateChanged', ({ newState }) => { // Destructure newState
         if (newState === GameStates.GAME_OVER) {
             playGameOverSound();
+        } else if (newState === GameStates.TITLE) {
+            // Stop music when returning to title screen
+            stopMusic();
+            logger.info("Stopped music when returning to title screen");
         }
         // Add other state-based sounds here if needed (e.g., music changes)
     });
@@ -327,20 +331,20 @@ export async function playMusic(filePath = '/assets/audio/openrunnersong1.wav', 
         if (musicSource) {
             stopMusic();
         }
-        
+
         // Play the music file using our wave file player
         musicSource = await playWaveFile(filePath, volume, true); // true for looping
-        
+
         if (musicSource) {
             isMusicPlaying = true;
-            
+
             // Set up an ended event handler to reset our flag if the music stops
             musicSource.onended = () => {
                 isMusicPlaying = false;
                 musicSource = null;
             };
         }
-        
+
         return musicSource;
     } catch (error) {
         console.error("[AudioManager] Failed to play background music:", error);
@@ -387,32 +391,32 @@ export async function playWaveFile(filePath, volume = 0.5, loop = false) {
         if (!response.ok) {
             throw new Error(`Failed to fetch audio file: ${response.status} ${response.statusText}`);
         }
-        
+
         // Get the audio data as ArrayBuffer
         const audioData = await response.arrayBuffer();
-        
+
         // Decode the audio data
         const audioBuffer = await audioContext.decodeAudioData(audioData);
-        
+
         // Create a buffer source node
         const source = audioContext.createBufferSource();
         source.buffer = audioBuffer;
         source.loop = loop;
-        
+
         // Create a gain node for volume control
         const gainNode = audioContext.createGain();
         gainNode.gain.value = volume;
-        
+
         // Connect nodes: source -> gain -> masterGain -> destination
         source.connect(gainNode);
         gainNode.connect(masterGain);
-        
+
         // Start playback
         source.start(0);
-        
+
         // Return the source node so it can be stopped if needed
         return source;
-        
+
     } catch (e) {
         logger.error("[AudioManager] Error playing wave file:", e);
         return null;
