@@ -297,10 +297,15 @@ export function initUIManager() {
          return false;
     }
 
+    // Ensure score display is hidden at initialization
+    if (scoreElement) {
+        scoreElement.style.display = 'none';
+        logger.debug('Score display explicitly hidden during initialization');
+    }
+
+    // Set initial game state to LOADING
     handleGameStateChange({ newState: GameStates.LOADING, oldState: null });
     // Initial score/high score updates moved to gameInitializer.js
-
-    if (scoreElement) scoreElement.style.display = 'none';
 
     return true;
 }
@@ -488,10 +493,13 @@ export function updateScoreDisplay(score, makeVisible = false) {
         logger.debug(`[updateScoreDisplay] Prefix: ${prefix}`); // Log prefix
         scoreElement.textContent = `${prefix}${currentScore}`;
 
-        // Only change visibility if explicitly requested
-        // This ensures the score display stays hidden during loading
+        // Explicitly set display property based on makeVisible parameter
         if (makeVisible) {
             scoreElement.style.display = 'block';
+            logger.debug('Score display made visible');
+        } else {
+            scoreElement.style.display = 'none';
+            logger.debug('Score display hidden');
         }
     }
 }
