@@ -52,13 +52,8 @@ export async function initializeGame(canvasElement) {
             return null;
         }
         // Initialize score displays AFTER UI Manager is initialized
-        UIManager.updateScoreDisplay(0);
-        UIManager.updateHighScoreDisplay(ScoreManager.getGlobalHighScore());
-        // Initialize score displays AFTER UI Manager is initialized
-        UIManager.updateScoreDisplay(0);
-        UIManager.updateHighScoreDisplay(ScoreManager.getGlobalHighScore());
-        // Initialize score displays AFTER UI Manager is initialized
-        UIManager.updateScoreDisplay(0);
+        // Don't make the score display visible yet - it should stay hidden until gameplay starts
+        UIManager.updateScoreDisplay(0, false);
         UIManager.updateHighScoreDisplay(ScoreManager.getGlobalHighScore());
 
         // --- Load Initial Level Configuration ---

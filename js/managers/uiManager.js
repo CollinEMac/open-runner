@@ -51,6 +51,9 @@ function handleGameStateChange(eventData) {
     if (gameOverElement) gameOverElement.style.display = 'none';
     if (loadingScreenElement) loadingScreenElement.style.display = 'none';
     if (levelSelectScreenElement) levelSelectScreenElement.style.display = 'none';
+
+    // Always hide score display by default, we'll show it only during gameplay
+    if (scoreElement) scoreElement.style.display = 'none';
     if (pauseMenuElement) pauseMenuElement.style.display = 'none';
 
     // Hide high score in non-gameplay states
@@ -395,8 +398,10 @@ export function showGameScreen() {
     const fadeDurationMs = getConfig('ui.FADE_DURATION_MS', 300);
     const opacityVisible = getConfig('ui.OPACITY_VISIBLE', '1');
 
+    // Update score display and make it visible
+    updateScoreDisplay(currentScore, true);
+
     if (scoreElement) {
-        scoreElement.style.display = 'block';
         scoreElement.style.opacity = opacityVisible;
         scoreElement.style.transition = `opacity ${fadeDurationMs / 1000}s`;
     }
@@ -432,11 +437,9 @@ export function updateScore(scoreIncrement) {
         currentScore += scoreIncrement;
     }
 
-    if (scoreElement) {
-        const prefix = getConfig('ui.SCORE_PREFIX', 'Score: ');
-        logger.debug(`[updateScore] Prefix: ${prefix}`); // Log prefix
-        scoreElement.textContent = `${prefix}${currentScore}`;
-    }
+    // Use updateScoreDisplay to update the text content
+    // During gameplay, the score should already be visible, so we don't need to change visibility
+    updateScoreDisplay(currentScore);
 }
 
 /**
@@ -476,13 +479,20 @@ function checkForLiveHighScore(data) {
 /**
  * Updates the score display with a specific value
  * @param {number} score - The score value to display
+ * @param {boolean} [makeVisible=false] - Whether to make the score display visible
  */
-export function updateScoreDisplay(score) {
+export function updateScoreDisplay(score, makeVisible = false) {
     currentScore = score;
     if (scoreElement) {
         const prefix = getConfig('ui.SCORE_PREFIX', 'Score: ');
         logger.debug(`[updateScoreDisplay] Prefix: ${prefix}`); // Log prefix
         scoreElement.textContent = `${prefix}${currentScore}`;
+
+        // Only change visibility if explicitly requested
+        // This ensures the score display stays hidden during loading
+        if (makeVisible) {
+            scoreElement.style.display = 'block';
+        }
     }
 }
 
@@ -623,8 +633,9 @@ export function hidePauseMenu() {
         displayError(new Error("Pause menu element not found when trying to hide it."));
     }
 
+    // Update score display and make it visible
+    updateScoreDisplay(currentScore, true);
     if (scoreElement) {
-        scoreElement.style.display = 'block';
         scoreElement.style.opacity = getConfig('ui.OPACITY_VISIBLE', '1');
     }
 
