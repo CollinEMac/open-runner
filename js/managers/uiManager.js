@@ -242,6 +242,11 @@ export function initUIManager() {
         // Use getConfig here as well for consistency during creation
         highScoreElement.innerHTML = `${getConfig('ui.HIGH_SCORE_PREFIX', 'High Score: ')}0`;
         document.body.appendChild(highScoreElement);
+        // Apply styles directly to ensure proper appearance
+        highScoreElement.style.position = 'fixed';
+        highScoreElement.style.top = '15px';
+        highScoreElement.style.right = '15px';
+        highScoreElement.style.zIndex = '10';
         // Initially hide the high score display until we have a score
         highScoreElement.style.display = 'none';
     }

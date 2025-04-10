@@ -1,7 +1,7 @@
 // js/core/main.js
 import { Game } from './game.js'; // Updated path
 import * as UIManager from '../managers/uiManager.js'; // Updated path
-import { isMobileDevice } from '../utils/deviceUtils.js'; // Updated path
+import { isMobileDevice, updateMobileControlsVisibility } from '../utils/deviceUtils.js'; // Updated path
 import { createLogger } from '../utils/logger.js'; // Import logger
 
 const logger = createLogger('Main'); // Instantiate logger
@@ -14,13 +14,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Set appropriate visibility for mobile controls based on device type
         const mobileControls = document.getElementById('mobileControls');
         if (mobileControls) {
-            if (isMobileDevice()) {
-                logger.debug('Mobile device detected, mobile controls will be shown when appropriate');
-                document.body.classList.add('show-mobile-controls');
-            } else {
-                logger.debug('Desktop device detected, mobile controls will be hidden');
-                document.body.classList.remove('show-mobile-controls');
-            }
+            // Use the utility function for consistent mobile controls handling
+            updateMobileControlsVisibility();
+            logger.debug('Mobile controls visibility initialized');
         } else {
             logger.warn('Mobile controls element not found in the DOM');
         }

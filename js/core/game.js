@@ -73,6 +73,7 @@ class Game {
         this.playerAnimationTime = 0;
         this.powerupTimer = null; // Timer managed via event handler
         this.eventBus = eventBus; // Use imported singleton
+        this.animationFrameId = null; // Store animation frame ID for cleanup
 
         // Bind animate method once to prevent memory issues
         this.boundAnimate = this.animate.bind(this);
@@ -119,11 +120,12 @@ class Game {
         // Setup event subscriptions after all components are initialized
         this._setupEventSubscriptions();
 
-        // Setup global event listeners
-        window.addEventListener('resize', () => this.cameraManager.handleResize(), false);
+        // Setup global event listeners with proper references for cleanup
+        this.resizeHandler = () => this.cameraManager.handleResize();
+        window.addEventListener('resize', this.resizeHandler, false);
 
         // FPS toggle listener
-        document.addEventListener('keydown', (event) => {
+        this.fpsToggleHandler = (event) => {
             if (event.key.toLowerCase() === controlsConfig.KEY_TOGGLE_FPS) {
                 const newFpsState = !configManager.get('debug.showFPS');
                 configManager.updateConfig('debug', { SHOW_FPS: newFpsState });
@@ -131,11 +133,12 @@ class Game {
                     this.fpsCounter.style.display = newFpsState ? 'block' : 'none';
                 }
             }
-        });
+        };
+        document.addEventListener('keydown', this.fpsToggleHandler);
         // Global key listener for game actions
-        const boundHandleGlobalKeys = this.handleGlobalKeys.bind(this);
-        document.removeEventListener('keydown', boundHandleGlobalKeys); // Prevent duplicates
-        document.addEventListener('keydown', boundHandleGlobalKeys);
+        this.boundHandleGlobalKeys = this.handleGlobalKeys.bind(this);
+        document.removeEventListener('keydown', this.boundHandleGlobalKeys); // Prevent duplicates
+        document.addEventListener('keydown', this.boundHandleGlobalKeys);
 
         // Setup UI Button Listeners
         this.uiManager.setupStartButton(() => this.startGame('level1'));
@@ -232,7 +235,7 @@ class Game {
      * @private
      */
     animate() {
-        requestAnimationFrame(this.boundAnimate);
+        this.animationFrameId = requestAnimationFrame(this.boundAnimate);
 
         let deltaTime = this.clock.getDelta();
         if (isNaN(deltaTime) || !isFinite(deltaTime) || deltaTime <= 0 || deltaTime > 1.0) {
@@ -280,6 +283,46 @@ class Game {
         } else {
             logger.warn("Skipping render: Missing renderer, activeScene, or camera.");
         }
+    }
+
+    /**
+     * Cleans up resources and event listeners when the game is stopped.
+     * Call this method before destroying the game instance.
+     */
+    cleanup() {
+        logger.info("Cleaning up game resources and event listeners");
+
+        // Remove global event listeners
+        if (this.resizeHandler) {
+            window.removeEventListener('resize', this.resizeHandler);
+        }
+
+        if (this.fpsToggleHandler) {
+            document.removeEventListener('keydown', this.fpsToggleHandler);
+        }
+
+        if (this.boundHandleGlobalKeys) {
+            document.removeEventListener('keydown', this.boundHandleGlobalKeys);
+        }
+
+        // Cancel animation frame if needed
+        if (this.animationFrameId) {
+            cancelAnimationFrame(this.animationFrameId);
+            this.animationFrameId = null;
+        }
+
+        // Clear any running timers
+        if (this.powerupTimer) {
+            clearTimeout(this.powerupTimer);
+            this.powerupTimer = null;
+        }
+
+        // Dispose of Three.js resources
+        if (this.renderer) {
+            this.renderer.dispose();
+        }
+
+        logger.info("Game cleanup completed");
     }
 
     // --- Game Flow Methods (Called by Event Handlers via Callbacks) ---
