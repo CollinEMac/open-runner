@@ -43,16 +43,16 @@ export default class Tumbleweed /* extends GameObject */ { // Removed inheritanc
         this.scale = options.scale || 1.0;
 
         // Tumbleweed properties - Use constants and randomRange
-        this.rollSpeed = randomRange(C.ROLL_SPEED_MIN, C.TW_ROLL_SPEED_MAX);
+        this.rollSpeed = randomRange(C.ROLL_SPEED_MIN, C.ROLL_SPEED_MAX);
         this.rotationSpeed = new THREE.Vector3(
-            randomRange(C.ROTATION_SPEED_MIN, C.TW_ROTATION_SPEED_MAX),
-            randomRange(C.ROTATION_SPEED_MIN, C.TW_ROTATION_SPEED_MAX),
-            randomRange(C.ROTATION_SPEED_MIN, C.TW_ROTATION_SPEED_MAX)
+            randomRange(C.ROTATION_SPEED_MIN, C.ROTATION_SPEED_MAX),
+            randomRange(C.ROTATION_SPEED_MIN, C.ROTATION_SPEED_MAX),
+            randomRange(C.ROTATION_SPEED_MIN, C.ROTATION_SPEED_MAX)
         );
         this.targetDirection = new THREE.Vector3();
         this.isActive = false;
-        this.activationDistanceSq = C.ACTIVATION_DISTANCE * C.TW_ACTIVATION_DISTANCE; // Store squared distance
-        this.deactivationDistanceSq = C.DEACTIVATION_DISTANCE * C.TW_DEACTIVATION_DISTANCE; // Store squared distance
+        this.activationDistanceSq = C.ACTIVATION_DISTANCE * C.ACTIVATION_DISTANCE; // Store squared distance
+        this.deactivationDistanceSq = C.DEACTIVATION_DISTANCE * C.DEACTIVATION_DISTANCE; // Store squared distance
 
         // Create the visual representation
         this._createVisual();
@@ -118,7 +118,7 @@ export default class Tumbleweed /* extends GameObject */ { // Removed inheritanc
      */
     _createVisual() {
         // Create a more detailed tumbleweed model using constants
-        const geometry = new THREE.IcosahedronGeometry(C.MAIN_GEOMETRY_RADIUS, C.TW_MAIN_GEOMETRY_DETAIL);
+        const geometry = new THREE.IcosahedronGeometry(C.MAIN_GEOMETRY_RADIUS, C.MAIN_GEOMETRY_DETAIL);
         const material = new THREE.MeshStandardMaterial({
             color: C.MAIN_MATERIAL_COLOR,
             roughness: C.MAIN_MATERIAL_ROUGHNESS,
@@ -132,7 +132,7 @@ export default class Tumbleweed /* extends GameObject */ { // Removed inheritanc
         mainMesh.receiveShadow = true;
 
         // Create a second mesh for more detail using constants
-        const innerGeometry = new THREE.IcosahedronGeometry(C.INNER_GEOMETRY_RADIUS, C.TW_INNER_GEOMETRY_DETAIL);
+        const innerGeometry = new THREE.IcosahedronGeometry(C.INNER_GEOMETRY_RADIUS, C.INNER_GEOMETRY_DETAIL);
         const innerMaterial = new THREE.MeshStandardMaterial({
             color: C.INNER_MATERIAL_COLOR,
             roughness: C.INNER_MATERIAL_ROUGHNESS,
@@ -219,7 +219,7 @@ export default class Tumbleweed /* extends GameObject */ { // Removed inheritanc
         );
 
         // Calculate a point ahead of the player using constants and reusable objects
-        const targetAheadDistance = randomRange(C.TARGET_AHEAD_MIN, C.TW_TARGET_AHEAD_MAX);
+        const targetAheadDistance = randomRange(C.TARGET_AHEAD_MIN, C.TARGET_AHEAD_MAX);
         const targetPoint = this._tempVec3_2.copy(playerPosition).add(
             playerDirection.multiplyScalar(targetAheadDistance) // Modify playerDirection in place
         );
@@ -232,7 +232,7 @@ export default class Tumbleweed /* extends GameObject */ { // Removed inheritanc
         this.targetDirection.normalize();
 
         // Set initial velocity using constants and reusable vector
-        const initialSpeedFactor = randomRange(C.INITIAL_SPEED_FACTOR_MIN, C.TW_INITIAL_SPEED_FACTOR_MAX);
+        const initialSpeedFactor = randomRange(C.INITIAL_SPEED_FACTOR_MIN, C.INITIAL_SPEED_FACTOR_MAX);
         const initialSpeed = this.rollSpeed * initialSpeedFactor;
 
         // Set velocity with a slight upward component to help it stay above ground
@@ -272,7 +272,7 @@ export default class Tumbleweed /* extends GameObject */ { // Removed inheritanc
             );
 
             // Calculate a point ahead of the player using constants and reusable objects
-            const targetAheadDistance = randomRange(C.UPDATE_TARGET_AHEAD_MIN, C.TW_UPDATE_TARGET_AHEAD_MAX);
+            const targetAheadDistance = randomRange(C.UPDATE_TARGET_AHEAD_MIN, C.UPDATE_TARGET_AHEAD_MAX);
             const targetPoint = this._tempVec3_1.copy(playerPosition).add(
                 playerForward.multiplyScalar(targetAheadDistance) // Modify playerForward in place
             );
