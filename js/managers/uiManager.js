@@ -449,7 +449,8 @@ export function updateScore(scoreIncrement) {
 
     // Use updateScoreDisplay to update the text content
     // During gameplay, the score should already be visible, so we don't need to change visibility
-    updateScoreDisplay(currentScore);
+    // Pass false for both makeVisible and forceHide to maintain current visibility
+    updateScoreDisplay(currentScore, false, false);
 }
 
 /**
@@ -490,22 +491,24 @@ function checkForLiveHighScore(data) {
  * Updates the score display with a specific value
  * @param {number} score - The score value to display
  * @param {boolean} [makeVisible=false] - Whether to make the score display visible
+ * @param {boolean} [forceHide=false] - Whether to force hide the score display
  */
-export function updateScoreDisplay(score, makeVisible = false) {
+export function updateScoreDisplay(score, makeVisible = false, forceHide = false) {
     currentScore = score;
     if (scoreElement) {
         const prefix = getConfig('ui.SCORE_PREFIX', 'Score: ');
         logger.debug(`[updateScoreDisplay] Prefix: ${prefix}`); // Log prefix
         scoreElement.textContent = `${prefix}${currentScore}`;
 
-        // Explicitly set display property based on makeVisible parameter
+        // Only change visibility if explicitly requested
         if (makeVisible) {
             scoreElement.style.display = 'block';
             logger.debug('Score display made visible');
-        } else {
+        } else if (forceHide) {
             scoreElement.style.display = 'none';
             logger.debug('Score display hidden');
         }
+        // Otherwise, leave the current visibility state unchanged
     }
 }
 

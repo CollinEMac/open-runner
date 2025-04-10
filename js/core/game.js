@@ -465,7 +465,7 @@ class Game {
             ScoreManager.resetCurrentScore();
             // Also directly update the UI score display to ensure it's reset
             // Don't make it visible yet - it should stay hidden during loading
-            this.uiManager.updateScoreDisplay(0, false);
+            this.uiManager.updateScoreDisplay(0, false, true);
             // The 'currentScoreUpdated' event is now emitted by ScoreManager.resetCurrentScore
             this.playerAnimationTime = 0;
             if (this.powerupTimer) clearTimeout(this.powerupTimer);

@@ -277,7 +277,7 @@ export function setupEventHandlers(dependencies) {
         ScoreManager.resetCurrentScore();
         // Also directly update the UI score display to ensure it's reset
         if (dependencies.uiManager) {
-            dependencies.uiManager.updateScoreDisplay(0, false);
+            dependencies.uiManager.updateScoreDisplay(0, false, true);
         }
         logger.debug("Score reset when returning to title");
 
