@@ -138,7 +138,7 @@ export function setupEventHandlers(dependencies) {
         if (player.powerup) {
             const currentPowerup = player.powerup;
             player.powerup = '';
-            logger.debug(`Powerup ${currentPowerup} reset when returning to title`);
+            logger.debug(`Powerup ${currentPowerup} reset`);
 
             // Remove powerup visual effect
             eventBus.emit('removePowerupEffect', { type: currentPowerup, player });
@@ -148,7 +148,7 @@ export function setupEventHandlers(dependencies) {
         if (powerupTimeout) {
             clearTimeout(powerupTimeout);
             powerupTimeout = null;
-            logger.debug("Powerup timeout cleared when returning to title");
+            logger.debug("Powerup timeout cleared");
         }
 
     })
