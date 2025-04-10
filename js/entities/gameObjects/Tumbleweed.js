@@ -29,7 +29,7 @@ export default class Tumbleweed /* extends GameObject */ { // Removed inheritanc
         //     ...options
         // });
         // Manually set properties previously handled by GameObject base class
-        this.name = C.TW_OBJECT_TYPE_NAME; // Use constant
+        this.name = C.OBJECT_TYPE_NAME; // Use constant
         this.object3D = new THREE.Group(); // Create the main group
         this.object3D.name = this.name;
         if (options.position) {
@@ -43,27 +43,27 @@ export default class Tumbleweed /* extends GameObject */ { // Removed inheritanc
         this.scale = options.scale || 1.0;
 
         // Tumbleweed properties - Use constants and randomRange
-        this.rollSpeed = randomRange(C.TW_ROLL_SPEED_MIN, C.TW_ROLL_SPEED_MAX);
+        this.rollSpeed = randomRange(C.ROLL_SPEED_MIN, C.TW_ROLL_SPEED_MAX);
         this.rotationSpeed = new THREE.Vector3(
-            randomRange(C.TW_ROTATION_SPEED_MIN, C.TW_ROTATION_SPEED_MAX),
-            randomRange(C.TW_ROTATION_SPEED_MIN, C.TW_ROTATION_SPEED_MAX),
-            randomRange(C.TW_ROTATION_SPEED_MIN, C.TW_ROTATION_SPEED_MAX)
+            randomRange(C.ROTATION_SPEED_MIN, C.TW_ROTATION_SPEED_MAX),
+            randomRange(C.ROTATION_SPEED_MIN, C.TW_ROTATION_SPEED_MAX),
+            randomRange(C.ROTATION_SPEED_MIN, C.TW_ROTATION_SPEED_MAX)
         );
         this.targetDirection = new THREE.Vector3();
         this.isActive = false;
-        this.activationDistanceSq = C.TW_ACTIVATION_DISTANCE * C.TW_ACTIVATION_DISTANCE; // Store squared distance
-        this.deactivationDistanceSq = C.TW_DEACTIVATION_DISTANCE * C.TW_DEACTIVATION_DISTANCE; // Store squared distance
+        this.activationDistanceSq = C.ACTIVATION_DISTANCE * C.TW_ACTIVATION_DISTANCE; // Store squared distance
+        this.deactivationDistanceSq = C.DEACTIVATION_DISTANCE * C.TW_DEACTIVATION_DISTANCE; // Store squared distance
 
         // Create the visual representation
         this._createVisual();
 
         // Add physics component using constants
         this.physics = this.addComponent(new PhysicsComponent({
-            mass: C.TW_MASS,
-            friction: C.TW_FRICTION,
-            restitution: C.TW_RESTITUTION,
-            useGravity: C.TW_USE_GRAVITY,
-            gravityForce: C.TW_GRAVITY_FORCE,
+            mass: C.MASS,
+            friction: C.FRICTION,
+            restitution: C.RESTITUTION,
+            useGravity: C.USE_GRAVITY,
+            gravityForce: C.GRAVITY_FORCE,
             velocity: new THREE.Vector3(0, 0, 0) // Initial velocity is zero
         }));
 
@@ -118,12 +118,12 @@ export default class Tumbleweed /* extends GameObject */ { // Removed inheritanc
      */
     _createVisual() {
         // Create a more detailed tumbleweed model using constants
-        const geometry = new THREE.IcosahedronGeometry(C.TW_MAIN_GEOMETRY_RADIUS, C.TW_MAIN_GEOMETRY_DETAIL);
+        const geometry = new THREE.IcosahedronGeometry(C.MAIN_GEOMETRY_RADIUS, C.TW_MAIN_GEOMETRY_DETAIL);
         const material = new THREE.MeshStandardMaterial({
-            color: C.TW_MAIN_MATERIAL_COLOR,
-            roughness: C.TW_MAIN_MATERIAL_ROUGHNESS,
-            metalness: C.TW_MAIN_MATERIAL_METALNESS,
-            wireframe: C.TW_MAIN_MATERIAL_WIREFRAME
+            color: C.MAIN_MATERIAL_COLOR,
+            roughness: C.MAIN_MATERIAL_ROUGHNESS,
+            metalness: C.MAIN_MATERIAL_METALNESS,
+            wireframe: C.MAIN_MATERIAL_WIREFRAME
         });
 
         // Create the main mesh
@@ -132,11 +132,11 @@ export default class Tumbleweed /* extends GameObject */ { // Removed inheritanc
         mainMesh.receiveShadow = true;
 
         // Create a second mesh for more detail using constants
-        const innerGeometry = new THREE.IcosahedronGeometry(C.TW_INNER_GEOMETRY_RADIUS, C.TW_INNER_GEOMETRY_DETAIL);
+        const innerGeometry = new THREE.IcosahedronGeometry(C.INNER_GEOMETRY_RADIUS, C.TW_INNER_GEOMETRY_DETAIL);
         const innerMaterial = new THREE.MeshStandardMaterial({
-            color: C.TW_INNER_MATERIAL_COLOR,
-            roughness: C.TW_INNER_MATERIAL_ROUGHNESS,
-            metalness: C.TW_INNER_MATERIAL_METALNESS
+            color: C.INNER_MATERIAL_COLOR,
+            roughness: C.INNER_MATERIAL_ROUGHNESS,
+            metalness: C.INNER_MATERIAL_METALNESS
         });
         const innerMesh = new THREE.Mesh(innerGeometry, innerMaterial);
 
@@ -149,7 +149,7 @@ export default class Tumbleweed /* extends GameObject */ { // Removed inheritanc
 
         // Set userData for collision detection
         this.object3D.userData = {
-            objectType: C.TW_OBJECT_TYPE_NAME, // Use constant
+            objectType: C.OBJECT_TYPE_NAME, // Use constant
             collidable: true,
             gameObject: this,
             isHazard: true
@@ -219,7 +219,7 @@ export default class Tumbleweed /* extends GameObject */ { // Removed inheritanc
         );
 
         // Calculate a point ahead of the player using constants and reusable objects
-        const targetAheadDistance = randomRange(C.TW_TARGET_AHEAD_MIN, C.TW_TARGET_AHEAD_MAX);
+        const targetAheadDistance = randomRange(C.TARGET_AHEAD_MIN, C.TW_TARGET_AHEAD_MAX);
         const targetPoint = this._tempVec3_2.copy(playerPosition).add(
             playerDirection.multiplyScalar(targetAheadDistance) // Modify playerDirection in place
         );
@@ -228,11 +228,11 @@ export default class Tumbleweed /* extends GameObject */ { // Removed inheritanc
         this.targetDirection.subVectors(targetPoint, this.object3D.position).normalize();
 
         // Add some randomness to the initial direction using constant
-        this.targetDirection.x += (Math.random() - 0.5) * C.TW_TARGET_RANDOMNESS;
+        this.targetDirection.x += (Math.random() - 0.5) * C.TARGET_RANDOMNESS;
         this.targetDirection.normalize();
 
         // Set initial velocity using constants and reusable vector
-        const initialSpeedFactor = randomRange(C.TW_INITIAL_SPEED_FACTOR_MIN, C.TW_INITIAL_SPEED_FACTOR_MAX);
+        const initialSpeedFactor = randomRange(C.INITIAL_SPEED_FACTOR_MIN, C.TW_INITIAL_SPEED_FACTOR_MAX);
         const initialSpeed = this.rollSpeed * initialSpeedFactor;
 
         // Set velocity with a slight upward component to help it stay above ground
@@ -265,14 +265,14 @@ export default class Tumbleweed /* extends GameObject */ { // Removed inheritanc
         this.physics.applyForce(this._tempVec3_2.set(0, 2.0, 0));
 
         // Only adjust direction if we have some velocity (use constant)
-        if (velocity.lengthSq() > C.TW_MIN_VELOCITY_SQ_THRESHOLD) {
+        if (velocity.lengthSq() > C.MIN_VELOCITY_SQ_THRESHOLD) {
             // Calculate direction to player's path using reusable objects
             const playerForward = this._tempVec3_2.set(0, 0, -1).applyQuaternion(
                 this._tempQuat_1.setFromEuler(this._tempEuler.set(0, 0, 0)) // Use reusable Euler and Quaternion
             );
 
             // Calculate a point ahead of the player using constants and reusable objects
-            const targetAheadDistance = randomRange(C.TW_UPDATE_TARGET_AHEAD_MIN, C.TW_UPDATE_TARGET_AHEAD_MAX);
+            const targetAheadDistance = randomRange(C.UPDATE_TARGET_AHEAD_MIN, C.TW_UPDATE_TARGET_AHEAD_MAX);
             const targetPoint = this._tempVec3_1.copy(playerPosition).add(
                 playerForward.multiplyScalar(targetAheadDistance) // Modify playerForward in place
             );
@@ -281,18 +281,18 @@ export default class Tumbleweed /* extends GameObject */ { // Removed inheritanc
             const newDirection = this._tempVec3_2.subVectors(targetPoint, this.object3D.position).normalize();
 
             // Add some randomness using constant
-            newDirection.x += (Math.random() - 0.5) * C.TW_UPDATE_DIRECTION_RANDOMNESS;
+            newDirection.x += (Math.random() - 0.5) * C.UPDATE_DIRECTION_RANDOMNESS;
             newDirection.normalize();
 
             // Blend current direction with new direction using constant
-            this.targetDirection.lerp(newDirection, C.TW_STEERING_LERP_FACTOR);
+            this.targetDirection.lerp(newDirection, C.STEERING_LERP_FACTOR);
 
             // Apply a force in the target direction using constant and reusable vector
-            const steeringForce = this._tempVec3_1.copy(this.targetDirection).multiplyScalar(this.rollSpeed * C.TW_STEERING_FORCE_FACTOR);
+            const steeringForce = this._tempVec3_1.copy(this.targetDirection).multiplyScalar(this.rollSpeed * C.STEERING_FORCE_FACTOR);
             this.physics.applyForce(steeringForce);
 
             // Limit max speed using constant
-            const maxSpeed = this.rollSpeed * C.TW_MAX_SPEED_FACTOR;
+            const maxSpeed = this.rollSpeed * C.MAX_SPEED_FACTOR;
             if (this.physics.velocity.length() > maxSpeed) {
                 this.physics.velocity.normalize().multiplyScalar(maxSpeed);
             }
@@ -312,9 +312,9 @@ export default class Tumbleweed /* extends GameObject */ { // Removed inheritanc
             // Add some random wobble using constants and reusable objects
             const wobbleQuat = this._tempQuat_2.setFromEuler( // Use tempQuat_2
                 this._tempEuler.set( // Use tempEuler
-                    this.rotationSpeed.x * deltaTime * C.TW_WOBBLE_FACTOR,
-                    this.rotationSpeed.y * deltaTime * C.TW_WOBBLE_FACTOR,
-                    this.rotationSpeed.z * deltaTime * C.TW_WOBBLE_FACTOR
+                    this.rotationSpeed.x * deltaTime * C.WOBBLE_FACTOR,
+                    this.rotationSpeed.y * deltaTime * C.WOBBLE_FACTOR,
+                    this.rotationSpeed.z * deltaTime * C.WOBBLE_FACTOR
                 )
             );
             this.object3D.quaternion.premultiply(wobbleQuat);
@@ -336,7 +336,7 @@ export default class Tumbleweed /* extends GameObject */ { // Removed inheritanc
 
         // ALWAYS force the tumbleweed to stay above the terrain
         // This is a hard constraint that prevents it from ever sinking
-        const desiredY = terrainY + C.TW_TERRAIN_ADJUST_THRESHOLD;
+        const desiredY = terrainY + C.TERRAIN_ADJUST_THRESHOLD;
 
         // Force position to be at or above the desired height
         if (pos.y < desiredY) {
@@ -345,7 +345,7 @@ export default class Tumbleweed /* extends GameObject */ { // Removed inheritanc
             // If we were moving downward, bounce
             if (this.physics.velocity.y < 0) {
                 // More aggressive bounce to keep it visible
-                this.physics.velocity.y = Math.abs(this.physics.velocity.y) * C.TW_GROUND_BOUNCE_FACTOR + 0.5;
+                this.physics.velocity.y = Math.abs(this.physics.velocity.y) * C.GROUND_BOUNCE_FACTOR + 0.5;
             } else {
                 // If we weren't moving downward but still below terrain, add upward velocity
                 this.physics.velocity.y += 0.5;
