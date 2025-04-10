@@ -133,6 +133,26 @@ export function setupEventHandlers(dependencies) {
         }, gameplayConfig.POWERUP_DURATION * 1000);
     });
 
+    eventBus.subscribe('resetPowerups', () => {
+        // Reset powerup status
+        if (player.powerup) {
+            const currentPowerup = player.powerup;
+            player.powerup = '';
+            logger.debug(`Powerup ${currentPowerup} reset when returning to title`);
+
+            // Remove powerup visual effect
+            eventBus.emit('removePowerupEffect', { type: currentPowerup, player });
+        }
+
+        // Clear any active powerup timeout
+        if (powerupTimeout) {
+            clearTimeout(powerupTimeout);
+            powerupTimeout = null;
+            logger.debug("Powerup timeout cleared when returning to title");
+        }
+
+    })
+
     eventBus.subscribe('playerDied', () => {
         logger.info("Player Died event received.");
         const currentLevelId = levelManager.getCurrentLevelId();
@@ -141,6 +161,8 @@ export function setupEventHandlers(dependencies) {
         const highScore = scoreManager.getLevelHighScore(currentLevelId);
 
         gameStateManager.setGameState(GameStates.GAME_OVER);
+
+        eventBus.emit('resetPowerups');
 
         eventBus.emit('gameOverInfo', {
             score: currentScore,
@@ -259,22 +281,8 @@ export function setupEventHandlers(dependencies) {
         }
         logger.debug("Score reset when returning to title");
 
-        // Reset powerup status
-        if (player.powerup) {
-            const currentPowerup = player.powerup;
-            player.powerup = '';
-            logger.debug(`Powerup ${currentPowerup} reset when returning to title`);
-
-            // Remove powerup visual effect
-            eventBus.emit('removePowerupEffect', { type: currentPowerup, player });
-        }
-
-        // Clear any active powerup timeout
-        if (powerupTimeout) {
-            clearTimeout(powerupTimeout);
-            powerupTimeout = null;
-            logger.debug("Powerup timeout cleared when returning to title");
-        }
+        // clear powerups
+        eventBus.emit('resetPowerups');
 
         // Only start camera transition if NOT coming from LEVEL_SELECT
         if (currentState !== GameStates.LEVEL_SELECT) {
