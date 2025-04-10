@@ -2,6 +2,7 @@
 import * as UIManager from './uiManager.js'; // Stays in managers
 import * as AssetManager from './assetManager.js'; // Stays in managers
 import { createLogger } from '../utils/logger.js'; // Import logger
+import eventBus from '../core/eventBus.js';
 
 const logger = createLogger('LevelManager'); // Instantiate logger
 // Define available levels
@@ -139,6 +140,9 @@ export function unloadCurrentLevel() {
         logger.warn(`[LevelManager] After cleanup, ${enemyManagerInstance.getActiveEnemiesCount()} enemies still active. Forcing another cleanup...`);
         enemyManagerInstance.removeAllEnemies();
     }
+
+    // clear any powerups
+    eventBus.emit('resetPowerups');
 
     logger.info(`[LevelManager] Level ${currentLevelId} unloaded successfully.`);
     currentLevelId = null;
