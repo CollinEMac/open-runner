@@ -335,11 +335,22 @@ class Game {
     async startGame(levelId) {
         logger.info(`Starting level: ${levelId}`);
 
+        // Stop any currently playing music FIRST, before anything else
+        if (this.audioManager) {
+            logger.info(`Stopping current music before starting level: ${levelId}`);
+            this.audioManager.stopMusic();
+            
+            // Add a short delay to ensure audio operations complete
+            await new Promise(resolve => setTimeout(resolve, 100));
+        } else {
+            logger.warn("Audio manager not available, cannot stop music");
+        }
+
         resetInputStates();
         logger.info("Input states reset before starting game");
         updateMobileControlsVisibility();
 
-        // Load level config first
+        // Load level config
         const levelLoaded = await this.levelManager.loadLevel(levelId);
         if (!levelLoaded) {
             logger.error(`Failed to load level config for ${levelId} in startGame. Aborting.`);
@@ -378,14 +389,29 @@ class Game {
         this.sceneTransitionManager.startTransition(this.gameplayScene);
         this.activeScene = this.sceneTransitionManager.getActiveScene();
 
-        // Start the music
-        if (!this.audioManager.isMusicActive()) {
-            this.audioManager.playMusic();
+        // Set intermediate state before playing music
+        // This ensures any state transition handlers finish first
+        this.gameStateManager.setGameState(GameStates.TRANSITIONING_TO_GAMEPLAY);
+        
+        // Wait a small amount of time for state change events to be processed
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        // Double-check that music is stopped before playing new music
+        if (this.audioManager && this.audioManager.isMusicActive()) {
+            logger.warn("Music still playing before level music start - stopping again");
+            this.audioManager.stopMusic();
+            await new Promise(resolve => setTimeout(resolve, 50));
         }
 
-        // Set intermediate state
-        this.gameStateManager.setGameState(GameStates.TRANSITIONING_TO_GAMEPLAY);
+        // Now play the music for this level
+        if (this.audioManager) {
+            logger.info(`Starting music for level: ${levelId}`);
+            await this.audioManager.playMusic(levelId);
+        } else {
+            logger.warn("Audio manager not available, cannot play music");
+        }
     }
+
 
     /**
      * Internal helper to load level assets and chunks.

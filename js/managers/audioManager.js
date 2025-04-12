@@ -10,8 +10,13 @@ const logger = createLogger('AudioManager'); // Instantiate logger
 let audioContext = null;
 let masterGain = null; // Master gain node for overall volume control
 let musicSource = null;
-let isMusicPlaying = false;
+let currentMusicId = null; // Track which music is currently playing
 
+const levelAudioMap = {
+    'theme': '/assets/audio/openrunnertheme.wav',
+    'level1': '/assets/audio/openrunnersong1.wav',
+    'level2': '/assets/audio/openrunnersong2.wav',
+}
 
 /**
  * Sets up the event listeners for the AudioManager.
@@ -20,22 +25,31 @@ let isMusicPlaying = false;
 function setupEventListeners() {
     if (!audioContext) return;
 
-
     // Listen for player death (collision)
     eventBus.subscribe('playerDied', () => {
         playCollisionSound();
     });
 
     // Listen for game state changes (specifically for Game Over and Title)
-    eventBus.subscribe('gameStateChanged', ({ newState }) => { // Destructure newState
+    eventBus.subscribe('gameStateChanged', ({ newState, previousState }) => { // Destructure newState and previousState
+        logger.info(`Audio handling game state change: ${previousState} -> ${newState}`);
+        
         if (newState === GameStates.GAME_OVER) {
+            // For game over, we play the sound but don't change music
             playGameOverSound();
         } else if (newState === GameStates.TITLE) {
-            // Stop music when returning to title screen
-            stopMusic();
-            logger.info("Stopped music when returning to title screen");
+            // Only play theme music when returning to title if we're not already playing it
+            // This prevents theme music from restarting unnecessarily
+            if (currentMusicId !== 'theme') {
+                stopMusic(); // Explicitly stop any current music first
+                setTimeout(() => {
+                    playMusic('theme');
+                    logger.info("Playing theme music when returning to title screen");
+                }, 50); // Small delay to ensure proper audio thread synchronization
+            } else {
+                logger.info("Theme music already playing, not restarting");
+            }
         }
-        // Add other state-based sounds here if needed (e.g., music changes)
     });
 
     // Listen for score changes (coin collection)
@@ -50,9 +64,7 @@ function setupEventListeners() {
     eventBus.subscribe('uiButtonClicked', () => {
         playButtonClickSound();
     });
-
 }
-
 
 /**
  * Initializes the Web Audio API AudioContext and sets up event listeners.
@@ -65,7 +77,7 @@ export function initAudio() {
     try {
         audioContext = new (window.AudioContext || window.webkitAudioContext)();
 
-        // Create and connect a master gain node
+// Create and connect a master gain node
         masterGain = audioContext.createGain();
         masterGain.gain.setValueAtTime(audioConfig.INITIAL_MASTER_GAIN, audioContext.currentTime); // Use audioConfig
         masterGain.connect(audioContext.destination);
@@ -81,6 +93,9 @@ export function initAudio() {
         } else {
              setupEventListeners(); // Setup listeners immediately if context is running
         }
+
+        // start the game with the theme music playing
+        playMusic('theme');
 
     } catch (e) {
         // Display error to user if Web Audio fails
@@ -315,54 +330,112 @@ export function playTurnSound() {
 }
 
 /**
- * Plays background music if it's not already playing.
- * @param {string} filePath - Path to the music file (default: '/assets/audio/openrunnersong1.wav')
- * @param {number} volume - Volume level from 0 to 1 (default: 0.3)
- * @returns {Promise<AudioBufferSourceNode|null>} The audio source node or null if playback failed
+ * Stops the currently playing background music.
+ * Uses a robust approach to ensure music actually stops.
+ * @returns {Promise<boolean>} Promise that resolves to true if music was stopped
  */
-export async function playMusic(filePath = '/assets/audio/openrunnersong1.wav', volume = 0.3) {
-    // If music is already playing, don't start it again
-    if (isMusicPlaying) {
-        return musicSource;
-    }
-
+export async function stopMusic() {
+    logger.info("[AudioManager] Stopping music");
+    
     try {
-        // Stop any existing music first (shouldn't happen with the flag check, but just in case)
+        // Standard stop approach
         if (musicSource) {
-            stopMusic();
+            // Reset the master gain as a fallback if needed
+            if (masterGain) {
+                masterGain.disconnect();
+                masterGain = audioContext.createGain();
+                masterGain.gain.setValueAtTime(audioConfig.INITIAL_MASTER_GAIN, audioContext.currentTime);
+                masterGain.connect(audioContext.destination);
+            }
         }
-
-        // Play the music file using our wave file player
-        musicSource = await playWaveFile(filePath, volume, true); // true for looping
-
-        if (musicSource) {
-            isMusicPlaying = true;
-
-            // Set up an ended event handler to reset our flag if the music stops
-            musicSource.onended = () => {
-                isMusicPlaying = false;
-                musicSource = null;
-            };
-        }
-
-        return musicSource;
-    } catch (error) {
-        console.error("[AudioManager] Failed to play background music:", error);
-        isMusicPlaying = false;
+        
+        // Reset tracking variables
         musicSource = null;
-        return null;
+        currentMusicId = null;
+        
+        return true;
+    } catch (e) {
+        logger.error("[AudioManager] Error stopping music:", e);
+        musicSource = null;
+        currentMusicId = null;
+        return false;
     }
 }
 
 /**
- * Stops the currently playing background music.
+ * Plays background music with reliable stopping of any previous music.
+ * @param {string} levelId - the level music to play (e.g., 'level1', 'level2', 'theme')
+ * @param {number} volume - Volume level from 0 to 1 (default: 0.3)
+ * @returns {Promise<AudioBufferSourceNode|null>} The audio source node or null if playback failed
  */
-export function stopMusic() {
-    if (musicSource) {
-        musicSource.stop();
-        musicSource = null;
+export async function playMusic(levelId = 'theme', volume = 0.3) {
+    // Skip if this exact music is already playing
+    if (currentMusicId === levelId && musicSource) {
+        logger.info(`[AudioManager] ${levelId} music already playing`);
+        return musicSource;
     }
-    isMusicPlaying = false;
+    
+    try {
+        // Stop any current music
+        await stopMusic();
+        await new Promise(resolve => setTimeout(resolve, 50));
+        
+        // Get file path
+        const filePath = levelAudioMap[levelId];
+        if (!filePath) {
+            logger.error(`[AudioManager] No audio file defined for level: ${levelId}`);
+            return null;
+        }
+        
+        // Ensure audio context is running
+        if (audioContext.state !== 'running') {
+            await audioContext.resume();
+        }
+        
+        // Load and play audio
+        const response = await fetch(filePath);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch audio file: ${response.status}`);
+        }
+        
+        const audioData = await response.arrayBuffer();
+        const audioBuffer = await audioContext.decodeAudioData(audioData);
+        
+        // Create and connect nodes
+        const source = audioContext.createBufferSource();
+        source.buffer = audioBuffer;
+        source.loop = true;
+        
+        const gainNode = audioContext.createGain();
+        gainNode.gain.value = volume;
+        
+        source.connect(gainNode);
+        gainNode.connect(masterGain);
+        
+        // Start playback
+        source.start(0);
+        
+        // Update tracking variables
+        musicSource = source;
+        currentMusicId = levelId;
+        
+        // Clean up when music ends
+        source.onended = () => {
+            if (musicSource === source) {
+                musicSource = null;
+                currentMusicId = null;
+            }
+        };
+        
+        logger.info(`[AudioManager] Playing ${levelId} music`);
+        return source;
+        
+    } catch (error) {
+        logger.error(`[AudioManager] Error playing music for ${levelId}:`, error);
+        musicSource = null;
+        currentMusicId = null;
+        return null;
+    }
 }
 
 /**
@@ -370,7 +443,15 @@ export function stopMusic() {
  * @returns {boolean} True if music is playing, false otherwise
  */
 export function isMusicActive() {
-    return isMusicPlaying;
+    return currentMusicId !== null && musicSource !== null;
+}
+
+/**
+ * Gets the ID of the currently playing music.
+ * @returns {string|null} The ID of the current music, or null if no music is playing
+ */
+export function getCurrentMusicId() {
+    return currentMusicId;
 }
 
 /**
@@ -422,4 +503,3 @@ export async function playWaveFile(filePath, volume = 0.5, loop = false) {
         return null;
     }
 }
-
