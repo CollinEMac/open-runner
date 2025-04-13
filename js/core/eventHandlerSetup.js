@@ -6,6 +6,7 @@ import { createLogger } from '../utils/logger.js';
 import { getConfig } from '../config/config.js';
 import { gameplayConfig } from '../config/gameplay.js';
 import { grayMaterial } from '../entities/playerCharacter.js';
+import { playWaveFile, effectAudioMap } from '../managers/audioManager.js';
 // Import necessary managers/modules that will handle the logic
 import * as ScoreManager from '../managers/scoreManager.js';
 import * as LevelManager from '../managers/levelManager.js';
@@ -108,6 +109,7 @@ export function setupEventHandlers(dependencies) {
 
         const wasActive = player.powerup === powerupType;
         player.powerup = powerupType; // Update player state directly (temporary)
+        playWaveFile(effectAudioMap['powerup']);
 
         if (wasActive) {
             logger.info(`${powerupType} powerup already active, extending duration`);

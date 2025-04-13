@@ -23,6 +23,7 @@ export const effectAudioMap = {
     'collision': '/assets/audio/collisionsound.wav',
     'coin': '/assets/audio/coinsound.wav',
     'gameover': '/assets/audio/gameover.wav',
+    'powerup': '/assets/audio/powerupsound.wav',
     'turn': '/assets/audio/turnsound.wav',
 }
 
