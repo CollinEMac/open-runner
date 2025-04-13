@@ -5,9 +5,6 @@ import { createLogger } from '../utils/logger.js'; // Import logger
 import { playerConfig } from '../config/player.js';
 import { controlsConfig } from '../config/controls.js';
 
-
-
-
 import { playWaveFile, effectAudioMap } from '../managers/audioManager.js';
 import { animatePlayerCharacter } from './playerCharacter.js'; // Stays in entities
 import { keyLeftPressed, keyRightPressed, mouseLeftPressed, mouseRightPressed, touchLeftPressed, touchRightPressed } from '../input/controlsSetup.js'; // Moved to input
