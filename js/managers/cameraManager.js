@@ -1,16 +1,15 @@
-// js/managers/cameraManager.js
 import * as THREE from 'three';
-import { cameraConfig } from '../config/camera.js'; // Import specific config object
-import { GameStates } from '../core/gameStateManager.js'; // Moved to core
-import { createLogger, LogLevel } from '../utils/logger.js'; // Stays in utils, import LogLevel
-import eventBus from '../core/eventBus.js'; // Moved to core
+import { cameraConfig } from '../config/camera.js';
+import { GameStates } from '../core/gameStateManager.js';
+import { createLogger, LogLevel } from '../utils/logger.js';
+import eventBus from '../core/eventBus.js';
 
-const logger = createLogger('CameraManager', LogLevel.INFO); // Use logger instance, set level to INFO
+const logger = createLogger('CameraManager', LogLevel.INFO);
 
-// Constants for camera transitions
+
 const TITLE_LOOK_AT_TARGET = new THREE.Vector3(0, 0, 0);
 
-// Reusable vectors for calculations
+
 const _targetPosition = new THREE.Vector3();
 const _cameraOffset = new THREE.Vector3();
 const _rotatedOffset = new THREE.Vector3();
@@ -35,25 +34,25 @@ class CameraManager {
 
         this.titleCameraDrift = null;
 
-        // Store last gameplay camera position to prevent jerking
+
         this._lastGameplayPosition = null;
         this._lastGameplayLookAt = null;
 
-        // Transition smoothing properties
+
         this._justCompletedTransition = false;
         this._transitionCompletionTime = 0;
         this._smoothingFramesAfterTransition = 0;
         this._frameCountAfterTransition = 0;
         this._initialSmoothingFactor = 0.05; // Initial smoothing factor after transition
 
-        // Player movement tracking for adaptive camera following
+
         this._lastPlayerPosition = null;
         this._firstPositionFrame = true;
 
         logger.info("CameraManager instantiated");
     }
 
-    // --- Initialization ---
+
 
     setCamera(camera) {
         this.camera = camera;
@@ -67,7 +66,7 @@ class CameraManager {
         logger.info("Renderer set.");
     }
 
-    // --- Update Loop ---
+
 
     update(deltaTime, currentState, player) {
         if (!this.camera) return;
@@ -79,7 +78,7 @@ class CameraManager {
                 this._updateCameraTransition(deltaTime, player);
             }
         } else {
-            // Normal state updates
+
             if (currentState === GameStates.PLAYING && player?.model) {
                 this.updateCameraFollow(player, deltaTime);
             } else if (currentState === GameStates.TITLE || currentState === GameStates.LEVEL_SELECT) {
@@ -88,7 +87,7 @@ class CameraManager {
         }
     }
 
-    // --- Transitions ---
+
 
     startTransitionToTitle(currentCameraPosition, currentCameraQuaternion) {
         if (this.isTransitioning) {
@@ -122,7 +121,7 @@ class CameraManager {
         return this.isTransitioning;
     }
 
-    // --- Camera Movement Logic ---
+
 
     /**
      * Calculates the target position and lookAt point for the gameplay camera.
@@ -156,85 +155,83 @@ class CameraManager {
             return;
         }
 
-        // Calculate the target position based on the player's position
+
         const { position: targetCameraPosition, lookAt: lookAtPosition } = this._calculateGameplayCameraTarget(playerObj.model);
 
-        // Store current player position to detect movement
+
         if (!this._lastPlayerPosition) {
             this._lastPlayerPosition = new THREE.Vector3();
             playerObj.model.getWorldPosition(this._lastPlayerPosition);
 
-            // First frame - don't calculate movement yet
+
             this._firstPositionFrame = true;
         } else {
             this._firstPositionFrame = false;
         }
 
-        // Get current player position
+
         const currentPlayerPosition = new THREE.Vector3();
         playerObj.model.getWorldPosition(currentPlayerPosition);
 
-        // Calculate player movement since last frame
+
         let playerMovement = 0;
         if (!this._firstPositionFrame) {
             playerMovement = currentPlayerPosition.distanceTo(this._lastPlayerPosition);
         }
 
-        // Update last player position
+
         this._lastPlayerPosition.copy(currentPlayerPosition);
 
-        // Determine if player is moving significantly
-        // Ignore vertical movement which is likely terrain adjustment
+
         const horizontalMovement = Math.sqrt(
             Math.pow(currentPlayerPosition.x - this._lastPlayerPosition.x, 2) +
             Math.pow(currentPlayerPosition.z - this._lastPlayerPosition.z, 2)
         );
         const isPlayerMoving = horizontalMovement > 0.01; // Threshold for significant horizontal movement
 
-        // Force camera to follow player directly after transition
+
         if (this._justCompletedTransition) {
-            // For the first several frames after transition, use a direct follow
-            // This helps with the initial terrain adjustment
+
             if (this._frameCountAfterTransition < 5) {
                 logger.debug("Initial frames after transition - direct camera positioning");
-                // Position the camera directly behind the player
+
                 this.camera.position.copy(targetCameraPosition);
                 this.camera.lookAt(lookAtPosition);
 
-                // Store these positions for the next frame
+
                 this._lastGameplayPosition = targetCameraPosition.clone();
                 this._lastGameplayLookAt = lookAtPosition.clone();
 
-                // Increment frame counter
+
                 this._frameCountAfterTransition++;
                 return;
             }
 
-            // For subsequent frames, gradually blend to normal camera following
+
             const progress = Math.min(this._frameCountAfterTransition / this._smoothingFramesAfterTransition, 1.0);
             const easedProgress = this._easeInOutCubic(progress);
 
-            // Start with a higher smoothing factor and gradually decrease to normal
+
             const normalSmoothFactor = 1.0 - Math.pow(cameraConfig.SMOOTHING_FACTOR, deltaTime);
 
-            // Use a higher smoothing factor if the player is moving
+
             let smoothFactor;
             if (isPlayerMoving) {
-                // More responsive following when player is moving
+
                 smoothFactor = Math.max(normalSmoothFactor, 0.3);
             } else {
-                // Normal smoothing when player is stationary
+
                 smoothFactor = normalSmoothFactor * easedProgress;
             }
 
-            // Apply smoothing
+
             this.camera.position.lerp(targetCameraPosition, smoothFactor);
             this.camera.lookAt(lookAtPosition);
 
-            // Increment frame counter
+
             this._frameCountAfterTransition++;
 
-            // If we've reached the end of the smoothing period, reset transition flags
+
             if (this._frameCountAfterTransition >= this._smoothingFramesAfterTransition) {
                 logger.debug("Transition smoothing complete, returning to normal camera follow");
                 this._justCompletedTransition = false;
@@ -243,15 +240,11 @@ class CameraManager {
                 this._lastGameplayLookAt = null;
             }
         } else {
-            // Normal camera following with adaptive smoothing
             let smoothFactor;
 
             if (isPlayerMoving) {
-                // More responsive following when player is moving
-                // Higher value = more responsive camera
                 smoothFactor = 1.0 - Math.pow(cameraConfig.SMOOTHING_FACTOR * 0.5, deltaTime);
             } else {
-                // Normal smoothing when player is stationary
                 smoothFactor = 1.0 - Math.pow(cameraConfig.SMOOTHING_FACTOR, deltaTime);
             }
 
@@ -260,7 +253,7 @@ class CameraManager {
         }
     }
 
-    // --- Title Screen Camera Drift Logic ---
+
 
     _createCameraDrift(options = {}) {
         const config = {
@@ -318,7 +311,7 @@ class CameraManager {
         }
     }
 
-    // --- Camera Transition Implementation ---
+
 
     _transitionCameraToTitle(deltaTime) {
         if (!this.camera) return;
@@ -362,10 +355,10 @@ class CameraManager {
             return;
         }
 
-        // Calculate the *final* target state using the helper
+
         const { position: targetCameraPosition, lookAt: lookAtPosition } = this._calculateGameplayCameraTarget(player.model);
 
-        // Increment elapsed time and calculate progress based on deltaTime
+
         this.transitionTimeElapsed += deltaTime;
         const progress = Math.min(this.transitionTimeElapsed / this.transitionDuration, 1.0);
 
@@ -375,48 +368,43 @@ class CameraManager {
             _newPosition.lerpVectors(startPos, targetCameraPosition, easedProgress);
             this.camera.position.copy(_newPosition);
 
-            // Instead of using quaternion slerp which can cause the camera to angle down momentarily,
-            // directly set the lookAt for consistent orientation throughout the transition
+
             this.camera.lookAt(lookAtPosition);
 
-            // Store the current target position for the next frame
-            // This ensures we always have the most up-to-date target
+
             this._lastGameplayPosition = targetCameraPosition.clone();
             this._lastGameplayLookAt = lookAtPosition.clone();
         } else {
             logger.info("Camera transition to player complete.");
-            // Position the camera exactly at the target position
-            // We'll handle the smoothing in updateCameraFollow
+
             this.camera.position.copy(targetCameraPosition);
             this.camera.lookAt(lookAtPosition);
 
-            // Store the final position and lookAt for the first frame of normal gameplay
-            // Make a deep clone to ensure we don't have reference issues
+
             this._lastGameplayPosition = targetCameraPosition.clone();
             this._lastGameplayLookAt = lookAtPosition.clone();
 
-            // Now transition is complete
+
             this.isTransitioning = false;
             this.transitionType = null;
 
-            // Set a flag to indicate we just completed a transition
-            // This will be used to ensure smooth camera movement in the next few frames
+
             this._justCompletedTransition = true;
             this._transitionCompletionTime = Date.now();
-            this._smoothingFramesAfterTransition = 15; // Apply extra smoothing for 15 frames (reduced)
-            this._frameCountAfterTransition = 0; // Reset frame counter
+            this._smoothingFramesAfterTransition = 15;
+            this._frameCountAfterTransition = 0;
 
-            // Reset player position tracking for movement detection
+
             this._lastPlayerPosition = new THREE.Vector3();
             player.model.getWorldPosition(this._lastPlayerPosition);
-            this._firstPositionFrame = true; // Mark as first frame to ignore initial terrain adjustment
+            this._firstPositionFrame = true;
 
             eventBus.emit('cameraTransitionComplete', 'toGameplay');
         }
     }
 
 
-    // --- Utility ---
+
 
     _easeInOutCubic(t) {
         return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
@@ -444,7 +432,7 @@ class CameraManager {
     }
 }
 
-// Singleton instance
+
 const cameraManager = new CameraManager();
 
 export default cameraManager;
