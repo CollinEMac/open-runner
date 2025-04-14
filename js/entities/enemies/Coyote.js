@@ -1,6 +1,5 @@
-// js/entities/enemies/Coyote.js
-import { Enemy } from '../enemy.js'; // Import the base Enemy class
-import * as ModelFactory from '../../rendering/modelFactory.js'; // Import ModelFactory
+import { Enemy } from '../enemy.js';
+import * as ModelFactory from '../../rendering/modelFactory.js';
 
 export class Coyote extends Enemy {
     constructor(initialData, properties, scene, chunkManager) {
@@ -8,7 +7,6 @@ export class Coyote extends Enemy {
     }
 
     createMesh() {
-        // Call ModelFactory instead of AssetManager
         return ModelFactory.createCoyoteModel(this);
     }
 }
