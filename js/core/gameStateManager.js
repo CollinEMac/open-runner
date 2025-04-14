@@ -1,4 +1,3 @@
-// js/core/gameStateManager.js
 
 import eventBus from './eventBus.js';
 import { createLogger } from '../utils/logger.js';
@@ -120,8 +119,6 @@ export class GameStateManager {
         return true;
     }
 
-    // --- State Transition Request Methods ---
-
     /** Requests the game to pause */
     requestPause() {
         if (this.currentState === GameStates.PLAYING) {
@@ -189,8 +186,5 @@ export class GameStateManager {
     }
 }
 
-// Create and export a singleton instance
 const gameStateManager = new GameStateManager();
-
-// Export the manager instance itself for advanced usage
 export default gameStateManager;

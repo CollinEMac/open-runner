@@ -1,7 +1,6 @@
-// js/core/eventBus.js
-import { createLogger } from '../utils/logger.js'; // Import logger
+import { createLogger } from '../utils/logger.js';
 
-const logger = createLogger('EventBus'); // Instantiate logger
+const logger = createLogger('EventBus');
 
 /**
  * A robust event bus for decoupled communication between modules.
@@ -187,6 +186,6 @@ class EventBus {
     }
 }
 
-// Export a single instance (Singleton pattern)
+
 const eventBus = new EventBus();
 export default eventBus;
