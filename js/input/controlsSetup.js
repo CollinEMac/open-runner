@@ -1,26 +1,23 @@
-// js/input/controlsSetup.js
-// import { OrbitControls } from 'three/addons/controls/OrbitControls.js'; // Removed OrbitControls
-import gameStateManager, { GameStates } from '../core/gameStateManager.js'; // Import default instance and GameStates enum
-import * as UIManager from '../managers/uiManager.js'; // Updated path
-import eventBus from '../core/eventBus.js'; // Updated path
-import { createLogger } from '../utils/logger.js'; // Import logger
+import gameStateManager, { GameStates } from '../core/gameStateManager.js';
+import * as UIManager from '../managers/uiManager.js';
+import eventBus from '../core/eventBus.js';
+import { createLogger } from '../utils/logger.js';
 
-const logger = createLogger('ControlsSetup'); // Instantiate logger
+const logger = createLogger('ControlsSetup');
 
-// --- State Variables ---
 // Variables to track keyboard steering keys
 export let keyLeftPressed = false;
 export let keyRightPressed = false;
 
-// Variables to track mouse steering buttons
+
 export let mouseLeftPressed = false;
 export let mouseRightPressed = false;
 
-// Variables to track touch steering buttons
+
 export let touchLeftPressed = false;
 export let touchRightPressed = false;
 
-// --- Reset Functions ---
+
 /**
  * Resets all input state variables to their default (unpressed) state.
  * This is important when transitioning between game states to prevent
@@ -35,14 +32,14 @@ export function resetInputStates() {
     touchRightPressed = false;
 }
 
-// Store event listener references
+
 let keydownListener = null;
 let keyupListener = null;
 let mousedownListener = null;
 let mouseupListener = null;
 let contextmenuListener = null;
 
-// Mobile touch event listeners
+
 let mobileLeftTouchStartListener = null;
 let mobileLeftTouchEndListener = null;
 let mobileRightTouchStartListener = null;
@@ -50,7 +47,7 @@ let mobileRightTouchEndListener = null;
 let mobilePauseTouchListener = null;
 
 export function setupPlayerControls(canvasElement) {
-    // Clean up any existing event listeners to prevent duplicates
+
     if (keydownListener) {
         document.removeEventListener('keydown', keydownListener);
     }
@@ -67,7 +64,7 @@ export function setupPlayerControls(canvasElement) {
         canvasElement.removeEventListener('contextmenu', contextmenuListener);
     }
 
-    // Clean up mobile touch event listeners
+
     try {
         const mobileLeftBtn = document.getElementById('mobileLeftBtn');
         const mobileRightBtn = document.getElementById('mobileRightBtn');
@@ -86,10 +83,10 @@ export function setupPlayerControls(canvasElement) {
         }
     } catch (error) {
         logger.error("[Controls] Error cleaning up mobile controls:", error);
-        // Continue with the game even if mobile controls cleanup fails
+
     }
 
-    // --- Keyboard Listeners for Steering ---
+
     keydownListener = (event) => {
         switch (event.key.toLowerCase()) {
             case 'a':
@@ -120,7 +117,7 @@ export function setupPlayerControls(canvasElement) {
 
     document.addEventListener('keyup', keyupListener);
 
-    // --- Mouse Listeners for Steering ---
+
     mousedownListener = (event) => {
         switch (event.button) {
             case 0: // Left Mouse Button
@@ -148,14 +145,14 @@ export function setupPlayerControls(canvasElement) {
 
     canvasElement.addEventListener('mouseup', mouseupListener);
 
-    // Prevent context menu on the canvas (important for RMB steering)
+
     contextmenuListener = (event) => {
         event.preventDefault();
     };
 
     canvasElement.addEventListener('contextmenu', contextmenuListener);
 
-    // --- Mobile Touch Controls ---
+
     try {
         const mobileLeftBtn = document.getElementById('mobileLeftBtn');
         const mobileRightBtn = document.getElementById('mobileRightBtn');
@@ -163,7 +160,7 @@ export function setupPlayerControls(canvasElement) {
 
         if (mobileLeftBtn && mobileRightBtn && mobilePauseBtn) {
 
-            // Left button touch events
+
             mobileLeftTouchStartListener = (event) => {
                 event.preventDefault(); // Prevent default touch behavior
                 touchLeftPressed = true;
@@ -174,7 +171,7 @@ export function setupPlayerControls(canvasElement) {
                 touchLeftPressed = false;
             };
 
-            // Right button touch events
+
             mobileRightTouchStartListener = (event) => {
                 event.preventDefault();
                 touchRightPressed = true;
@@ -185,7 +182,7 @@ export function setupPlayerControls(canvasElement) {
                 touchRightPressed = false;
             };
 
-            // Pause button touch event
+
             mobilePauseTouchListener = (event) => {
                 event.preventDefault();
                 const currentState = gameStateManager.getCurrentState();
@@ -197,7 +194,7 @@ export function setupPlayerControls(canvasElement) {
                 }
             };
 
-            // Add touch event listeners
+
             mobileLeftBtn.addEventListener('touchstart', mobileLeftTouchStartListener, { passive: false });
             mobileLeftBtn.addEventListener('touchend', mobileLeftTouchEndListener, { passive: false });
             mobileRightBtn.addEventListener('touchstart', mobileRightTouchStartListener, { passive: false });
@@ -208,12 +205,12 @@ export function setupPlayerControls(canvasElement) {
         }
     } catch (error) {
         logger.error("[Controls] Error setting up mobile controls:", error);
-        // Continue with the game even if mobile controls fail to set up
+
     }
 
 }
 
-// Removed setupOrbitControls function
+
 
 /**
  * Initialize event listeners for game state changes to handle input resets.
