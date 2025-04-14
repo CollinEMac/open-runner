@@ -1,9 +1,7 @@
-// js/config/fallbackGeometries.js
 
-// Fallback Geometry Parameters (used if assets fail to load or aren't defined)
 export const fallbackGeometriesConfig = {
     COIN: { RADIUS: 0.75, HEIGHT: 0.2, SEGMENTS: 16 },
-    ROCK_SMALL: { RADIUS: 1, DETAIL: 0 }, // Using Icosahedron/Dodecahedron detail param
+    ROCK_SMALL: { RADIUS: 1, DETAIL: 0 },
     ROCK_LARGE: { RADIUS: 2.5, DETAIL: 0 },
     LOG_FALLEN: { RADIUS: 0.5, HEIGHT: 5, SEGMENTS: 8 },
     CABIN: { WIDTH: 8, HEIGHT: 6, DEPTH: 10 },
