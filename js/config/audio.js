@@ -1,6 +1,4 @@
-// js/config/audio.js
 
-// Audio configuration
 export const audioConfig = {
     INITIAL_MASTER_GAIN: 0.7,
     COIN: {
@@ -10,7 +8,7 @@ export const audioConfig = {
         ATTACK_TIME: 0.005,
         DECAY_TARGET: 0.001,
         OSC_TYPE: 'square',
-        // Harmony (Optional)
+
         USE_HARMONY: true,
         HARMONY_FACTOR: 1.5, // Perfect Fifth
         HARMONY_VOLUME_FACTOR: 0.5
@@ -20,7 +18,7 @@ export const audioConfig = {
         VOLUME: 0.6,
         ATTACK_TIME: 0.01,
         DECAY_TARGET: 0.001,
-        // Thump (Optional)
+
         USE_THUMP: true,
         THUMP_FREQ: 70,
         THUMP_VOLUME_FACTOR: 0.3,
@@ -43,7 +41,7 @@ export const audioConfig = {
         HOLD_FACTOR: 0.7, // Hold note for 70% of duration before decay
         DECAY_TARGET: 0.001,
         OSC_TYPE: 'square',
-        // Vibrato (Optional)
+
         USE_VIBRATO: true,
         VIBRATO_RATE: 10,
         VIBRATO_DEPTH: 5
