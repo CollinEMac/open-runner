@@ -124,8 +124,7 @@ export function setupEventHandlers(dependencies) {
         }, gameplayConfig.POWERUP_DURATION * 1000);
     });
 
-     eventBus.subscribe('resetPowerups', () => {
-        // Reset powerup status
+    eventBus.subscribe('resetPowerups', () => {
         if (player.powerup) {
             const currentPowerup = player.powerup;
             player.powerup = '';
