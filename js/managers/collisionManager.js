@@ -108,6 +108,10 @@ export function checkCollisions(player) {
                         logger.debug(`Correcting object type from 'coin' to 'magnet' for mesh ${mesh.id}`);
                         mesh.userData.objectType = 'magnet';
                         continue; // Skip to next iteration so it's processed as a magnet
+                    } else if (mesh.name && mesh.name.includes('doubler')) {
+                        logger.debug(`Correcting object type from 'coin' to 'doubler' for mesh ${mesh.id}`);
+                        mesh.userData.objectType = 'doubler';
+                        continue; // Skip to next iteration so it's processed as a doubler
                     }
                 }
             }
@@ -148,9 +152,13 @@ export function checkCollisions(player) {
                     const collected = _chunkManager.collectObject(chunkKey, objectIndex);
 
                     if (collected) {
-                        eventBus.emit('scoreChanged', scoreValue || gameplayConfig.DEFAULT_COIN_SCORE); // Use constant default
+                        // If doubler powerup is active, double the coin value
+                        const coinValue = scoreValue || gameplayConfig.DEFAULT_COIN_SCORE;
+                        const finalValue = player.powerup === 'doubler' ? coinValue * 2 : coinValue;
+                        
+                        eventBus.emit('scoreChanged', finalValue);
                         nearbyArray.splice(i, 1);
-                        logger.debug(`Collected coin (magnet force collect) with value ${scoreValue || gameplayConfig.DEFAULT_COIN_SCORE}`);
+                        logger.debug(`Collected coin (magnet force collect) with value ${finalValue}`);
                     }
                     continue; // Skip to next object
                 }
@@ -170,10 +178,14 @@ export function checkCollisions(player) {
                 const collected = _chunkManager.collectObject(chunkKey, objectIndex);
 
                 if (collected) {
+                    // If doubler powerup is active, double the coin value
+                    const coinValue = scoreValue || gameplayConfig.DEFAULT_COIN_SCORE;
+                    const finalValue = player.powerup === 'doubler' ? coinValue * 2 : coinValue;
+                    
                     // Emit score change event instead of calling callback
-                    eventBus.emit('scoreChanged', scoreValue || gameplayConfig.DEFAULT_COIN_SCORE); // Use constant default
+                    eventBus.emit('scoreChanged', finalValue);
                     nearbyArray.splice(i, 1); // Remove from local array for this check
-                    logger.debug(`Collected coin with value ${scoreValue || gameplayConfig.DEFAULT_COIN_SCORE}`);
+                    logger.debug(`Collected coin with value ${finalValue}`);
                 }
             }
         }
@@ -220,6 +232,52 @@ export function checkCollisions(player) {
                     eventBus.emit('powerupActivated', powerupType);
                     nearbyArray.splice(i, 1); // Remove from local array for this check
                     logger.debug(`Collected magnet powerup of type ${powerupType}`);
+                }
+            }
+        }
+        
+        // handle doubler powerup
+        if (mesh && mesh.userData && mesh.userData.objectType === 'doubler' && !mesh.userData.collidable) {
+            // Verify this is actually a doubler by checking its structure
+            // Doublers are typically groups with multiple child meshes, like magnets
+            if (!(mesh instanceof THREE.Group) && !mesh.name?.includes('doubler')) {
+                // If it's a cylinder, it's probably a coin with incorrect type
+                if (mesh.geometry && mesh.geometry.type === 'CylinderGeometry') {
+                    logger.debug(`Correcting object type from 'doubler' to 'coin' for mesh ${mesh.id}`);
+                    mesh.userData.objectType = 'coin';
+                    continue; // Skip to next iteration so it's processed as a coin
+                }
+            }
+
+            // Ensure mesh has a valid position
+            if (!mesh.position) {
+                logger.warn(`Doubler mesh ${mesh.id || 'unknown'} has no position property`);
+                continue;
+            }
+
+            const dx = playerPosition.x - mesh.position.x;
+            const dz = playerPosition.z - mesh.position.z;
+            const distanceSq = dx * dx + dz * dz;
+
+            // Use collision radius from config, similar to magnet
+            const doublerCollisionRadius = modelsConfig.DOUBLER?.COLLISION_RADIUS || 1.0; // Default if not in config
+            const collisionThresholdSq = (playerCollisionRadius + doublerCollisionRadius) ** 2;
+
+            if (distanceSq < collisionThresholdSq) {
+                // Ensure mesh has the required userData properties
+                if (!mesh.userData.chunkKey || mesh.userData.objectIndex === undefined) {
+                    logger.warn(`Doubler mesh ${mesh.id || 'unknown'} missing required userData properties`);
+                    continue;
+                }
+
+                const { chunkKey, objectIndex } = mesh.userData;
+                const collected = _chunkManager.collectObject(chunkKey, objectIndex);
+
+                if (collected) {
+                    const powerupType = modelsConfig.DOUBLER?.POWERUP_TYPE || 'doubler'; // Use constant if defined
+                    eventBus.emit('powerupActivated', powerupType);
+                    nearbyArray.splice(i, 1); // Remove from local array for this check
+                    logger.debug(`Collected doubler powerup of type ${powerupType}`);
                 }
             }
         }

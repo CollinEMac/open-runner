@@ -101,11 +101,6 @@ export function setupEventHandlers(dependencies) {
 
     eventBus.subscribe('powerupActivated', (powerupType) => {
         // TODO: Refactor powerup logic into a dedicated PlayerManager or component
-        if (powerupType !== gameplayConfig.POWERUP_TYPE_MAGNET) {
-            logger.warn(`Received invalid powerup type: ${powerupType}, ignoring`);
-            return;
-        }
-
         const wasActive = player.powerup === powerupType;
         player.powerup = powerupType; // Update player state directly (temporary)
 
@@ -116,7 +111,6 @@ export function setupEventHandlers(dependencies) {
             logger.info(`${powerupType} powerup started!`);
             // Emit event for visual effect instead of direct manipulation
             eventBus.emit('applyPowerupEffect', { type: powerupType, player });
-            // Removed direct material manipulation here
         }
 
         if (powerupTimeout) clearTimeout(powerupTimeout);
@@ -127,13 +121,14 @@ export function setupEventHandlers(dependencies) {
                 logger.info(`${powerupType} powerup expired!`);
                 // Emit event to remove visual effect
                 eventBus.emit('removePowerupEffect', { type: powerupType, player });
-                // Removed direct material manipulation here
             }
             powerupTimeout = null;
         }, gameplayConfig.POWERUP_DURATION * 1000);
     });
 
-    eventBus.subscribe('resetPowerups', () => {
+
+
+     eventBus.subscribe('resetPowerups', () => {
         // Reset powerup status
         if (player.powerup) {
             const currentPowerup = player.powerup;

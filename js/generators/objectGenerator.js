@@ -218,6 +218,10 @@ export function createObjectVisual(objectData, levelConfig) {
                 mesh = ModelFactory.createMagnetModel(objectData); // Use factory
                 geometry = null; material = null;
                 break;
+            case 'doubler':
+                mesh = ModelFactory.createDoublerModel(objectData); // Use factory
+                geometry = null; material = null;
+                break;
             case 'rock_small':
                 geometry = AssetManager.getAsset('rockSmallGeo');
                 material = AssetManager.getAsset('rockMaterial');

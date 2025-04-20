@@ -54,3 +54,51 @@ export function createMagnetModel(properties) {
     tiltedGroup.traverse(child => { if (child.isMesh) { child.castShadow = true; child.receiveShadow = true; } });
     return tiltedGroup;
 }
+
+/**
+ * Creates a 3D model of a point doubler (X) powerup
+ * @param {object} props - Properties for the doubler model
+ * @param {number} props.size - Size of the doubler model
+ * @param {number} props.color - Color of the doubler model
+ * @returns {THREE.Group} The complete doubler model
+ */
+export function createDoublerModel(props = {}) {
+  const group = new THREE.Group();
+  const size = props.size || 0.5;
+  const color = props.color || 0x0088FF;
+  
+  // Scale factor to make the doubler significantly bigger
+  const scaleFactor = 3.75; // 1.5 (original) * 2.5 = 3.75
+  
+  // Create a material for the X
+  const xMaterial = new THREE.MeshStandardMaterial({
+    color: color,
+    emissive: new THREE.Color(0x0044AA),
+    metalness: 0.6,
+    roughness: 0.2
+  });
+  
+  // Create the first diagonal bar of the "X" (top-left to bottom-right)
+  const diag1Geometry = new THREE.BoxGeometry(size * 0.25 * scaleFactor, size * scaleFactor, size * 0.25 * scaleFactor);
+  const diag1 = new THREE.Mesh(diag1Geometry, xMaterial);
+  diag1.rotation.z = Math.PI / 4; // 45-degree angle
+  
+  // Create the second diagonal bar of the "X" (top-right to bottom-left)
+  const diag2Geometry = new THREE.BoxGeometry(size * 0.25 * scaleFactor, size * scaleFactor, size * 0.25 * scaleFactor);
+  const diag2 = new THREE.Mesh(diag2Geometry, xMaterial);
+  diag2.rotation.z = -Math.PI / 4; // -45-degree angle
+  
+  // Create a central sphere where the two bars meet
+  const centerGeometry = new THREE.SphereGeometry(size * 0.2 * scaleFactor, 16, 16);
+  const center = new THREE.Mesh(centerGeometry, xMaterial);
+  
+  // Add all meshes to the group
+  group.add(diag1);
+  group.add(diag2);
+  group.add(center);
+  
+  // Set a name for identification
+  group.name = "doubler";
+  
+  return group;
+}

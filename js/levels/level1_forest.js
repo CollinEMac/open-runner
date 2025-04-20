@@ -91,6 +91,18 @@ export const level1Config = {
             scoreValue: 0,
             maxPlacementAttempts: 25, // Further increased to ensure successful placement
         },
+        {
+            // same as magnet for now 
+            type: 'doubler',
+            density: 0.00013,
+            minDistance: 15.0,
+            verticalOffset: 1.5,
+            scaleRange: [1.2, 1.5],
+            randomRotationY: true,
+            collidable: false,
+            scoreValue: 0,
+            maxPlacementAttempts: 25,
+        },
         // --- Obstacles ---
         {
             type: 'rock_small',
@@ -161,5 +173,11 @@ export const level1Config = {
     MAGNET_VISUALS: {
         size: 0.8,
         color: 0xF60000, // Red
-    }
+    },
+
+    // --- Doubler ---
+    DOUBLER_VISUALS: {
+        size: 0.5,
+        color: 0x0088FF, // Blue color
+    },
 };

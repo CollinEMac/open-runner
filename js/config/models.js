@@ -424,5 +424,17 @@ export const modelsConfig = {
         COLLISION_RADIUS: 1.0, // Based on default size
         // Powerup Type (used by collision manager)
         POWERUP_TYPE: 'magnet'
-    }
+    },
+
+    // --- Doubler ---
+    DOUBLER: {
+        OBJECT_TYPE: 'doubler',
+        DEFAULT_SIZE: 0.5,
+        DEFAULT_COLOR: 0x0088FF, // Blue color
+        DOUBLER_EMISSIVE: 0x0044AA,
+        DOUBLER_METALNESS: 0.6,
+        DOUBLER_ROUGHNESS: 0.2,
+        COLLISION_RADIUS: 1.0,
+        POWERUP_TYPE: 'doubler'
+    },
 };

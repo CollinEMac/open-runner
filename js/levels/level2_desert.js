@@ -102,6 +102,17 @@ export const level2Config = {
             scoreValue: 0,
             maxPlacementAttempts: 20, // Increased from 10 to give more chances for successful placement
         },
+        {
+            type: 'doubler',
+            density: 0.00012,
+            minDistance: 25.0,
+            verticalOffset: 1.5,
+            scaleRange: [1.2, 1.5],
+            randomRotationY: true,
+            collidable: false,
+            scoreValue: 0,
+            maxPlacementAttempts: 20,
+        },
         // --- Atmospheric Elements ---
         {
             type: 'buzzard',
@@ -254,5 +265,11 @@ export const level2Config = {
     MAGNET_VISUALS: {
         size: 0.8,
         color: 0xF60000, // Red
-    }
+    },
+
+    // --- Doubler ---
+    DOUBLER_VISUALS: {
+        size: 0.5,
+        color: 0x0088FF, // Blue color
+    },
 };

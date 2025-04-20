@@ -64,6 +64,25 @@ export function initLevelAssets(levelConfig) {
         UIManager.displayError(new Error("[AssetManager] Error creating magnet model."));
     }
 
+    // --- Doubler --- (Uses level config OR model defaults and ModelFactory)
+    const doublerVis = levelConfig.DOUBLER_VISUALS || {};
+    const doublerProps = {
+      size: doublerVis.size ?? modelsConfig.DOUBLER.DEFAULT_SIZE,
+      color: doublerVis.color ?? modelsConfig.DOUBLER.DEFAULT_COLOR
+    };
+    try {
+      levelAssets.doublerGroup = ModelFactory.createDoublerModel(doublerProps);
+      // Define doubler material
+      levelAssets.doublerMaterial = new THREE.MeshStandardMaterial({
+        color: doublerProps.color, 
+        emissive: modelsConfig.DOUBLER.DOUBLER_EMISSIVE,
+        metalness: modelsConfig.DOUBLER.DOUBLER_METALNESS,
+        roughness: modelsConfig.DOUBLER.DOUBLER_ROUGHNESS
+      });
+    } catch (error) {
+      logger.error("Error creating doubler model:", error);
+      UIManager.displayError(new Error("[AssetManager] Error creating doubler model."));
+    }
 
     // --- Obstacles Materials (Use constants from MATERIALS) ---
     levelAssets.rockMaterial = new THREE.MeshStandardMaterial({ color: materialsConfig.ROCK_COLOR, roughness: materialsConfig.ROCK_ROUGHNESS });
