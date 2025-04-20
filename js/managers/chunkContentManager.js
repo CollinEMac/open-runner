@@ -310,7 +310,8 @@ export class ChunkContentManager {
     updateCollectibles(loadedChunks, deltaTime, elapsedTime, playerPosition, playerPowerup) {
         if (!this.levelConfig || !this.levelConfig.COIN_VISUALS) return;
         const spinSpeed = this.levelConfig.COIN_VISUALS.spinSpeed || 1.0;
-        const magnetActive = playerPowerup === 'magnet';
+        const magnetActive = playerPowerup === gameplayConfig.POWERUP_TYPE_MAGNET;
+        const doublerActive = playerPowerup === gameplayConfig.POWERUP_TYPE_DOUBLER;
         const magnetRadius = gameplayConfig.MAGNET_POWERUP_RADIUS;
         const magnetForce = gameplayConfig.MAGNET_POWERUP_FORCE;
 
@@ -328,15 +329,41 @@ export class ChunkContentManager {
                     if (!collectibleMesh.userData.objectType) {
                          if (collectibleMesh.geometry?.type === 'CylinderGeometry') {
                              collectibleMesh.userData.objectType = 'coin';
+                         } else if (collectibleMesh.name?.includes('doubler')) {
+                             collectibleMesh.userData.objectType = 'doubler';
+                         } else if (collectibleMesh.name?.includes('magnet')) {
+                             collectibleMesh.userData.objectType = 'magnet';
                          } else {
                              collectibleMesh.userData.objectType = 'unknown_collectible';
                          }
                      }
 
-                    if (collectibleMesh.userData.objectType === 'coin' || collectibleMesh.userData.objectType === 'magnet') {
+                    // Spin collectibles for visual effect
+                    if (collectibleMesh.userData.objectType === 'coin' || 
+                        collectibleMesh.userData.objectType === 'magnet' ||
+                        collectibleMesh.userData.objectType === 'doubler') {
                         collectibleMesh.rotation.y += spinSpeed * deltaTime;
                     }
 
+                    // Add visual effects for active powerups
+                    if (doublerActive && collectibleMesh.userData.objectType === 'coin') {
+                        // Optional: Add a visual effect to coins when doubler is active
+                        // For example, a subtle pulsing glow effect or color tint
+                        if (!collectibleMesh.userData.originalEmissive) {
+                            if (collectibleMesh.material) {
+                                collectibleMesh.userData.originalEmissive = collectibleMesh.material.emissive?.clone() || new THREE.Color(0x000000);
+                                collectibleMesh.material.emissive = new THREE.Color(gameplayConfig.DOUBLER_EFFECT_EMISSIVE);
+                            }
+                        }
+                    } else if (!doublerActive && collectibleMesh.userData.objectType === 'coin' && collectibleMesh.userData.originalEmissive) {
+                        // Reset emissive when doubler is not active
+                        if (collectibleMesh.material) {
+                            collectibleMesh.material.emissive.copy(collectibleMesh.userData.originalEmissive);
+                            delete collectibleMesh.userData.originalEmissive;
+                        }
+                    }
+
+                    // Apply magnet effect if active
                     if (magnetActive && playerPosition && collectibleMesh.userData.objectType === 'coin') {
                         const dx = playerPosition.x - collectibleMesh.position.x;
                         const dy = playerPosition.y - collectibleMesh.position.y;
@@ -375,7 +402,11 @@ export class ChunkContentManager {
                                 if (chunkKey !== undefined && objectIndex !== undefined) {
                                     const collected = this.collectObject(chunkKey, objectIndex);
                                     if (collected) {
-                                        eventBus.emit('scoreChanged', scoreValue || gameplayConfig.DEFAULT_COIN_SCORE);
+                                        // Calculate the final score value based on active powerups
+                                        const coinValue = scoreValue || gameplayConfig.DEFAULT_COIN_SCORE;
+                                        const finalValue = doublerActive ? coinValue * gameplayConfig.DOUBLER_MULTIPLIER : coinValue;
+                                        eventBus.emit('scoreChanged', finalValue);
+                                        logger.debug(`Collected coin with final value ${finalValue} (doubler active: ${doublerActive})`);
                                     }
                                 }
                             } else if (newDistanceSq > minSafeDistanceSq) {

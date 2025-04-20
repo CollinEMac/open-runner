@@ -197,6 +197,77 @@ class Game {
                         child.material = magnetMaterial;
                     }
                 });
+            } else if (type === gameplayConfig.POWERUP_TYPE_DOUBLER && player && player.model) {
+                logger.info(`Applying ${type} powerup visual effect to player`);
+
+                // Create a new material for the doubler powerup effect
+                const doublerMaterial = new THREE.MeshStandardMaterial({
+                    color: gameplayConfig.DOUBLER_EFFECT_COLOR,
+                    emissive: gameplayConfig.DOUBLER_EFFECT_EMISSIVE,
+                    metalness: gameplayConfig.DOUBLER_EFFECT_METALNESS,
+                    roughness: gameplayConfig.DOUBLER_EFFECT_ROUGHNESS
+                });
+
+                // Apply the material to all meshes in the player model
+                player.model.traverse(child => {
+                    if (child instanceof THREE.Mesh) {
+                        // Store the original material if not already stored
+                        if (!child.userData.originalMaterial) {
+                            child.userData.originalMaterial = child.material;
+                        }
+                        child.material = doublerMaterial;
+                    }
+                });
+                
+                // Create a visual indicator for the doubler powerup
+                if (!player.doublerIndicator) {
+                    player.doublerIndicator = new THREE.Group();
+                    
+                    // Create a material for the X indicator
+                    const xMaterial = new THREE.MeshStandardMaterial({
+                        color: gameplayConfig.DOUBLER_EFFECT_COLOR,
+                        emissive: gameplayConfig.DOUBLER_EFFECT_EMISSIVE,
+                        metalness: 0.8,
+                        roughness: 0.1
+                    });
+                    
+                    // Create a floating X above the player's head
+                    const indicatorSize = 0.3;
+                    const indicatorHeight = 2.0; // Height above player
+                    
+                    // Create a background disc for the X
+                    const bgGeometry = new THREE.CylinderGeometry(indicatorSize * 1.2, indicatorSize * 1.2, 0.05, 16);
+                    bgGeometry.rotateX(Math.PI / 2);
+                    const bgMaterial = new THREE.MeshStandardMaterial({
+                        color: 0x000033, // Dark blue background
+                        transparent: true,
+                        opacity: 0.6
+                    });
+                    const bgMesh = new THREE.Mesh(bgGeometry, bgMaterial);
+                    
+                    // First diagonal of X (top-left to bottom-right)
+                    const diag1Geometry = new THREE.BoxGeometry(indicatorSize * 0.15, indicatorSize * 1.4, 0.05);
+                    const diag1 = new THREE.Mesh(diag1Geometry, xMaterial);
+                    diag1.rotation.z = Math.PI / 4; // 45-degree angle
+                    diag1.position.z = 0.03; // Slightly in front of the background
+                    
+                    // Second diagonal of X (top-right to bottom-left)
+                    const diag2Geometry = new THREE.BoxGeometry(indicatorSize * 0.15, indicatorSize * 1.4, 0.05);
+                    const diag2 = new THREE.Mesh(diag2Geometry, xMaterial);
+                    diag2.rotation.z = -Math.PI / 4; // -45-degree angle
+                    diag2.position.z = 0.03; // Slightly in front of the background
+                    
+                    // Add all parts to the indicator group
+                    player.doublerIndicator.add(bgMesh);
+                    player.doublerIndicator.add(diag1);
+                    player.doublerIndicator.add(diag2);
+                    
+                    // Position the indicator above the player's head
+                    player.doublerIndicator.position.set(0, indicatorHeight, 0);
+                    
+                    // Add to player model so it moves with the player
+                    player.model.add(player.doublerIndicator);
+                }
             }
         });
 
@@ -212,6 +283,38 @@ class Game {
                         delete child.userData.originalMaterial;
                     }
                 });
+            } else if (type === gameplayConfig.POWERUP_TYPE_DOUBLER && player && player.model) {
+                logger.info(`Removing ${type} powerup visual effect from player`);
+
+                // Restore original materials
+                player.model.traverse(child => {
+                    if (child instanceof THREE.Mesh && child.userData.originalMaterial) {
+                        child.material = child.userData.originalMaterial;
+                        // Clear the stored material reference
+                        delete child.userData.originalMaterial;
+                    }
+                });
+                
+                // Remove the doubler indicator
+                if (player.doublerIndicator) {
+                    player.model.remove(player.doublerIndicator);
+                    
+                    // Dispose geometries and materials
+                    player.doublerIndicator.traverse(child => {
+                        if (child instanceof THREE.Mesh) {
+                            if (child.geometry) child.geometry.dispose();
+                            if (child.material) {
+                                if (Array.isArray(child.material)) {
+                                    child.material.forEach(m => m.dispose());
+                                } else {
+                                    child.material.dispose();
+                                }
+                            }
+                        }
+                    });
+                    
+                    player.doublerIndicator = null;
+                }
             }
         });
     }
