@@ -5,10 +5,7 @@ import { createLogger } from '../utils/logger.js'; // Import logger
 import { playerConfig } from '../config/player.js';
 import { controlsConfig } from '../config/controls.js';
 
-
-
-
-import * as AudioManager from '../managers/audioManager.js'; // Moved to managers
+import { playWaveFile, effectAudioMap } from '../managers/audioManager.js';
 import { animatePlayerCharacter } from './playerCharacter.js'; // Stays in entities
 import { keyLeftPressed, keyRightPressed, mouseLeftPressed, mouseRightPressed, touchLeftPressed, touchRightPressed } from '../input/controlsSetup.js'; // Moved to input
 
@@ -71,7 +68,7 @@ export function updatePlayer(playerObj, deltaTime, animationTime, chunkManager, 
     // Apply total rotation
     if (Math.abs(totalRotationDelta) > controlsConfig.TURN_SOUND_THRESHOLD) { // Use imported constant
         playerModel.rotation.y += totalRotationDelta;
-        AudioManager.playTurnSound();
+        playWaveFile(effectAudioMap['turn']);
     } else {
         playerModel.rotation.y += totalRotationDelta; // Apply small adjustments without sound
     }

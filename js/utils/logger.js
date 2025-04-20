@@ -1,4 +1,3 @@
-// js/utils/logger.js
 // Default log level is set to INFO to reduce verbosity
 // For debugging, you can use the URL parameter ?logLevel=DEBUG to enable more detailed logging
 
@@ -180,11 +179,10 @@ class Logger {
     }
 }
 
-// --- Global Logger Management ---
 
-const defaultLogger = new Logger('App', LogLevel.ERROR); // Set to ERROR to reduce verbosity based on user preference
 
-// --- Check for URL override ---
+const defaultLogger = new Logger('App', LogLevel.ERROR);
+
 // Allows enabling verbose logging via URL parameter, e.g., ?logLevel=DEBUG
 try {
     if (typeof window !== 'undefined' && window.location && window.location.search) {
@@ -204,7 +202,7 @@ try {
 } catch (e) {
     console.error("[Logger] Error processing URL log level override:", e);
 }
-// --- End URL override check ---
+
 
 /**
  * Creates a new logger for a specific module

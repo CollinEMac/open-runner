@@ -1,4 +1,4 @@
-// js/core/gameplayUpdater.js
+
 import { createLogger } from '../utils/logger.js';
 import cameraManager from '../managers/cameraManager.js';
 
@@ -31,22 +31,18 @@ export function updateGameplay(dependencies, deltaTime, elapsedTime) {
         playerAnimationTime
     } = dependencies;
 
-    // Validate required dependencies
     if (!player || !playerController || !chunkManager || !enemyManager || !particleManager || !collisionChecker || !atmosphericManager) {
         logger.error("Missing one or more dependencies in updateGameplay. Aborting update.");
         return;
     }
 
-    // Update player controller without camera follow function (camera is updated separately)
     if (player.model) {
         logger.debug("Updating player controller without camera follow function");
-        // Pass null for the camera follow function since the camera is updated in the main game loop
         playerController.updatePlayer(player, deltaTime, playerAnimationTime, chunkManager, null);
     } else {
         logger.warn("Cannot update player: player model is missing");
     }
 
-    // Update managers that depend on player position
     if (chunkManager && player.model) {
         chunkManager.update(player.model.position);
         chunkManager.updateCollectibles(deltaTime, elapsedTime, player.model.position, player.powerup);
@@ -59,12 +55,10 @@ export function updateGameplay(dependencies, deltaTime, elapsedTime) {
         particleManager.update(deltaTime, player.model.position);
     }
 
-    // Update atmospheric effects
     if (atmosphericManager) {
         atmosphericManager.update(deltaTime, elapsedTime);
     }
 
-    // Check collisions
     if (collisionChecker && player?.model) {
         collisionChecker(player);
     }

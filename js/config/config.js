@@ -1,11 +1,10 @@
-// js/config/config.js
 // Main configuration file - Imports section configs and registers them with ConfigManager
 
 import configManager from '../utils/configManager.js';
 import { createLogger, setGlobalLogLevel, LogLevel } from '../utils/logger.js';
 import performanceManager from '../utils/performanceManager.js';
 
-// Import individual config sections
+
 import { worldConfig } from './world.js';
 import { terrainConfig } from './terrain.js';
 import { playerConfig } from './player.js';
@@ -26,18 +25,14 @@ import { debugConfig } from './debug.js';
 
 const logger = createLogger('Config');
 
-// Define configuration sections (Keys used for registration and retrieval)
 const SECTIONS = {
     WORLD: 'world',
     TERRAIN: 'terrain',
     PLAYER: 'player',
     CAMERA: 'camera',
     CONTROLS: 'controls',
-    // PHYSICS: 'physics', // No separate physics config file yet
     RENDERING: 'rendering',
-    // PERFORMANCE: 'performance', // Managed by performanceManager
     GAMEPLAY: 'gameplay',
-    // INPUT: 'input', // Input keys are part of controlsConfig
     TUMBLEWEED: 'tumbleweed',
     UI: 'ui',
     MODELS: 'models',
@@ -50,14 +45,14 @@ const SECTIONS = {
     DEBUG: 'debug'
 };
 
-// Initialize default configuration (Top-level defaults)
+
 const defaultConfig = {
     DEBUG_MODE: false,
     MAX_DELTA_TIME: 1 / 15, // Max time step allowed
     LEVEL1_TRANSITION_SCORE: 300 // Score needed to transition from level 1
 };
 
-// Register all configurations
+
 configManager.setDefaults(defaultConfig);
 configManager.registerConfig(SECTIONS.WORLD, worldConfig);
 configManager.registerConfig(SECTIONS.TERRAIN, terrainConfig);
@@ -79,7 +74,7 @@ configManager.registerConfig(SECTIONS.DEBUG, debugConfig);
 
 logger.debug('Game configuration sections registered');
 
-// Apply log level from debug config
+
 const logLevelString = debugConfig.LOG_LEVEL || 'INFO';
 if (LogLevel.hasOwnProperty(logLevelString)) {
     setGlobalLogLevel(LogLevel[logLevelString]);
@@ -89,7 +84,7 @@ if (LogLevel.hasOwnProperty(logLevelString)) {
     setGlobalLogLevel(LogLevel.INFO);
 }
 
-// --- Helper Functions for Accessing Config ---
+
 
 /**
  * Gets a configuration value
@@ -119,8 +114,6 @@ export function getConfigSection(section) {
 export function updateConfig(section, updates) {
     return configManager.updateConfig(section, updates);
 }
-
-// --- Performance Manager Integration ---
 
 // Set up performance manager callback to update config when settings change
 performanceManager.setOnSettingsChanged((settings) => {
@@ -156,23 +149,20 @@ performanceManager.setOnSettingsChanged((settings) => {
     updateConfig(SECTIONS.RENDERING_ADVANCED, {
         // Apply shadow map size based on quality setting
         SHADOW_MAP_SIZE: shadowQuality
-        // Note: This assumes shadow map size is the only advanced setting tied to quality presets for now
-        // If others are added, update them here too.
+
     });
 
 
     logger.debug('Configuration updated based on performance settings');
 });
 
-// --- Exports ---
-
 // Export SECTIONS enum for use elsewhere
 export { SECTIONS };
 
-// Export performance manager instance (re-exported for convenience)
+
 export { performanceManager };
 
-// Export the config manager instance for potential direct use (e.g., getting all configs)
+
 export default configManager;
 
 // NOTE: Individual constants (like PLAYER_SPEED) and section objects (like WORLD)

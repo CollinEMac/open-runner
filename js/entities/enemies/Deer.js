@@ -1,6 +1,5 @@
-// js/entities/enemies/Deer.js
-import { Enemy } from '../enemy.js'; // Import the base Enemy class
-import * as ModelFactory from '../../rendering/modelFactory.js'; // Import ModelFactory
+import { Enemy } from '../enemy.js';
+import * as ModelFactory from '../../rendering/modelFactory.js';
 
 export class Deer extends Enemy {
     constructor(initialData, properties, scene, chunkManager) {
@@ -8,7 +7,6 @@ export class Deer extends Enemy {
     }
 
     createMesh() {
-        // Call ModelFactory instead of AssetManager
         return ModelFactory.createDeerModel(this);
     }
 }

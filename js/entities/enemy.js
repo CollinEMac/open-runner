@@ -1,15 +1,12 @@
-// js/entities/enemy.js
 import * as THREE from 'three';
 import { createLogger } from '../utils/logger.js';
 import { enemyDefaultsConfig } from '../config/enemyDefaults.js';
 import * as UIManager from '../managers/uiManager.js';
-// ModelFactory is not needed here anymore, subclasses import it directly
-// import * as ModelFactory from '../rendering/modelFactory.js';
 import { smoothDamp } from '../utils/mathUtils.js';
 
 const logger = createLogger('Enemy');
 
-// --- Enemy States ---
+
 const ENEMY_STATE = {
     IDLE: 'idle',
     ROAMING: 'roaming',
@@ -17,10 +14,8 @@ const ENEMY_STATE = {
     RETURNING: 'returning',
 };
 
-// Shared raycaster for grounding
 const groundRaycaster = new THREE.Raycaster();
 const downVector = new THREE.Vector3(0, -1, 0);
-// Reusable objects for calculations within Enemy class methods
 const _moveDirection = new THREE.Vector3();
 const _lookTargetPos = new THREE.Vector3();
 const _targetQuat = new THREE.Quaternion();
@@ -28,8 +23,7 @@ const _lookAtMatrix = new THREE.Matrix4();
 const _roamingTargetVec = new THREE.Vector3();
 const _rayOrigin = new THREE.Vector3();
 
-// --- Base Enemy Class ---
-// Export the base class for subclasses to extend
+
 export class Enemy {
     constructor(initialData, properties, scene, chunkManager) {
         if (!chunkManager) {
@@ -41,7 +35,7 @@ export class Enemy {
         this.chunkManager = chunkManager;
         this.type = initialData.type || 'unknown';
         this.originalPosition = initialData.position.clone();
-        // Set properties from the passed object, using ENEMY_DEFAULTS as fallbacks
+
         this.speed = properties.speed ?? enemyDefaultsConfig.SPEED;
         this.aggroRadius = properties.aggroRadius ?? enemyDefaultsConfig.AGGRO_RADIUS;
         this.deaggroRadius = properties.deaggroRadius ?? enemyDefaultsConfig.DEAGGRO_RADIUS;
@@ -59,7 +53,7 @@ export class Enemy {
         this.positionSmoothingFactor = enemyDefaultsConfig.POSITION_SMOOTHING_FACTOR;
         this.lastPosition = initialData.position.clone();
 
-        // Create and position the mesh AFTER super() call allows access to subclass methods
+
         try {
             this.mesh = this.createMesh(); // Calls subclass specific createMesh
         } catch (error) {
@@ -85,7 +79,7 @@ export class Enemy {
         }
     }
 
-    // Placeholder - subclasses MUST override this
+
     createMesh() {
         const errorMsg = `createMesh() not implemented for subclass type ${this.type}!`;
         UIManager.displayError(new Error(`[Enemy] ${errorMsg}`));
@@ -102,7 +96,7 @@ export class Enemy {
         this._updateAnimation(elapsedTime, isMoving, currentSpeed);
     }
 
-    // --- Private Helper Methods for Update Logic ---
+
 
     _updateGrounding() {
         const currentPosition = this.mesh.position;
@@ -130,7 +124,7 @@ export class Enemy {
             case ENEMY_STATE.IDLE:
                 this.state = ENEMY_STATE.ROAMING;
                 this.pickNewRoamingTarget();
-                // Fall through intended
+
             case ENEMY_STATE.ROAMING:
                  if (distanceToPlayer < this.aggroRadius) {
                     this.state = ENEMY_STATE.CHASING;
@@ -255,7 +249,7 @@ export class Enemy {
         }
     }
 
-    // --- Roaming Helpers ---
+
     pickNewRoamingTarget() {
         const angle = Math.random() * Math.PI * 2;
         const radius = Math.random() * this.roamingRadius;
@@ -304,5 +298,3 @@ export class Enemy {
     }
 }
 
-// --- Specific Enemy Subclasses Removed ---
-// Subclasses (Bear, Squirrel, Deer, Coyote, Rattlesnake, Scorpion) are now in separate files in js/entities/enemies/

@@ -288,7 +288,7 @@ export class ChunkContentManager {
 
                 object.mesh = null;
                 object.collected = true;
-                AudioManager.playCoinSound();
+                AudioManager.playWaveFile(AudioManager.effectAudioMap['coin']);
                 return true;
             } else {
                  logger.warn(`Attempted to collect invalid, collidable, or already collected object: chunk ${chunkKey}, index ${objectIndex}`);

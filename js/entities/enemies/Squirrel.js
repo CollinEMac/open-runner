@@ -1,6 +1,5 @@
-// js/entities/enemies/Squirrel.js
-import { Enemy } from '../enemy.js'; // Import the base Enemy class
-import * as ModelFactory from '../../rendering/modelFactory.js'; // Import ModelFactory
+import { Enemy } from '../enemy.js';
+import * as ModelFactory from '../../rendering/modelFactory.js';
 
 export class Squirrel extends Enemy {
     constructor(initialData, properties, scene, chunkManager) {
@@ -8,7 +7,6 @@ export class Squirrel extends Enemy {
     }
 
     createMesh() {
-        // Call ModelFactory instead of AssetManager
         return ModelFactory.createSquirrelModel(this);
     }
 }

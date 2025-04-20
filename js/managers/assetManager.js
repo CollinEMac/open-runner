@@ -1,17 +1,13 @@
-// js/managers/assetManager.js
-import * as THREE from 'three'; // Re-enabled THREE import as it's used for geometries/materials
-import * as UIManager from './uiManager.js'; // Stays in managers
-// Import specific config objects
+import * as THREE from 'three';
+import * as UIManager from './uiManager.js';
 import { materialsConfig } from '../config/materials.js';
 import { fallbackGeometriesConfig } from '../config/fallbackGeometries.js';
 import { modelsConfig } from '../config/models.js';
-import { createLogger } from '../utils/logger.js'; // Import logger
+import { createLogger } from '../utils/logger.js';
+import * as ModelFactory from '../rendering/modelFactory.js';
 
-const logger = createLogger('AssetManager'); // Instantiate logger
-import * as ModelFactory from '../rendering/modelFactory.js'; // Moved to rendering
-// Duplicate logger import and instantiation removed
+const logger = createLogger('AssetManager');
 
-// --- Private Asset Storage ---
 // Stores assets for the currently loaded level
 let levelAssets = {};
 
@@ -33,7 +29,7 @@ export function initLevelAssets(levelConfig) {
         return;
     }
 
-    // --- Coin --- (Uses level config OR fallback geometry constants)
+    // --- Coin ---
     const coinVis = levelConfig.COIN_VISUALS || {}; // Start with empty object
     const coinRadius = coinVis.radius ?? fallbackGeometriesConfig.COIN.RADIUS;
     const coinHeight = coinVis.height ?? fallbackGeometriesConfig.COIN.HEIGHT;
@@ -44,7 +40,7 @@ export function initLevelAssets(levelConfig) {
     levelAssets.coinMaterial = new THREE.MeshStandardMaterial({ color: coinColor, metalness: 0.3, roughness: 0.4 }); // Keep metalness/roughness for now
 
     // --- Powerups ---
-    // --- Magnet --- (Uses level config OR model defaults and ModelFactory)
+    // --- Magnet ---
     const magnetVis = levelConfig.MAGNET_VISUALS || {};
     const magnetProps = {
         size: magnetVis.size ?? modelsConfig.MAGNET.DEFAULT_SIZE,
@@ -52,7 +48,7 @@ export function initLevelAssets(levelConfig) {
     };
     try {
         levelAssets.magnetGroup = ModelFactory.createMagnetModel(magnetProps); // Use ModelFactory with potentially defaulted props
-        // Define magnet material using constants from MODELS.MAGNET
+
         levelAssets.magnetMaterial = new THREE.MeshStandardMaterial({
           color: magnetProps.color, // Use the determined color
           emissive: modelsConfig.MAGNET.MAGNET_EMISSIVE,
@@ -84,24 +80,24 @@ export function initLevelAssets(levelConfig) {
       UIManager.displayError(new Error("[AssetManager] Error creating doubler model."));
     }
 
-    // --- Obstacles Materials (Use constants from MATERIALS) ---
+    // --- Obstacles Materials ---
     levelAssets.rockMaterial = new THREE.MeshStandardMaterial({ color: materialsConfig.ROCK_COLOR, roughness: materialsConfig.ROCK_ROUGHNESS });
     levelAssets.logMaterial = new THREE.MeshStandardMaterial({ color: materialsConfig.LOG_COLOR, roughness: materialsConfig.LOG_ROUGHNESS });
     levelAssets.cabinMaterial = new THREE.MeshStandardMaterial({ color: materialsConfig.CABIN_COLOR, roughness: materialsConfig.CABIN_ROUGHNESS });
     levelAssets.cactusMaterial = new THREE.MeshStandardMaterial({ color: materialsConfig.CACTUS_COLOR, roughness: materialsConfig.CACTUS_ROUGHNESS });
     levelAssets.saloonMaterial = new THREE.MeshStandardMaterial({ color: materialsConfig.SALOON_COLOR, roughness: materialsConfig.SALOON_ROUGHNESS });
-    // Add other materials as needed...
 
-    // --- Obstacles Geometries (Based on levelConfig.OBJECT_TYPES) ---
+
+    // --- Obstacles Geometries ---
     const objectTypes = levelConfig.OBJECT_TYPES || [];
     objectTypes.forEach(objType => {
         // Only create geometries if they don't exist yet for this level load
         switch (objType.type) {
             case 'rock_small':
-                if (!levelAssets.rockSmallGeo) levelAssets.rockSmallGeo = new THREE.IcosahedronGeometry(fallbackGeometriesConfig.ROCK_SMALL.RADIUS, fallbackGeometriesConfig.ROCK_SMALL.DETAIL); // Use Icosahedron for blocky look
+                if (!levelAssets.rockSmallGeo) levelAssets.rockSmallGeo = new THREE.IcosahedronGeometry(fallbackGeometriesConfig.ROCK_SMALL.RADIUS, fallbackGeometriesConfig.ROCK_SMALL.DETAIL);
                 break;
             case 'rock_large':
-                if (!levelAssets.rockLargeGeo) levelAssets.rockLargeGeo = new THREE.IcosahedronGeometry(fallbackGeometriesConfig.ROCK_LARGE.RADIUS, fallbackGeometriesConfig.ROCK_LARGE.DETAIL); // Use Icosahedron
+                if (!levelAssets.rockLargeGeo) levelAssets.rockLargeGeo = new THREE.IcosahedronGeometry(fallbackGeometriesConfig.ROCK_LARGE.RADIUS, fallbackGeometriesConfig.ROCK_LARGE.DETAIL);
                 break;
             case 'log_fallen':
                 if (!levelAssets.logFallenGeo) levelAssets.logFallenGeo = new THREE.CylinderGeometry(fallbackGeometriesConfig.LOG_FALLEN.RADIUS, fallbackGeometriesConfig.LOG_FALLEN.RADIUS, fallbackGeometriesConfig.LOG_FALLEN.HEIGHT, fallbackGeometriesConfig.LOG_FALLEN.SEGMENTS);
@@ -130,17 +126,16 @@ export function initLevelAssets(levelConfig) {
             case 'tumbleweed':
                  if (!levelAssets.tumbleweedGeo) levelAssets.tumbleweedGeo = new THREE.IcosahedronGeometry(fallbackGeometriesConfig.TUMBLEWEED.RADIUS, fallbackGeometriesConfig.TUMBLEWEED.DETAIL);
                  break;
-            // Geometries for models created dynamically in factory are not stored here
             case 'tree_pine':
             case 'cactus_saguaro':
             case 'railroad_sign':
             case 'mine_entrance':
             case 'water_tower':
-                break; // No static geometry needed
+                break;
         }
     });
 
-    // --- Tree Materials (Use constants if needed by level) ---
+    // --- Tree Materials ---
     if (objectTypes.some(t => t.type === modelsConfig.TREE_PINE.OBJECT_TYPE)) {
         levelAssets.treeFoliageMaterial = new THREE.MeshStandardMaterial({ color: modelsConfig.TREE_PINE.FALLBACK_FOLIAGE_COLOR, roughness: modelsConfig.TREE_PINE.FALLBACK_FOLIAGE_ROUGHNESS });
         levelAssets.treeTrunkMaterial = new THREE.MeshStandardMaterial({ color: modelsConfig.TREE_PINE.FALLBACK_TRUNK_COLOR, roughness: modelsConfig.TREE_PINE.FALLBACK_TRUNK_ROUGHNESS });
@@ -192,7 +187,7 @@ export function disposeLevelAssets() {
                             }
                         }
                     });
-                    // Group itself doesn't have dispose, just clear children references implicitly
+
                 }
             } catch (error) {
                 logger.error(`Error disposing asset "${key}":`, error);

@@ -1,4 +1,3 @@
-// js/core/game.js
 import * as THREE from 'three';
 import eventBus from './eventBus.js';
 import gameStateManager, { GameStates } from './gameStateManager.js';
@@ -10,26 +9,23 @@ import { updateFpsCounter } from '../rendering/sceneSetup.js';
 import { performanceManager } from '../config/config.js';
 import { controlsConfig } from '../config/controls.js';
 import configManager, { getConfig } from '../config/config.js';
-import { playerConfig } from '../config/player.js'; // Needed for _loadLevel
-import { worldConfig } from '../config/world.js'; // Needed for startGame
-import { gameplayConfig } from '../config/gameplay.js'; // Needed for powerup effects
-import { resetInputStates, initInputStateManager } from '../input/controlsSetup.js'; // Needed for startGame and event handlers
-import { updateMobileControlsVisibility } from '../utils/deviceUtils.js'; // Needed for startGame and event handlers
-// Import managers needed for dependency object in _setupEventSubscriptions
+import { playerConfig } from '../config/player.js';
+import { worldConfig } from '../config/world.js';
+import { gameplayConfig } from '../config/gameplay.js';
+import { resetInputStates, initInputStateManager } from '../input/controlsSetup.js';
+import { updateMobileControlsVisibility } from '../utils/deviceUtils.js';
 import * as ScoreManager from '../managers/scoreManager.js';
 import * as LevelManager from '../managers/levelManager.js';
 import * as UIManager from '../managers/uiManager.js';
 import cameraManager from '../managers/cameraManager.js';
 import sceneTransitionManager from '../managers/sceneTransitionManager.js';
 import atmosphericManager from '../managers/atmosphericManager.js';
-// Import managers needed for startGame/_loadLevel (these are instantiated/returned by initializeGame)
 import { initScene } from '../rendering/sceneSetup.js';
 import { SpatialGrid } from '../physics/spatialGrid.js';
 import { EnemyManager } from '../managers/enemyManager.js';
 import { ChunkManager } from '../managers/chunkManager.js';
 import { ParticleManager } from '../managers/particleManager.js';
 import { initCollisionManager } from '../managers/collisionManager.js';
-// Removed unused imports: grayMaterial, createPlayerCharacter, initPlayerController, checkCollisionsController
 
 const logger = createLogger('Game');
 
@@ -55,25 +51,24 @@ class Game {
         this.fpsCounter = null;
         this.assetManager = null;
         this.audioManager = null;
-        this.cameraManager = cameraManager; // Use imported singleton
-        this.sceneTransitionManager = sceneTransitionManager; // Use imported singleton
+        this.cameraManager = cameraManager;
+        this.sceneTransitionManager = sceneTransitionManager;
         this.chunkManager = null;
         this.collisionChecker = null;
         this.enemyManager = null;
-        this.gameStateManager = gameStateManager; // Use imported singleton
+        this.gameStateManager = gameStateManager;
         this.levelManager = null;
         this.particleManager = null;
         this.playerController = null;
         this.spatialGrid = null;
-        this.uiManager = UIManager; // Use imported module directly
-        this.atmosphericManager = atmosphericManager; // Use imported singleton
+        this.uiManager = UIManager;
+        this.atmosphericManager = atmosphericManager;
         this.player = null;
-        // this.score = 0; // Score state now managed by ScoreManager
         this.currentLevelConfig = null;
         this.playerAnimationTime = 0;
-        this.powerupTimer = null; // Timer managed via event handler
-        this.eventBus = eventBus; // Use imported singleton
-        this.animationFrameId = null; // Store animation frame ID for cleanup
+        this.powerupTimer = null;
+        this.eventBus = eventBus;
+        this.animationFrameId = null;
 
         // Bind animate method once to prevent memory issues
         this.boundAnimate = this.animate.bind(this);
@@ -106,7 +101,7 @@ class Game {
         this.chunkManager = initResult.chunkManager;
         this.collisionChecker = initResult.collisionChecker;
         this.enemyManager = initResult.enemyManager;
-        // gameStateManager is already assigned
+
         this.levelManager = initResult.levelManager;
         this.particleManager = initResult.particleManager;
         this.playerController = initResult.playerController;
@@ -360,7 +355,7 @@ class Game {
 
         if (currentState === GameStates.PLAYING) {
             updateGameplay(
-                { // Pass dependencies object
+                {
                     player: this.player,
                     playerController: this.playerController,
                     chunkManager: this.chunkManager,
@@ -373,7 +368,6 @@ class Game {
                 deltaTime,
                 elapsedTime
             );
-            // Update player animation time (still managed by Game)
             this.playerAnimationTime += deltaTime;
         }
 
@@ -442,7 +436,7 @@ class Game {
         if (this.audioManager) {
             logger.info(`Stopping current music before starting level: ${levelId}`);
             this.audioManager.stopMusic();
-            
+
             // Add a short delay to ensure audio operations complete
             await new Promise(resolve => setTimeout(resolve, 100));
         } else {
@@ -495,7 +489,7 @@ class Game {
         // Set intermediate state before playing music
         // This ensures any state transition handlers finish first
         this.gameStateManager.setGameState(GameStates.TRANSITIONING_TO_GAMEPLAY);
-        
+
         // Wait a small amount of time for state change events to be processed
         await new Promise(resolve => setTimeout(resolve, 100));
 
@@ -679,7 +673,7 @@ class Game {
         // FPS toggle handled separately in constructor
     }
 
-    // _updateGameplay method is now removed, its logic is in gameplayUpdater.js
+
 
     /**
      * Positions the player on the terrain by calculating the terrain height at the player's position

@@ -1,6 +1,3 @@
-// js/config/gameplay.js
-
-// Gameplay configuration
 export const gameplayConfig = {
     POWERUP_TYPE_MAGNET: 'magnet',
     POWERUP_TYPE_DOUBLER: 'doubler',
@@ -25,3 +22,4 @@ export const gameplayConfig = {
     DOUBLER_COLLISION_RADIUS: 1.0, // Collision radius for doubler powerup
     TREE_COLLISION_BUFFER: 0.2 // Buffer below trunk top for collision
 };
+
