@@ -432,15 +432,23 @@ class Game {
     async startGame(levelId) {
         logger.info(`Starting level: ${levelId}`);
 
-        // Stop any currently playing music FIRST, before anything else
+        // STEP 1: Stop any currently playing music
         if (this.audioManager) {
-            logger.info(`Stopping current music before starting level: ${levelId}`);
-            this.audioManager.stopMusic();
-
-            // Add a short delay to ensure audio operations complete
-            await new Promise(resolve => setTimeout(resolve, 100));
+            logger.info(`Stopping music before starting level: ${levelId}`);
+            try {
+                // Use the simplified stopAllMusic method
+                await this.audioManager.stopAllMusic();
+                
+                // Short delay to ensure clean audio state
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+                // Log the audio state before continuing
+                logger.info(`Audio stopped before level start: currentMusic=${this.audioManager.getCurrentMusicId()}`);
+            } catch (e) {
+                logger.error("Error stopping music:", e);
+            }
         } else {
-            logger.warn("Audio manager not available, cannot stop music");
+            logger.warn("Audio manager not available");
         }
 
         resetInputStates();
@@ -493,20 +501,9 @@ class Game {
         // Wait a small amount of time for state change events to be processed
         await new Promise(resolve => setTimeout(resolve, 100));
 
-        // Double-check that music is stopped before playing new music
-        if (this.audioManager && this.audioManager.isMusicActive()) {
-            logger.warn("Music still playing before level music start - stopping again");
-            this.audioManager.stopMusic();
-            await new Promise(resolve => setTimeout(resolve, 50));
-        }
-
-        // Now play the music for this level
-        if (this.audioManager) {
-            logger.info(`Starting music for level: ${levelId}`);
-            await this.audioManager.playMusic(levelId);
-        } else {
-            logger.warn("Audio manager not available, cannot play music");
-        }
+        // Music is handled entirely by the gameStateChanged event handler in audioManager.js
+        // We don't need to do anything with audio here
+        logger.info(`Music for level ${levelId} will be handled by state change to PLAYING`);
     }
 
 

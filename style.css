@@ -275,6 +275,62 @@ html, body {
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
 }
 
+/* --- Click to Start Screen Styles --- */
+#clickToStartScreen {
+    background: radial-gradient(circle, #000a1f 0%, #000000 100%);
+    cursor: pointer;
+    z-index: 1001; /* Higher than loading screen */
+    display: none; /* Initially hidden */
+}
+
+.click-to-start-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+
+#clickToStartScreen h1 {
+    font-size: 3.5rem;
+    margin-bottom: 2rem;
+    color: #8aff80;
+    text-shadow: 0 0 10px #4aff40, 0 0 20px #4aff40;
+    letter-spacing: 0.15em;
+    font-family: var(--title-font);
+    font-weight: 700;
+}
+
+.click-prompt {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-top: 1.5rem;
+}
+
+.pulsing-text {
+    font-size: 1.5rem;
+    color: #ffffff;
+    margin-bottom: 1.5rem;
+    animation: pulse 1.5s infinite ease-in-out;
+    font-family: var(--body-font);
+    font-weight: 500;
+    letter-spacing: 0.05em;
+}
+
+.audio-icon {
+    font-size: 2.5rem;
+    margin-top: 0.5rem;
+    animation: bounce 2s infinite;
+    color: var(--primary-light);
+}
+
+@keyframes bounce {
+    0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+    40% { transform: translateY(-15px); }
+    60% { transform: translateY(-7px); }
+}
+
 /* --- Loading Screen Styles --- */
 #loadingScreen {
     /* Uses .ui-overlay for base positioning and background */

@@ -91,14 +91,53 @@ export async function initializeGame(canvasElement) {
         setupPlayerControls(renderer.domElement);
         initInputStateManager();
 
-        AudioManager.initAudio();
+        // Don't initialize audio yet - we'll do it after user interaction
+        // Just set up the event listeners
+        logger.info("Audio will be initialized after user interaction");
+        
+        // Set a flag to indicate we need to show the Click to Start screen
+        window.needsAudioUnlock = true;
+        window.audioUnlocked = false;
+        
+        // Create a global function to initialize audio after user interaction
+        window.initializeAudioAfterInteraction = async function() {
+            if (!window.audioInitialized) {
+                window.audioInitialized = true;
+                logger.info("Initializing audio after user interaction");
+                await AudioManager.initAudio();
+                
+                // If we're already at the title screen, play the theme music
+                if (gameStateManager.getCurrentState() === GameStates.TITLE) {
+                    logger.info("Playing theme music after delayed audio initialization");
+                    await AudioManager.playMusic('theme');
+                }
+            }
+        };
+        
+        // We'll let the Click to Start screen handle the user interaction now
+        // so we don't need these global listeners anymore
 
         gameStateManager.setGameState(GameStates.LOADING);
         await chunkManager.loadInitialChunks((loaded, total) => {
             UIManager.updateLoadingProgress(loaded, total);
         });
 
+        // Set to title state
         gameStateManager.setGameState(GameStates.TITLE);
+        
+        // Explicitly try to play theme music after a delay
+        setTimeout(async () => {
+            if (gameStateManager.getCurrentState() === GameStates.TITLE) {
+                logger.info("Explicitly starting theme music after initialization");
+                try {
+                    await AudioManager.forceResetMusicState();
+                    await AudioManager.playMusic('theme');
+                    logger.info("Theme music started successfully");
+                } catch (e) {
+                    logger.error("Failed to start theme music:", e);
+                }
+            }
+        }, 1000);
 
         logger.info("Game initialization complete.");
 

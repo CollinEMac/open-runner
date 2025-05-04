@@ -15,6 +15,55 @@
         body { margin: 0; overflow: hidden; }
         canvas { display: block; }
     </style>
+    <script>
+        // This helps with browser autoplay policies
+        window.audioContextUnlocked = false;
+        
+        // Function to unlock audio on user interaction and trigger game audio
+        function unlockAudio() {
+            console.log("User interaction detected - attempting to unlock audio");
+            if (window.audioContextUnlocked) return;
+            window.audioContextUnlocked = true;
+            
+            // Create silent buffer and play it to unlock audio system
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const buffer = audioContext.createBuffer(1, 1, 22050);
+                const source = audioContext.createBufferSource();
+                
+                source.buffer = buffer;
+                source.connect(audioContext.destination);
+                source.start(0);
+                
+                // Make this action available to the game
+                window.userHasInteracted = true;
+                
+                // Add a global function that the game code can call to play title music
+                window.triggerAudioPlay = function(audioManagerModule) {
+                    if (audioManagerModule && typeof audioManagerModule.playMusic === 'function') {
+                        console.log("Playing title music after user interaction");
+                        audioManagerModule.playMusic('theme').catch(e => {
+                            console.error("Error playing theme music:", e);
+                        });
+                    }
+                };
+                
+                console.log("Audio unlocked by user interaction");
+                
+                // Clean up after a short time
+                setTimeout(() => {
+                    audioContext.close();
+                }, 1000);
+            } catch(e) {
+                console.error("Error unlocking audio:", e);
+            }
+        }
+        
+        // Attach to common user interactions
+        window.addEventListener('click', unlockAudio, {once: false});
+        window.addEventListener('touchstart', unlockAudio, {once: false});
+        window.addEventListener('keydown', unlockAudio, {once: false});
+    </script>
 </head>
 <body>
     <div id="loadingScreen" class="ui-overlay">
@@ -22,6 +71,15 @@
             <div id="progressBar"></div>
         </div>
         <span id="progressText">Loading... 0%</span>
+    </div>
+    <div id="clickToStartScreen" class="ui-overlay" style="display: none;">
+        <div class="click-to-start-content">
+            <h1>OPEN RUNNER</h1>
+            <div class="click-prompt">
+                <span class="pulsing-text">Click to Start</span>
+                <div class="audio-icon">🔊</div>
+            </div>
+        </div>
     </div>
     <div id="titleScreen" class="ui-overlay" style="display: none;"> <!-- Initially hidden -->
         <h1>Open Runner</h1>
