@@ -1,6 +1,7 @@
 
 import { createLogger, LogLevel } from '../utils/logger.js';
 import cameraManager from '../managers/cameraManager.js';
+import { getPlayerManager } from '../managers/playerManager.js';
 
 const logger = createLogger('GameplayUpdater', LogLevel.WARN);
 
@@ -44,7 +45,12 @@ export function updateGameplay(dependencies, deltaTime, elapsedTime) {
 
     if (chunkManager && player.model) {
         chunkManager.update(player.model.position);
-        chunkManager.updateCollectibles(deltaTime, elapsedTime, player.model.position, player.powerup);
+        
+        // Get current powerup from PlayerManager
+        const playerManager = getPlayerManager();
+        const currentPowerup = playerManager ? playerManager.getCurrentPowerup() : player.powerup;
+        
+        chunkManager.updateCollectibles(deltaTime, elapsedTime, player.model.position, currentPowerup);
         chunkManager.updateTumbleweeds(deltaTime, elapsedTime, player.model.position);
     }
     if (enemyManager && player.model) {

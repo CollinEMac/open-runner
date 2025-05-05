@@ -17,6 +17,7 @@ import { updateMobileControlsVisibility } from '../utils/deviceUtils.js';
 import * as ScoreManager from '../managers/scoreManager.js';
 import * as LevelManager from '../managers/levelManager.js';
 import * as UIManager from '../managers/uiManager.js';
+import { initPlayerManager, getPlayerManager } from '../managers/playerManager.js';
 import cameraManager from '../managers/cameraManager.js';
 import sceneTransitionManager from '../managers/sceneTransitionManager.js';
 import atmosphericManager from '../managers/atmosphericManager.js';
@@ -66,7 +67,7 @@ class Game {
         this.player = null;
         this.currentLevelConfig = null;
         this.playerAnimationTime = 0;
-        this.powerupTimer = null;
+        this.playerManager = null;
         this.eventBus = eventBus;
         this.animationFrameId = null;
         this.lastRenderFrameTime = 0; // For throttling renders in certain states
@@ -112,6 +113,10 @@ class Game {
         this.fpsCounter = initResult.fpsCounter;
         this.currentLevelConfig = initResult.currentLevelConfig;
         this.activeScene = this.scene; // Start with the initial scene
+        
+        // Initialize PlayerManager
+        this.playerManager = initPlayerManager(this.player);
+        logger.info("PlayerManager initialized");
 
         // Setup event subscriptions after all components are initialized
         this._setupEventSubscriptions();
@@ -417,10 +422,9 @@ class Game {
             this.animationFrameId = null;
         }
 
-        // Clear any running timers
-        if (this.powerupTimer) {
-            clearTimeout(this.powerupTimer);
-            this.powerupTimer = null;
+        // Clean up PlayerManager
+        if (this.playerManager) {
+            this.playerManager.cleanup();
         }
 
         // Dispose of Three.js resources
@@ -597,8 +601,11 @@ class Game {
             this.uiManager.updateScoreDisplay(0, false, true);
             // The 'currentScoreUpdated' event is now emitted by ScoreManager.resetCurrentScore
             this.playerAnimationTime = 0;
-            if (this.powerupTimer) clearTimeout(this.powerupTimer);
-            this.powerupTimer = null;
+            
+            // Reset powerups through PlayerManager
+            if (this.playerManager) {
+                this.playerManager.resetPowerups();
+            }
 
             // Load initial chunks
             await this.chunkManager.loadInitialChunks((loaded, total) => {

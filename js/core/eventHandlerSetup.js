@@ -8,11 +8,9 @@ import { grayMaterial } from '../entities/playerCharacter.js';
 import { playWaveFile, effectAudioMap } from '../managers/audioManager.js';
 import * as ScoreManager from '../managers/scoreManager.js';
 import * as LevelManager from '../managers/levelManager.js';
+import { initPlayerManager, getPlayerManager } from '../managers/playerManager.js';
 
 const logger = createLogger('EventHandlerSetup');
-
-
-let powerupTimeout = null;
 
 /**
  * Sets up subscriptions to global events via the event bus.
@@ -54,6 +52,10 @@ export function setupEventHandlers(dependencies) {
     if (!uiManager) {
         logger.warn("UIManager not provided to event handlers. Some UI updates may not work properly.");
     }
+    
+    // Initialize PlayerManager with player object
+    initPlayerManager(player);
+    const playerManager = getPlayerManager();
 
 
 
@@ -97,51 +99,9 @@ export function setupEventHandlers(dependencies) {
         }
     });
 
-    eventBus.subscribe('powerupActivated', (powerupType) => {
-        // TODO: Refactor powerup logic into a dedicated PlayerManager or component
-        const wasActive = player.powerup === powerupType;
-        player.powerup = powerupType; // Update player state directly (temporary)
-        playWaveFile(effectAudioMap['powerup']);
-
-        if (wasActive) {
-            logger.info(`${powerupType} powerup already active, extending duration`);
-            if (powerupTimeout) clearTimeout(powerupTimeout);
-        } else {
-            logger.info(`${powerupType} powerup started!`);
-            // Emit event for visual effect instead of direct manipulation
-            eventBus.emit('applyPowerupEffect', { type: powerupType, player });
-        }
-
-        if (powerupTimeout) clearTimeout(powerupTimeout);
-
-        powerupTimeout = setTimeout(() => {
-            if (player.powerup === powerupType) {
-                player.powerup = '';
-                logger.info(`${powerupType} powerup expired!`);
-                eventBus.emit('removePowerupEffect', { type: powerupType, player });
-            }
-            powerupTimeout = null;
-        }, gameplayConfig.POWERUP_DURATION * 1000);
-    });
-
-    eventBus.subscribe('resetPowerups', () => {
-        if (player.powerup) {
-            const currentPowerup = player.powerup;
-            player.powerup = '';
-            logger.debug(`Powerup ${currentPowerup} reset`);
-
-
-            eventBus.emit('removePowerupEffect', { type: currentPowerup, player });
-        }
-
-
-        if (powerupTimeout) {
-            clearTimeout(powerupTimeout);
-            powerupTimeout = null;
-            logger.debug("Powerup timeout cleared");
-        }
-
-    })
+    // Powerup management has been moved to PlayerManager
+    // eventBus.subscribe('powerupActivated') is now handled by PlayerManager
+    // eventBus.subscribe('resetPowerups') is now handled by PlayerManager
 
     eventBus.subscribe('playerDied', () => {
         logger.info("Player Died event received.");
@@ -154,7 +114,8 @@ export function setupEventHandlers(dependencies) {
 
         gameStateManager.setGameState(GameStates.GAME_OVER);
 
-        eventBus.emit('resetPowerups');
+        // Reset powerups through PlayerManager
+        playerManager.resetPowerups();
 
         eventBus.emit('gameOverInfo', {
             score: currentScore,
@@ -170,26 +131,12 @@ export function setupEventHandlers(dependencies) {
         if (newState === GameStates.TITLE) {
             ScoreManager.resetCurrentScore();
 
-
             if (uiManager) {
                 uiManager.updateScoreDisplay(0, false);
             }
 
-            if (player.powerup) {
-                const currentPowerup = player.powerup;
-                player.powerup = '';
-                logger.debug(`Powerup ${currentPowerup} reset on TITLE state change`);
-
-
-                eventBus.emit('removePowerupEffect', { type: currentPowerup, player });
-            }
-
-
-            if (powerupTimeout) {
-                clearTimeout(powerupTimeout);
-                powerupTimeout = null;
-                logger.debug("Powerup timeout cleared on TITLE state change");
-            }
+            // Reset powerups through PlayerManager
+            playerManager.resetPowerups();
         } else if (newState === GameStates.PLAYING) {
         }
     });
@@ -265,7 +212,7 @@ export function setupEventHandlers(dependencies) {
         logger.debug("Score reset when returning to title");
 
         // clear powerups
-        eventBus.emit('resetPowerups');
+        playerManager.resetPowerups();
 
         // Only start camera transition if NOT coming from LEVEL_SELECT
         if (currentState !== GameStates.LEVEL_SELECT) {
