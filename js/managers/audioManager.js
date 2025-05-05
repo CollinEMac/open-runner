@@ -103,8 +103,21 @@ function setupEventListeners() {
                 }
             }
             else if (newState === GameStates.PLAYING) {
-                // Stop any current music before playing level music
+                // Ensure any previous music is fully stopped
                 await stopAllMusic();
+                
+                // Add a short delay to ensure audio processing completes
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+                // Force a complete reset of the audio state
+                await forceResetMusicState();
+                
+                // Verify that music has stopped before starting new music
+                if (currentMusicId) {
+                    logger.warn(`[AudioManager] Music still playing (${currentMusicId}) after stop, forcing another reset`);
+                    await stopAllMusic();
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                }
                 
                 // Play level-specific music
                 const currentLevelId = LevelManager.getCurrentLevelId();
@@ -208,16 +221,40 @@ export async function stopAllMusic() {
         // Stop and disconnect the current music source if it exists
         if (musicSource) {
             try {
+                // Create a safety timeout to force reset if stop doesn't complete
+                const safetyTimeout = setTimeout(() => {
+                    logger.warn("[AudioManager] Safety timeout triggered - forcing music source reset");
+                    musicSource = null;
+                    currentMusicId = null;
+                }, 500);
+                
+                // Attempt to properly stop and disconnect
                 musicSource.stop();
                 musicSource.disconnect();
+                
+                // Clear the safety timeout
+                clearTimeout(safetyTimeout);
+                
                 logger.debug("[AudioManager] Stopped active music source");
             } catch (e) {
                 logger.warn("[AudioManager] Error stopping music source:", e);
+                // Force reset even after error
+                musicSource = null;
             }
         }
         
-        // Reset audio state
-        musicSource = null;
+        // Double-check audio state and explicitly null out to ensure cleanup
+        if (musicSource) {
+            logger.warn("[AudioManager] Music source still active after stop, forcing null");
+            try {
+                musicSource.disconnect();
+            } catch (e) {
+                // Ignore disconnect errors, we're trying to force cleanup
+            }
+            musicSource = null;
+        }
+        
+        // Reset state
         currentMusicId = null;
         
         return true;
@@ -298,8 +335,23 @@ export async function playMusic(levelId = 'theme', volume = 0.3) {
             }
         }
         
-        // Stop any existing music first
+        // Make sure any previous music is completely stopped
         await stopAllMusic();
+        
+        // Double-check to ensure no music is playing from previous state
+        if (currentMusicId || musicSource) {
+            logger.warn(`[AudioManager] Music still active after stopAllMusic. Forcing reset before playing ${levelId}`);
+            await forceResetMusicState();
+            // Add a short delay to ensure audio processing completes
+            await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        
+        // Verify the game state to ensure we're not playing inappropriate music
+        const currentState = gameStateManager.getCurrentState();
+        if (levelId === 'theme' && currentState !== GameStates.TITLE) {
+            logger.warn(`[AudioManager] Attempted to play theme music in ${currentState} state, aborting`);
+            return false;
+        }
         
         // Get the audio file path
         const filePath = levelAudioMap[levelId];

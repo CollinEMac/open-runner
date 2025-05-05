@@ -445,18 +445,41 @@ class Game {
     async startGame(levelId) {
         logger.info(`Starting level: ${levelId}`);
 
-        // STEP 1: Stop any currently playing music
+        // STEP 1: Force stop any currently playing music
         if (this.audioManager) {
             logger.info(`Stopping music before starting level: ${levelId}`);
             try {
-                // Use the simplified stopAllMusic method
+                // First attempt to stop music
                 await this.audioManager.stopAllMusic();
                 
-                // Short delay to ensure clean audio state
-                await new Promise(resolve => setTimeout(resolve, 100));
+                // Force a complete audio reset to ensure clean state
+                await this.audioManager.forceResetMusicState();
                 
-                // Log the audio state before continuing
-                logger.info(`Audio stopped before level start: currentMusic=${this.audioManager.getCurrentMusicId()}`);
+                // Slightly longer delay to ensure audio processing completes
+                await new Promise(resolve => setTimeout(resolve, 300));
+                
+                // Verify music has stopped
+                const currentMusic = this.audioManager.getCurrentMusicId();
+                logger.info(`Audio stopped before level start: currentMusic=${currentMusic}`);
+                
+                // Double-check that music is actually stopped
+                if (currentMusic) {
+                    logger.warn(`Music still playing (${currentMusic}) after stop, forcing another reset`);
+                    await this.audioManager.stopAllMusic();
+                    await new Promise(resolve => setTimeout(resolve, 200));
+                    
+                    // Final verification
+                    const musicStillPlaying = this.audioManager.isMusicActive();
+                    if (musicStillPlaying) {
+                        logger.warn(`[Critical] Music still active after multiple stop attempts`);
+                        // Attempt one last manual cleanup
+                        try {
+                            this.audioManager.forceResetMusicState();
+                        } catch (err) {
+                            logger.error("Final music cleanup failed:", err);
+                        }
+                    }
+                }
             } catch (e) {
                 logger.error("Error stopping music:", e);
             }
@@ -530,6 +553,21 @@ class Game {
         try {
             this.gameStateManager.setGameState(GameStates.LOADING_LEVEL);
             logger.info(`Loading level ${levelId}...`);
+            
+            // Ensure any music is properly stopped before loading level
+            if (this.audioManager) {
+                logger.info("Making sure music is stopped before loading level");
+                await this.audioManager.stopAllMusic();
+                await this.audioManager.forceResetMusicState();
+                
+                // Add additional delay and verification
+                await new Promise(resolve => setTimeout(resolve, 200));
+                if (this.audioManager.isMusicActive()) {
+                    logger.warn("Music still active after stop in _loadLevel, forcing cleanup");
+                    await this.audioManager.stopAllMusic();
+                    await this.audioManager.forceResetMusicState();
+                }
+            }
 
             const playerCurrentParent = this.player.model?.parent;
 
