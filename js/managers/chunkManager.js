@@ -143,7 +143,7 @@ export class ChunkManager {
         requestAnimationFrame(() => this.processNextChunkInQueue());
     }
 
-    processNextChunkInQueue() {
+    async processNextChunkInQueue() {
         if (this.chunksToUnloadQueue.size > 0) {
             const keyToUnload = this.chunksToUnloadQueue.values().next().value;
             this.chunksToUnloadQueue.delete(keyToUnload);
@@ -153,7 +153,7 @@ export class ChunkManager {
             const keyToLoad = this.chunksToLoadQueue.values().next().value;
             this.chunksToLoadQueue.delete(keyToLoad);
             const [chunkX, chunkZ] = keyToLoad.split(',').map(Number);
-            this.loadChunk(chunkX, chunkZ);
+            await this.loadChunk(chunkX, chunkZ);
         }
 
         if (this.chunksToLoadQueue.size > 0 || this.chunksToUnloadQueue.size > 0) {
@@ -166,7 +166,7 @@ export class ChunkManager {
 
     // --- Load/Unload Logic ---
 
-    loadChunk(chunkX, chunkZ) {
+    async loadChunk(chunkX, chunkZ) {
         const key = `${chunkX},${chunkZ}`;
         if (this.loadedChunks.has(key)) {
             logger.warn(`Attempted to load chunk ${key} which is already loaded.`);
@@ -217,7 +217,7 @@ export class ChunkManager {
                     // Double-check chunk is still needed before creating objects
                     if (this.loadedChunks.has(key)) {
                         try {
-                            // 3. Load Content using Content Manager
+                            // 3. Load Content using Content Manager (now back to sync)
                             const contentManagerData = this.contentManager.loadContent(key, objectDataArray);
                             // Update the chunk data with content
                             chunkData.contentManagerData = contentManagerData;
@@ -230,7 +230,7 @@ export class ChunkManager {
                 return chunkData;
             }
             
-            // 3. Load Content immediately using Content Manager
+            // 3. Load Content immediately using Content Manager (now back to sync)
             const contentManagerData = this.contentManager.loadContent(key, objectDataArray);
             
             // Update the chunk data with content
@@ -310,12 +310,12 @@ export class ChunkManager {
 
         if (progressCallback) progressCallback(loadedCount, totalChunks);
 
-        // Process synchronously as loadChunk is currently synchronous
+        // Process chunks with async loadChunk
         for (const chunkCoords of chunksToLoadInitially) {
              const key = `${chunkCoords.x},${chunkCoords.z}`;
              if (!this.loadedChunks.has(key)) {
                  try {
-                     this.loadChunk(chunkCoords.x, chunkCoords.z); // Call the instance method
+                     await this.loadChunk(chunkCoords.x, chunkCoords.z); // Call the async instance method
                  } catch (error) {
                      const errorMsg = `Error during initial load of chunk ${key}: ${error.message}`;
                      logger.error(errorMsg, error);

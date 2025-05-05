@@ -21,6 +21,7 @@ import { initPlayerManager, getPlayerManager } from '../managers/playerManager.j
 import cameraManager from '../managers/cameraManager.js';
 import sceneTransitionManager from '../managers/sceneTransitionManager.js';
 import atmosphericManager from '../managers/atmosphericManager.js';
+import treeFixerManager from '../managers/treeFixerManager.js';
 import { initScene } from '../rendering/sceneSetup.js';
 import { SpatialGrid } from '../physics/spatialGrid.js';
 import { EnemyManager } from '../managers/enemyManager.js';
@@ -64,6 +65,7 @@ class Game {
         this.spatialGrid = null;
         this.uiManager = UIManager;
         this.atmosphericManager = atmosphericManager;
+        this.treeFixerManager = treeFixerManager;
         this.player = null;
         this.currentLevelConfig = null;
         this.playerAnimationTime = 0;
@@ -110,6 +112,7 @@ class Game {
         this.spatialGrid = initResult.spatialGrid;
         this.uiManager = initResult.uiManager;
         this.atmosphericManager = initResult.atmosphericManager;
+        this.treeFixerManager.setScene(this.scene);
         this.fpsCounter = initResult.fpsCounter;
         this.currentLevelConfig = initResult.currentLevelConfig;
         this.activeScene = this.scene; // Start with the initial scene
@@ -358,6 +361,9 @@ class Game {
         // Update camera manager
         logger.debug(`Updating camera manager with state: ${currentState}`);
         this.cameraManager.update(deltaTime, currentState, this.player);
+        
+        // Update tree fixer manager to constantly check and repair trees
+        this.treeFixerManager.update(elapsedTime);
 
         if (currentState === GameStates.PLAYING) {
             updateGameplay(
@@ -521,6 +527,7 @@ class Game {
         this.chunkManager.setScene(this.gameplayScene);
         this.particleManager.setScene(this.gameplayScene);
         this.atmosphericManager.setTargetScene(this.gameplayScene);
+        this.treeFixerManager.setScene(this.gameplayScene);
         initCollisionManager(this.spatialGrid, this.chunkManager); // Re-initialize with current refs
 
         // Load level assets, chunks etc.

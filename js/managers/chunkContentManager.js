@@ -14,7 +14,6 @@ import { modelsConfig as C_MODELS } from '../config/models.js'; // Needed for tr
 import { noise2D } from '../rendering/terrainGenerator.js'; // Needed for terrain height calculation
 import { performanceManager } from '../config/config.js'; // For performance settings
 import performanceUtils from '../utils/performanceUtils.js'; // For frustum culling
-import * as TreeDebugger from '../utils/treeDebugger.js'; // For debugging tree issues
 
 const logger = createLogger('ChunkContentManager');
 
@@ -227,9 +226,6 @@ export class ChunkContentManager {
                     
                     // One final verification for trees before adding to scene
                     if (objectData.type === 'tree_pine') {
-                        // Log tree analysis before adding to scene
-                        TreeDebugger.debugTree(mesh, `before_scene_add_${chunkKey}`);
-                        
                         // Verify the tree is complete
                         let hasTrunk = false, hasFoliage = false;
                         const config = C_MODELS.TREE_PINE;
@@ -241,7 +237,6 @@ export class ChunkContentManager {
                         
                         if (!hasTrunk || !hasFoliage) {
                             logger.error(`CRITICAL: Tree still incomplete before scene add. Creating new tree.`);
-                            TreeDebugger.recordTreeRepair(mesh, `before_scene_add_${chunkKey}`, true);
                             
                             // Create a completely new tree
                             mesh = ModelFactory.createTreeMesh();
@@ -252,8 +247,6 @@ export class ChunkContentManager {
                             mesh.userData.objectIndex = index;
                             mesh.userData.objectType = objectData.type;
                             mesh.name = `${objectData.type}_${chunkKey}_${index}`;
-                            
-                            TreeDebugger.recordTreeRepair(mesh, `after_scene_add_${chunkKey}`, false);
                         }
                     }
                     

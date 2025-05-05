@@ -64,6 +64,9 @@ export function createTreeMesh() {
     foliageMesh.castShadow = true;
     foliageMesh.receiveShadow = true;
     treeGroup.add(foliageMesh);
+    
+    // Log creation of tree parts for debugging
+    logger.debug(`Created tree with parts: trunk=${config.TRUNK_NAME}, foliage=${config.FOLIAGE_NAME}`);
 
     // Store references to the parts
     treeGroup.userData.trunkMesh = trunkMesh;
@@ -76,6 +79,12 @@ export function createTreeMesh() {
     // Store the original heights for scaling calculations
     treeGroup.userData.trunkHeight = trunkHeight;
     treeGroup.userData.foliageHeight = foliageHeight;
+    
+    // Add deep debugging to examine structure 
+    logger.debug(`Tree structure check - Children: ${treeGroup.children.length}`);
+    treeGroup.children.forEach((child, index) => {
+        logger.debug(`Child ${index}: name=${child.name}, type=${child.type}, position=(${child.position.x.toFixed(2)}, ${child.position.y.toFixed(2)}, ${child.position.z.toFixed(2)})`);
+    });
 
     if (treeGroup.children.length !== 2) {
         logger.warn(`Tree has ${treeGroup.children.length} parts instead of 2`);
@@ -86,20 +95,112 @@ export function createTreeMesh() {
         // If a child is removed, log it for debugging
         if (event.target !== treeGroup) {
             logger.warn(`Tree part ${event.target.name} was removed from tree group`);
+            // Create stack trace to debug where this is happening
+            const stack = new Error().stack;
+            logger.warn(`Stack trace for tree part removal: ${stack}`);
         }
+    });
+    
+    // Add extra listener to each part to track if it gets removed
+    trunkMesh.addEventListener('removed', function(event) {
+        logger.warn(`Trunk was removed from tree! Tree group id: ${treeGroup.id}`);
+        const stack = new Error().stack;
+        logger.warn(`Stack trace for trunk removal: ${stack}`);
+    });
+    
+    foliageMesh.addEventListener('removed', function(event) {
+        logger.warn(`Foliage was removed from tree! Tree group id: ${treeGroup.id}`);
+        const stack = new Error().stack;
+        logger.warn(`Stack trace for foliage removal: ${stack}`);
     });
 
     // Add a custom update method to the tree group
     treeGroup.resetTreeParts = function() {
+        // First check if our stored references are valid
         if (this.userData.trunkMesh && this.userData.foliageMesh) {
             // Reset positions to original values
             this.userData.trunkMesh.position.copy(this.userData.originalTrunkPosition);
             this.userData.foliageMesh.position.copy(this.userData.originalFoliagePosition);
+        } else {
+            // References might be lost, try to find them by name
+            let foundTrunk = false, foundFoliage = false;
+            const config = C_MODELS.TREE_PINE;
+            
+            this.traverse((child) => {
+                if (child.name === config.TRUNK_NAME) {
+                    child.position.y = config.TRUNK_HEIGHT / 2;
+                    this.userData.trunkMesh = child;
+                    foundTrunk = true;
+                }
+                if (child.name === config.FOLIAGE_NAME) {
+                    child.position.y = config.TRUNK_HEIGHT + config.FOLIAGE_HEIGHT / 2;
+                    this.userData.foliageMesh = child;
+                    foundFoliage = true;
+                }
+            });
+            
+            if (foundTrunk && foundFoliage) {
+                logger.debug('Tree parts reconnected during reset');
+                // Re-store original positions for future resets
+                this.userData.originalTrunkPosition = new THREE.Vector3(0, config.TRUNK_HEIGHT / 2, 0);
+                this.userData.originalFoliagePosition = new THREE.Vector3(0, config.TRUNK_HEIGHT + config.FOLIAGE_HEIGHT / 2, 0);
+            } else {
+                logger.warn('Failed to reconnect tree parts during reset');
+            }
         }
     };
 
     treeGroup.userData.isCompleteTree = true;
     treeGroup.userData.objectType = config.OBJECT_TYPE;
+    
+    // Final verification to ensure tree has all required parts
+    let finalCheckTrunk = false, finalCheckFoliage = false;
+    treeGroup.traverse(child => {
+        if (child.name === config.TRUNK_NAME) finalCheckTrunk = true;
+        if (child.name === config.FOLIAGE_NAME) finalCheckFoliage = true;
+    });
+    
+    if (!finalCheckTrunk || !finalCheckFoliage) {
+        logger.error(`CRITICAL: Tree creation failed to produce a complete tree (trunk: ${finalCheckTrunk}, foliage: ${finalCheckFoliage})`);
+        
+        // Force recreate missing parts
+        if (!finalCheckTrunk) {
+            const trunkGeometry = new THREE.CylinderGeometry(config.TRUNK_RADIUS, config.TRUNK_RADIUS, config.TRUNK_HEIGHT, config.TRUNK_SEGMENTS);
+            trunkGeometry.translate(0, config.TRUNK_HEIGHT / 2, 0);
+            const trunkMaterial = AssetManager.getAsset(config.TRUNK_MATERIAL_KEY) || 
+                                 new THREE.MeshStandardMaterial({ 
+                                     color: config.FALLBACK_TRUNK_COLOR, 
+                                     roughness: config.FALLBACK_TRUNK_ROUGHNESS 
+                                 });
+            const newTrunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
+            newTrunk.name = config.TRUNK_NAME;
+            newTrunk.castShadow = true;
+            newTrunk.receiveShadow = true;
+            treeGroup.add(newTrunk);
+            treeGroup.userData.trunkMesh = newTrunk;
+            treeGroup.userData.originalTrunkPosition = new THREE.Vector3(0, config.TRUNK_HEIGHT / 2, 0);
+            logger.warn("Added missing trunk to tree during final verification");
+        }
+        
+        if (!finalCheckFoliage) {
+            const foliageGeometry = new THREE.ConeGeometry(config.FOLIAGE_RADIUS, config.FOLIAGE_HEIGHT, config.FOLIAGE_SEGMENTS);
+            foliageGeometry.translate(0, config.TRUNK_HEIGHT + config.FOLIAGE_HEIGHT / 2, 0);
+            const foliageMaterial = AssetManager.getAsset(config.FOLIAGE_MATERIAL_KEY) || 
+                                  new THREE.MeshStandardMaterial({ 
+                                      color: config.FALLBACK_FOLIAGE_COLOR, 
+                                      roughness: config.FALLBACK_FOLIAGE_ROUGHNESS 
+                                  });
+            const newFoliage = new THREE.Mesh(foliageGeometry, foliageMaterial);
+            newFoliage.name = config.FOLIAGE_NAME;
+            newFoliage.castShadow = true;
+            newFoliage.receiveShadow = true;
+            treeGroup.add(newFoliage);
+            treeGroup.userData.foliageMesh = newFoliage;
+            treeGroup.userData.originalFoliagePosition = new THREE.Vector3(0, config.TRUNK_HEIGHT + config.FOLIAGE_HEIGHT / 2, 0);
+            logger.warn("Added missing foliage to tree during final verification");
+        }
+    }
+    
     return treeGroup;
 }
 
