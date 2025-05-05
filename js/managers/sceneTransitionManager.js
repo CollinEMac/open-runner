@@ -4,7 +4,7 @@ import { createLogger, LogLevel } from '../utils/logger.js'; // Stays in utils, 
 import eventBus from '../core/eventBus.js'; // Moved to core
 import cameraManager from './cameraManager.js'; // Import CameraManager
 
-const logger = createLogger('SceneTransitionManager', LogLevel.INFO); // Use logger instance, set level to INFO
+const logger = createLogger('SceneTransitionManager', LogLevel.DEBUG); // Use logger instance, set level to DEBUG
 
 class SceneTransitionManager {
     constructor() {
@@ -18,7 +18,7 @@ class SceneTransitionManager {
         this.camera = null; // Reference to the camera
         this.clock = new THREE.Clock(); // Use its own clock
 
-        logger.info("SceneTransitionManager instantiated");
+        logger.debug("SceneTransitionManager instantiated");
     }
 
     // --- Initialization ---
@@ -30,14 +30,14 @@ class SceneTransitionManager {
     // --- Transition Control ---
     startTransition(targetScene) {
         if (this.isTransitioning) {
-            logger.warn("Already transitioning, cannot start new scene transition.");
+            logger.debug("Already transitioning, cannot start new scene transition.");
             return;
         }
         if (!targetScene) {
              logger.error("Target scene not provided for transition.");
              return;
         }
-        logger.info("Starting scene transition.");
+        logger.debug("Starting scene transition.");
         this.isTransitioning = true;
         this.transitionStartTime = this.clock.getElapsedTime(); // Use internal clock's time
         this.activeScene = targetScene; // Immediately set the target scene as active for rendering
@@ -79,7 +79,7 @@ class SceneTransitionManager {
             this.renderer.render(this.activeScene, this.camera);
         } else {
             // Transition complete
-            logger.info("Scene transition complete.");
+            logger.debug("Scene transition complete.");
             this.isTransitioning = false;
 
             // Double-check player state after scene transition

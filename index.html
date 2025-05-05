@@ -21,7 +21,6 @@
         
         // Function to unlock audio on user interaction and trigger game audio
         function unlockAudio() {
-            console.log("User interaction detected - attempting to unlock audio");
             if (window.audioContextUnlocked) return;
             window.audioContextUnlocked = true;
             
@@ -41,14 +40,11 @@
                 // Add a global function that the game code can call to play title music
                 window.triggerAudioPlay = function(audioManagerModule) {
                     if (audioManagerModule && typeof audioManagerModule.playMusic === 'function') {
-                        console.log("Playing title music after user interaction");
                         audioManagerModule.playMusic('theme').catch(e => {
                             console.error("Error playing theme music:", e);
                         });
                     }
                 };
-                
-                console.log("Audio unlocked by user interaction");
                 
                 // Clean up after a short time
                 setTimeout(() => {

@@ -4,7 +4,7 @@ import { GameStates } from '../core/gameStateManager.js';
 import { createLogger, LogLevel } from '../utils/logger.js';
 import eventBus from '../core/eventBus.js';
 
-const logger = createLogger('CameraManager', LogLevel.INFO);
+const logger = createLogger('CameraManager', LogLevel.DEBUG);
 
 
 const TITLE_LOOK_AT_TARGET = new THREE.Vector3(0, 0, 0);
@@ -49,7 +49,6 @@ class CameraManager {
         this._lastPlayerPosition = null;
         this._firstPositionFrame = true;
 
-        logger.info("CameraManager instantiated");
     }
 
 
@@ -58,12 +57,10 @@ class CameraManager {
         this.camera = camera;
         this.initialCameraPosition.copy(camera.position);
         this._initializeCameraDrift();
-        logger.info("Camera set and initial position stored.");
     }
 
     setRenderer(renderer) {
         this.renderer = renderer;
-        logger.info("Renderer set.");
     }
 
 
@@ -91,10 +88,10 @@ class CameraManager {
 
     startTransitionToTitle(currentCameraPosition, currentCameraQuaternion) {
         if (this.isTransitioning) {
-            logger.warn("Already transitioning, cannot start new transition to title.");
+            logger.debug("Already transitioning, cannot start new transition to title.");
             return;
         }
-        logger.info("Starting camera transition to title.");
+        logger.debug("Starting camera transition to title.");
         this.isTransitioning = true;
         this.transitionType = 'toTitle';
         this.cameraStartPosition = currentCameraPosition.clone();
@@ -105,10 +102,10 @@ class CameraManager {
 
     startTransitionToGameplay(currentCameraPosition, currentCameraQuaternion) {
         if (this.isTransitioning) {
-            logger.warn("Already transitioning, cannot start new transition to gameplay.");
+            logger.debug("Already transitioning, cannot start new transition to gameplay.");
             return;
         }
-        logger.info("Starting camera transition to gameplay.");
+        logger.debug("Starting camera transition to gameplay.");
         this.isTransitioning = true;
         this.transitionType = 'toGameplay';
         this.cameraStartPosition = currentCameraPosition.clone();
@@ -149,7 +146,6 @@ class CameraManager {
 
 
     updateCameraFollow(playerObj, deltaTime) {
-        logger.debug("updateCameraFollow called with deltaTime: " + deltaTime);
         if (!this.camera || !playerObj || !playerObj.model) {
             logger.warn("Camera follow skipped: missing camera, player, or player model");
             return;
@@ -193,15 +189,11 @@ class CameraManager {
         if (this._justCompletedTransition) {
 
             if (this._frameCountAfterTransition < 5) {
-                logger.debug("Initial frames after transition - direct camera positioning");
-
                 this.camera.position.copy(targetCameraPosition);
                 this.camera.lookAt(lookAtPosition);
 
-
                 this._lastGameplayPosition = targetCameraPosition.clone();
                 this._lastGameplayLookAt = lookAtPosition.clone();
-
 
                 this._frameCountAfterTransition++;
                 return;
@@ -233,7 +225,6 @@ class CameraManager {
 
 
             if (this._frameCountAfterTransition >= this._smoothingFramesAfterTransition) {
-                logger.debug("Transition smoothing complete, returning to normal camera follow");
                 this._justCompletedTransition = false;
                 this._frameCountAfterTransition = 0;
                 this._lastGameplayPosition = null;
@@ -298,7 +289,6 @@ class CameraManager {
                 period: new THREE.Vector3(45, 30, 60),
                 center: this.initialCameraPosition.clone()
             });
-            logger.info("Title camera drift initialized.");
         } else {
             logger.warn("Camera not set when trying to initialize drift.");
         }
@@ -337,7 +327,6 @@ class CameraManager {
                 this.camera.lookAt(TITLE_LOOK_AT_TARGET);
             }
         } else {
-            logger.info("Camera transition to title complete.");
             this.camera.position.copy(this.initialCameraPosition);
             this.camera.lookAt(TITLE_LOOK_AT_TARGET);
             this.isTransitioning = false;
@@ -375,7 +364,7 @@ class CameraManager {
             this._lastGameplayPosition = targetCameraPosition.clone();
             this._lastGameplayLookAt = lookAtPosition.clone();
         } else {
-            logger.info("Camera transition to player complete.");
+            // Camera transition to player complete
 
             this.camera.position.copy(targetCameraPosition);
             this.camera.lookAt(lookAtPosition);
@@ -417,7 +406,7 @@ class CameraManager {
             this.camera.aspect = width / height;
             this.camera.updateProjectionMatrix();
             this.renderer.setSize(width, height);
-            logger.info(`Resized camera and renderer to ${width}x${height}`);
+            logger.debug(`Resized camera and renderer to ${width}x${height}`);
         } else {
             logger.warn("Cannot handle resize: Camera or renderer not set.");
         }

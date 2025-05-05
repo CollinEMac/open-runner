@@ -67,14 +67,14 @@ function setupEventListeners() {
 
     // Music based on game state
     eventBus.subscribe('gameStateChanged', async ({ newState, oldState }) => {
-        logger.info(`[AudioManager] Game state changed: ${oldState} -> ${newState}`);
+        logger.debug(`[AudioManager] Game state changed: ${oldState} -> ${newState}`);
         
         try {
             // First ensure audio can play
             if (audioContext?.state === 'suspended') {
                 try {
                     await audioContext.resume();
-                    logger.info("[AudioManager] Resumed AudioContext on state change");
+                    logger.debug("[AudioManager] Resumed AudioContext on state change");
                 } catch (e) {
                     logger.warn("[AudioManager] Failed to resume AudioContext:", e);
                 }
@@ -86,16 +86,16 @@ function setupEventListeners() {
                 await stopAllMusic();
                 
                 // Try to play theme music, but check if we're allowed to play audio yet
-                logger.info("[AudioManager] Starting theme music for title screen");
+                logger.debug("[AudioManager] Starting theme music for title screen");
                 
                 // If the global audio unlock system is active, register with it
                 if (window.userHasInteracted) {
                     // Direct path - user has already interacted
-                    logger.info("[AudioManager] User already interacted, playing theme directly");
+                    logger.debug("[AudioManager] User already interacted, playing theme directly");
                     await playMusic('theme');
                 } else {
                     // Indirect path - wait for interaction
-                    logger.info("[AudioManager] Waiting for user interaction before playing theme");
+                    logger.debug("[AudioManager] Waiting for user interaction before playing theme");
                     // Register with global audio trigger system
                     if (typeof window.triggerAudioPlay === 'function') {
                         window.triggerAudioPlay({playMusic}); 
@@ -109,7 +109,7 @@ function setupEventListeners() {
                 // Play level-specific music
                 const currentLevelId = LevelManager.getCurrentLevelId();
                 if (currentLevelId) {
-                    logger.info(`[AudioManager] Starting music for level: ${currentLevelId}`);
+                    logger.debug(`[AudioManager] Starting music for level: ${currentLevelId}`);
                     await playMusic(currentLevelId);
                 }
             }
@@ -134,18 +134,18 @@ function setupEventListeners() {
  * @returns {Promise<boolean>} Whether initialization was successful
  */
 export async function initAudio() {
-    logger.info("[AudioManager] Initializing audio system");
+    logger.debug("[AudioManager] Initializing audio system");
     
     // Already initialized?
     if (audioContext) {
-        logger.info("[AudioManager] Audio already initialized");
+        logger.debug("[AudioManager] Audio already initialized");
         
         // Try to resume if suspended and user has interacted
         if (audioContext.state === 'suspended' && window.audioUnlocked) {
             try {
-                logger.info("[AudioManager] Attempting to resume existing AudioContext");
+                logger.debug("[AudioManager] Attempting to resume existing AudioContext");
                 await audioContext.resume();
-                logger.info("[AudioManager] Successfully resumed AudioContext");
+                logger.debug("[AudioManager] Successfully resumed AudioContext");
             } catch (e) {
                 logger.warn("[AudioManager] Could not resume AudioContext:", e);
             }
@@ -157,7 +157,7 @@ export async function initAudio() {
     try {
         // Create audio context
         audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        logger.info(`[AudioManager] AudioContext created with state: ${audioContext.state}`);
+        logger.debug(`[AudioManager] AudioContext created with state: ${audioContext.state}`);
         
         // IMPORTANT: Expose the audio context to window for external interaction
         // This helps with the audio unlock system in the HTML
@@ -166,7 +166,7 @@ export async function initAudio() {
         // Try to resume immediately if the user has already interacted
         if (window.audioUnlocked && audioContext.state === 'suspended') {
             try {
-                logger.info("[AudioManager] User has already interacted, attempting to resume AudioContext");
+                logger.debug("[AudioManager] User has already interacted, attempting to resume AudioContext");
                 await audioContext.resume();
             } catch (e) {
                 logger.warn("[AudioManager] Could not resume AudioContext despite user interaction:", e);
@@ -182,7 +182,7 @@ export async function initAudio() {
         setupEventListeners();
         
         // DO NOT play any music here - wait for state changes
-        logger.info("[AudioManager] Audio system initialization complete");
+        logger.debug("[AudioManager] Audio system initialization complete");
         return true;
     } catch (e) {
         logger.error('[AudioManager] Audio initialization failed:', e);
@@ -197,7 +197,7 @@ export async function initAudio() {
  * @returns {Promise<boolean>} Whether the operation was successful
  */
 export async function stopAllMusic() {
-    logger.info("[AudioManager] Stopping all music");
+    logger.debug("[AudioManager] Stopping all music");
     
     if (!audioContext) {
         logger.debug("[AudioManager] No audio context to stop music");
@@ -231,6 +231,29 @@ export async function stopAllMusic() {
 }
 
 /**
+ * Forces a reset of the music state to help with audio issues.
+ * @returns {Promise<boolean>} Whether the operation was successful
+ */
+export async function forceResetMusicState() {
+    logger.debug("[AudioManager] Force resetting music state");
+    
+    // First stop any current music
+    await stopAllMusic();
+    
+    // Try to resume the audio context if it's suspended
+    if (audioContext?.state === 'suspended') {
+        try {
+            await audioContext.resume();
+            logger.debug("[AudioManager] Successfully resumed AudioContext");
+        } catch (e) {
+            logger.warn("[AudioManager] Could not resume AudioContext:", e);
+        }
+    }
+    
+    return true;
+}
+
+/**
  * Get the AudioContext for direct access.
  * @returns {AudioContext|null} The current AudioContext or null
  */
@@ -245,7 +268,7 @@ export function getAudioContext() {
  * @returns {Promise<boolean>} Whether playback started successfully
  */
 export async function playMusic(levelId = 'theme', volume = 0.3) {
-    logger.info(`[AudioManager] Request to play ${levelId} music`);
+    logger.debug(`[AudioManager] Request to play ${levelId} music`);
     
     // Verify audio context exists
     if (!audioContext) {
@@ -255,14 +278,14 @@ export async function playMusic(levelId = 'theme', volume = 0.3) {
     
     // Check if this music is already playing
     if (currentMusicId === levelId && musicSource) {
-        logger.info(`[AudioManager] ${levelId} music already playing`);
+        logger.debug(`[AudioManager] ${levelId} music already playing`);
         return true;
     }
     
     try {
         // Resume audio context if suspended
         if (audioContext.state === 'suspended') {
-            logger.info("[AudioManager] Attempting to resume AudioContext");
+            logger.debug("[AudioManager] Attempting to resume AudioContext");
             try {
                 await audioContext.resume();
             } catch (e) {
@@ -323,7 +346,7 @@ export async function playMusic(levelId = 'theme', volume = 0.3) {
             }
         };
         
-        logger.info(`[AudioManager] Successfully started ${levelId} music`);
+        logger.debug(`[AudioManager] Successfully started ${levelId} music`);
         return true;
     } catch (error) {
         logger.error(`[AudioManager] Error playing ${levelId} music:`, error);

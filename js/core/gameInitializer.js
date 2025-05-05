@@ -128,11 +128,11 @@ export async function initializeGame(canvasElement) {
         // Explicitly try to play theme music after a delay
         setTimeout(async () => {
             if (gameStateManager.getCurrentState() === GameStates.TITLE) {
-                logger.info("Explicitly starting theme music after initialization");
+                logger.debug("Explicitly starting theme music after initialization");
                 try {
                     await AudioManager.forceResetMusicState();
                     await AudioManager.playMusic('theme');
-                    logger.info("Theme music started successfully");
+                    logger.debug("Theme music started successfully");
                 } catch (e) {
                     logger.error("Failed to start theme music:", e);
                 }

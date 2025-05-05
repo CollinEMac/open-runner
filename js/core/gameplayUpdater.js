@@ -1,8 +1,8 @@
 
-import { createLogger } from '../utils/logger.js';
+import { createLogger, LogLevel } from '../utils/logger.js';
 import cameraManager from '../managers/cameraManager.js';
 
-const logger = createLogger('GameplayUpdater');
+const logger = createLogger('GameplayUpdater', LogLevel.WARN);
 
 /**
  * Updates all game logic relevant to the PLAYING state.
@@ -37,7 +37,6 @@ export function updateGameplay(dependencies, deltaTime, elapsedTime) {
     }
 
     if (player.model) {
-        logger.debug("Updating player controller without camera follow function");
         playerController.updatePlayer(player, deltaTime, playerAnimationTime, chunkManager, null);
     } else {
         logger.warn("Cannot update player: player model is missing");

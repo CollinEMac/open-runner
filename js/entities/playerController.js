@@ -1,6 +1,6 @@
 // js/entities/playerController.js
 import * as THREE from 'three';
-import { createLogger } from '../utils/logger.js'; // Import logger
+import { createLogger, LogLevel } from '../utils/logger.js'; // Import logger
 // Import config objects
 import { playerConfig } from '../config/player.js';
 import { controlsConfig } from '../config/controls.js';
@@ -9,7 +9,7 @@ import { playWaveFile, effectAudioMap } from '../managers/audioManager.js';
 import { animatePlayerCharacter } from './playerCharacter.js'; // Stays in entities
 import { keyLeftPressed, keyRightPressed, mouseLeftPressed, mouseRightPressed, touchLeftPressed, touchRightPressed } from '../input/controlsSetup.js'; // Moved to input
 
-const logger = createLogger('PlayerController'); // Instantiate logger
+const logger = createLogger('PlayerController', LogLevel.WARN); // Instantiate logger
 
 // Helper vectors (consider making these local if not needed elsewhere)
 const forwardVector = new THREE.Vector3(0, 0, -1);
@@ -136,13 +136,10 @@ export function updatePlayer(playerObj, deltaTime, animationTime, chunkManager, 
     // 6. Camera Following (Call the passed-in function if provided)
     // During camera transitions, updateCameraFollowFunc will be null intentionally
     if (updateCameraFollowFunc) {
-        logger.debug("Calling updateCameraFollowFunc from playerController");
         try {
             updateCameraFollowFunc(playerObj, deltaTime);
         } catch (error) {
             logger.error("Error calling camera follow function:", error);
         }
-    } else {
-        logger.debug("No camera follow function provided to playerController");
     }
 }
