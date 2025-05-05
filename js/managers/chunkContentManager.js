@@ -12,6 +12,8 @@ import { playerConfig } from '../config/player.js'; // Needed for collection log
 import eventBus from '../core/eventBus.js'; // Needed for scoreChanged event in updateCollectibles
 import { modelsConfig as C_MODELS } from '../config/models.js'; // Needed for tree configuration
 import { noise2D } from '../rendering/terrainGenerator.js'; // Needed for terrain height calculation
+import { performanceManager } from '../config/config.js'; // For performance settings
+import performanceUtils from '../utils/performanceUtils.js'; // For frustum culling
 
 const logger = createLogger('ChunkContentManager');
 

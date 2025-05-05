@@ -41,28 +41,40 @@ export function createTerrainChunk(chunkX, chunkZ, levelConfig) { // Added level
     let segmentsX = terrainConfig.SEGMENTS_X;
     let segmentsY = terrainConfig.SEGMENTS_Y;
 
-    // Apply distance-based LOD only if not in ultra quality mode
-    // IMPORTANT: To avoid visible seams, we use a step function instead of continuous LOD
-    // This ensures adjacent chunks have the same LOD level
-    if (performanceManager.currentQuality !== 'ultra') {
-        // Use distance bands to ensure adjacent chunks have the same LOD
-        // Round to the nearest band to avoid seams between chunks
-        const lodBand = Math.floor(distanceFromPlayer / 2) * 2;
-
-        if (lodBand >= 4) {
-            // Far chunks (band 4+) - lowest detail
-            segmentsX = Math.max(20, Math.floor(terrainConfig.SEGMENTS_X * 0.5));
-            segmentsY = Math.max(20, Math.floor(terrainConfig.SEGMENTS_Y * 0.5));
-        } else if (lodBand >= 2) {
-            // Medium distance chunks (band 2-3) - medium detail
-            segmentsX = Math.max(30, Math.floor(terrainConfig.SEGMENTS_X * 0.75));
-            segmentsY = Math.max(30, Math.floor(terrainConfig.SEGMENTS_Y * 0.75));
-        }
-
-        // Ensure segments are even numbers to avoid seams
-        segmentsX = Math.floor(segmentsX / 2) * 2;
-        segmentsY = Math.floor(segmentsY / 2) * 2;
+    // Apply more aggressive LOD for better performance
+    // Use distance bands to ensure adjacent chunks have matching LOD to avoid seams
+    const lodBand = Math.floor(distanceFromPlayer / 2) * 2;
+    
+    // More aggressive LOD reduction based on quality and distance
+    if (lodBand >= 2) {
+        // Far chunks - lowest detail (more reduction than before)
+        const reductionFactor = performanceManager.currentQuality === 'low' ? 0.3 :
+                              performanceManager.currentQuality === 'medium' ? 0.4 :
+                              performanceManager.currentQuality === 'high' ? 0.5 : 0.6;
+                              
+        segmentsX = Math.max(16, Math.floor(terrainConfig.SEGMENTS_X * reductionFactor));
+        segmentsY = Math.max(16, Math.floor(terrainConfig.SEGMENTS_Y * reductionFactor));
+    } else if (lodBand >= 1) {
+        // Medium distance chunks - medium detail
+        const reductionFactor = performanceManager.currentQuality === 'low' ? 0.5 :
+                              performanceManager.currentQuality === 'medium' ? 0.6 :
+                              performanceManager.currentQuality === 'high' ? 0.7 : 0.8;
+                              
+        segmentsX = Math.max(20, Math.floor(terrainConfig.SEGMENTS_X * reductionFactor));
+        segmentsY = Math.max(20, Math.floor(terrainConfig.SEGMENTS_Y * reductionFactor));
+    } else {
+        // Closest chunks - highest detail but still reduced from maximum
+        const reductionFactor = performanceManager.currentQuality === 'low' ? 0.7 :
+                              performanceManager.currentQuality === 'medium' ? 0.8 :
+                              performanceManager.currentQuality === 'high' ? 0.9 : 1.0;
+                              
+        segmentsX = Math.max(24, Math.floor(terrainConfig.SEGMENTS_X * reductionFactor));
+        segmentsY = Math.max(24, Math.floor(terrainConfig.SEGMENTS_Y * reductionFactor));
     }
+    
+    // Ensure segments are even numbers to avoid seams
+    segmentsX = Math.floor(segmentsX / 2) * 2;
+    segmentsY = Math.floor(segmentsY / 2) * 2;
 
     const geometry = new THREE.PlaneGeometry(
         worldConfig.CHUNK_SIZE, // Use CHUNK_SIZE for geometry dimensions
@@ -104,5 +116,6 @@ const terrainMesh = new THREE.Mesh(geometry, material);
 
     // Position the chunk correctly in the world
     terrainMesh.position.set(offsetX, 0, offsetZ);
-return terrainMesh;
+    
+    return terrainMesh;
 }

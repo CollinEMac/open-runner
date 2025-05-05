@@ -4,6 +4,8 @@ import { prng_alea } from 'seedrandom';
 import { noise2D } from '../rendering/terrainGenerator.js'; // Updated path
 import { worldConfig } from '../config/world.js'; // Import specific config object
 import { createLogger } from '../utils/logger.js'; // Import logger
+import { performanceManager } from '../config/config.js'; // For performance settings
+import performanceUtils from '../utils/performanceUtils.js'; // For frustum culling
 
 const logger = createLogger('ObjectGenerator'); // Instantiate logger
 import * as AssetManager from '../managers/assetManager.js'; // Updated path
@@ -356,9 +358,22 @@ export function createObjectVisual(objectData, levelConfig) {
         mesh.userData = {
             objectType: objectData.type,
             collidable: objectData.collidable,
-            scoreValue: objectData.scoreValue
+            scoreValue: objectData.scoreValue,
+            // Performance optimizations
+            needsBoundsUpdate: true, // Flag for frustum culling
+            smallObject: ['coin', 'small_rock', 'small_cactus', 'flower', 'mushroom'].includes(objectData.type)
             // chunkKey and objectIndex added by ChunkManager
         };
+
+        // Performance optimizations for static objects
+        const perfSettings = performanceManager.getSettings();
+        if (perfSettings.useStaticObjects && 
+            !['tumbleweed', 'deer', 'bear', 'coyote', 'squirrel', 'rattlesnake', 'scorpion'].includes(objectData.type)) {
+            // Disable auto-updates for static scenery objects
+            mesh.matrixAutoUpdate = perfSettings.matrixAutoUpdates;
+            // Pre-compute the matrix since it won't auto-update
+            mesh.updateMatrix();
+        }
 
         mesh.castShadow = true;
         mesh.receiveShadow = true;

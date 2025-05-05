@@ -21,39 +21,43 @@ export const QualityPresets = {
 const qualitySettings = {
     [QualityPresets.LOW]: {
         terrainSegments: 20,
-        renderDistance: 3,
+        renderDistance: 2, // Reduced render distance
         shadowsEnabled: false,
         pixelRatio: 0.75,
-        particleDensity: 0.5,
+        particleDensity: 0.3, // Reduced particles
         antialias: false,
-        maxObjectsPerChunk: 15
+        maxObjectsPerChunk: 10 // Fewer objects per chunk
     },
     [QualityPresets.MEDIUM]: {
         terrainSegments: 30,
-        renderDistance: 4,
+        renderDistance: 3, // Reduced render distance
         shadowsEnabled: true,
         pixelRatio: 1.0,
-        particleDensity: 0.75,
+        particleDensity: 0.5, // Reduced particles
         antialias: true,
-        maxObjectsPerChunk: 25
+        maxObjectsPerChunk: 20 // Fewer objects per chunk
     },
     [QualityPresets.HIGH]: {
         terrainSegments: 40,
-        renderDistance: 5,
+        renderDistance: 4, // Reduced render distance
         shadowsEnabled: true,
         pixelRatio: window.devicePixelRatio,
-        particleDensity: 1.0,
+        particleDensity: 0.8, // Reduced particles
         antialias: true,
-        maxObjectsPerChunk: 35
+        maxObjectsPerChunk: 30 // Fewer objects per chunk
     },
     [QualityPresets.ULTRA]: {
         terrainSegments: 50,
-        renderDistance: 6,
+        renderDistance: 5, // Reduced render distance
         shadowsEnabled: true,
         pixelRatio: window.devicePixelRatio,
-        particleDensity: 1.5,
+        particleDensity: 1.0, // Reduced particles
         antialias: true,
-        maxObjectsPerChunk: 50
+        maxObjectsPerChunk: 40, // Fewer objects per chunk
+        skipNonEssentialUpdates: false,
+        objectLoadDelay: 0, // No delay
+        lowDetailDistance: 250,
+        useLightHelpers: true
     }
 };
 

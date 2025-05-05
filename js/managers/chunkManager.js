@@ -8,6 +8,8 @@ import { EnemyManager } from './enemyManager.js'; // Needed for constructor chec
 import objectPoolManager from './objectPoolManager.js'; // Needed for clearAllChunks
 import { worldConfig } from '../config/world.js';
 import { ChunkContentManager } from './chunkContentManager.js'; // Import the new manager
+import { performanceManager } from '../config/config.js'; // For performance settings
+import performanceUtils from '../utils/performanceUtils.js'; // For frustum culling
 // Removed unused imports: Tumbleweed, AudioManager, AssetManager, eventBus, playerConfig, gameplayConfig, modelsConfig, createObjectVisual, disposeObjectVisual
 
 const logger = createLogger('ChunkManager');
@@ -174,23 +176,67 @@ export class ChunkManager {
             if (!this.levelConfig) {
                 throw new Error(`Cannot load chunk ${key}, levelConfig is not set!`);
             }
+            
+            // Get current performance settings
+            const perfSettings = performanceManager.getSettings();
 
             // 1. Create Terrain
             const terrainMesh = createTerrainChunk(chunkX, chunkZ, this.levelConfig);
+            
+            // Apply performance optimizations to terrain
+            if (perfSettings.useStaticObjects) {
+                // Disable matrix auto-updates for static terrain
+                terrainMesh.matrixAutoUpdate = perfSettings.matrixAutoUpdates;
+                terrainMesh.updateMatrix(); // Pre-compute the matrix since it won't auto-update
+                
+                // Mark terrain for frustum culling
+                terrainMesh.userData.needsBoundsUpdate = true;
+            }
+            
             this.scene.add(terrainMesh);
 
             // 2. Generate Object Data
             const objectDataArray = generateObjectsForChunk(chunkX, chunkZ, this.levelConfig);
-
-            // 3. Load Content using Content Manager
-            const contentManagerData = this.contentManager.loadContent(key, objectDataArray);
-
-            // 4. Store Chunk Data
-            this.loadedChunks.set(key, {
+            
+            // Create chunk data structure to be populated
+            const chunkData = {
                 terrainMesh: terrainMesh,
-                objects: objectDataArray, // Keep original data with mesh refs updated by contentManager
-                contentManagerData: contentManagerData // Store refs returned by content manager
-            });
+                objects: objectDataArray,
+                contentManagerData: null
+            };
+            
+            // Store early to avoid duplicate loading
+            this.loadedChunks.set(key, chunkData);
+
+            // Check if we need to delay object creation for performance
+            const objectLoadDelay = perfSettings.objectLoadDelay || 0;
+            
+            if (objectLoadDelay > 0) {
+                // Delay creating objects to avoid frame drops
+                setTimeout(() => {
+                    // Double-check chunk is still needed before creating objects
+                    if (this.loadedChunks.has(key)) {
+                        try {
+                            // 3. Load Content using Content Manager
+                            const contentManagerData = this.contentManager.loadContent(key, objectDataArray);
+                            // Update the chunk data with content
+                            chunkData.contentManagerData = contentManagerData;
+                        } catch (error) {
+                            logger.error(`Error in delayed content loading for chunk ${key}:`, error);
+                        }
+                    }
+                }, objectLoadDelay);
+                
+                return chunkData;
+            }
+            
+            // 3. Load Content immediately using Content Manager
+            const contentManagerData = this.contentManager.loadContent(key, objectDataArray);
+            
+            // Update the chunk data with content
+            chunkData.contentManagerData = contentManagerData;
+            
+            return chunkData;
 
         } catch (error) {
             const errorMsg = `Error loading chunk ${key}: ${error.message}`;

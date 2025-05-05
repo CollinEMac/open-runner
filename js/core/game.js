@@ -69,6 +69,7 @@ class Game {
         this.powerupTimer = null;
         this.eventBus = eventBus;
         this.animationFrameId = null;
+        this.lastRenderFrameTime = 0; // For throttling renders in certain states
 
         // Bind animate method once to prevent memory issues
         this.boundAnimate = this.animate.bind(this);
@@ -376,7 +377,15 @@ class Game {
 
         // Only log rendering issues when they occur
         if (this.renderer && this.activeScene && this.camera) {
-            this.renderer.render(this.activeScene, this.camera);
+            // Skip rendering during certain states to improve performance
+            const skipRender = currentState === GameStates.LOADING || 
+                              (currentState === GameStates.PAUSED && this.lastRenderFrameTime && 
+                                (elapsedTime - this.lastRenderFrameTime < 0.1)); // Render paused state at 10fps
+                               
+            if (!skipRender) {
+                this.renderer.render(this.activeScene, this.camera);
+                this.lastRenderFrameTime = elapsedTime;
+            }
         } else {
             logger.warn("Skipping render: Missing renderer, activeScene, or camera.");
         }
