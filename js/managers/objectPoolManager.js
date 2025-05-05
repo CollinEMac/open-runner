@@ -46,6 +46,15 @@ export class ObjectPoolManager { // Add named export
             // If a matching object was found, remove it from the pool
             if (foundIndex !== -1) {
                 this.pools[poolName].splice(foundIndex, 1);
+                
+                // Special handling for log_fallen objects to ensure correct rotation
+                if (objectType === 'log_fallen') {
+                    foundObject.rotation.x = Math.PI / 2;
+                    foundObject.userData.isRotatedLog = true;
+                    foundObject.userData.initialRotationX = Math.PI / 2;
+                    logger.debug("Ensuring log_fallen has correct horizontal rotation when retrieved from pool");
+                }
+                
                 return foundObject;
             } else {
                  return null; // No matching type found
@@ -54,6 +63,15 @@ export class ObjectPoolManager { // Add named export
             // If no type specified, just get the last object (LIFO)
             foundObject = this.pools[poolName].pop();
             const type = foundObject.userData?.objectType || foundObject.type || 'unknown';
+            
+            // Special handling for log_fallen objects to ensure correct rotation even when type not specified
+            if (type === 'log_fallen') {
+                foundObject.rotation.x = Math.PI / 2;
+                foundObject.userData.isRotatedLog = true;
+                foundObject.userData.initialRotationX = Math.PI / 2;
+                logger.debug("Ensuring log_fallen has correct horizontal rotation when retrieved from pool (no type)");
+            }
+            
             return foundObject;
         }
     }
@@ -76,19 +94,40 @@ export class ObjectPoolManager { // Add named export
 
         const objectType = object.userData?.objectType || object.type || 'unknown';
 
+        // Special handling for fallen logs to ensure they stay rotated correctly
+        if (objectType === 'log_fallen') {
+            // Ensure logs maintain their horizontal rotation when returned to the pool
+            // This is important because they look like "topless trees" when vertical
+            object.rotation.x = Math.PI / 2;
+            object.userData.isRotatedLog = true;
+            object.userData.initialRotationX = Math.PI / 2;
+            logger.debug("Maintained horizontal rotation for log_fallen object in pool");
+        }
+            
         // Special validation and preparation for tree_pine objects
         if (objectType === 'tree_pine') {
             let hasTrunk = false, hasFoliage = false;
             let trunkMesh = null, foliageMesh = null;
+            
+            // Get the correct names from the config
+            const trunkName = C_MODELS.TREE_PINE.TRUNK_NAME;
+            const foliageName = C_MODELS.TREE_PINE.FOLIAGE_NAME;
 
+            logger.debug(`Adding tree to pool - Children count: ${object.children.length}`);
+            object.children.forEach((child, index) => {
+                logger.debug(`Tree child ${index}: name=${child.name}, type=${child.type}`);
+            });
+            
             object.traverse((child) => {
-                if (child.name === 'treeTrunk') {
+                if (child.name === trunkName) {
                     hasTrunk = true;
                     trunkMesh = child;
+                    logger.debug(`Found trunk in pooled tree: ${trunkName}`);
                 }
-                if (child.name === 'treeFoliage') {
+                if (child.name === foliageName) {
                     hasFoliage = true;
                     foliageMesh = child;
+                    logger.debug(`Found foliage in pooled tree: ${foliageName}`);
                 }
             });
 
@@ -98,24 +137,28 @@ export class ObjectPoolManager { // Add named export
                 return; // Don't add incomplete trees to the pool
             }
 
+            // Don't try to repair trees in the pool, just dispose incomplete ones
+            // They'll be recreated fresh when needed
+            if (!hasTrunk || !hasFoliage) {
+                logger.warn("Tree missing parts when entering the pool. Disposing it instead.");
+                return this._disposeObject(object, poolName);
+            }
+
+            // If we get here, the tree has both trunk and foliage
+            
             // Reset the tree scale to 1 to avoid scaling issues when reused
             object.scale.set(1, 1, 1);
 
-            // Use the custom reset method if available
-            if (typeof object.resetTreeParts === 'function') {
-                object.resetTreeParts();
-            } else {
-                // Manual reset as fallback
-                if (object.userData.originalTrunkPosition && object.userData.originalFoliagePosition) {
-                    trunkMesh.position.copy(object.userData.originalTrunkPosition);
-                    foliageMesh.position.copy(object.userData.originalFoliagePosition);
-                } else {
-                    // Use constants if original positions aren't stored
-                    const config = C_MODELS.TREE_PINE;
-                    if (trunkMesh) trunkMesh.position.y = config.TRUNK_HEIGHT / 2;
-                    if (foliageMesh) foliageMesh.position.y = config.TRUNK_HEIGHT + config.FOLIAGE_HEIGHT / 2;
-                }
-            }
+            // Apply default positions for the parts
+            const config = C_MODELS.TREE_PINE;
+            trunkMesh.position.set(0, config.TRUNK_HEIGHT / 2, 0);
+            foliageMesh.position.set(0, config.TRUNK_HEIGHT + config.FOLIAGE_HEIGHT / 2, 0);
+            
+            // Update stored references
+            object.userData.trunkMesh = trunkMesh;
+            object.userData.foliageMesh = foliageMesh;
+            object.userData.originalTrunkPosition = new THREE.Vector3(0, config.TRUNK_HEIGHT / 2, 0);
+            object.userData.originalFoliagePosition = new THREE.Vector3(0, config.TRUNK_HEIGHT + config.FOLIAGE_HEIGHT / 2, 0);
 
             // Ensure the tree is marked as complete
             object.userData.isCompleteTree = true;
@@ -172,9 +215,14 @@ export class ObjectPoolManager { // Add named export
             if (object.userData?.objectType === 'tree_pine') {
                 // Check if the tree has all its parts before disposal
                 let hasTrunk = false, hasFoliage = false;
+                
+                // Get the correct names from the config
+                const trunkName = C_MODELS.TREE_PINE.TRUNK_NAME;
+                const foliageName = C_MODELS.TREE_PINE.FOLIAGE_NAME;
+                
                 object.traverse((child) => {
-                    if (child.name === 'treeTrunk') hasTrunk = true;
-                    if (child.name === 'treeFoliage') hasFoliage = true;
+                    if (child.name === trunkName) hasTrunk = true;
+                    if (child.name === foliageName) hasFoliage = true;
                 });
 
                 if (!hasTrunk || !hasFoliage) {

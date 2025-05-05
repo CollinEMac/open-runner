@@ -2,6 +2,7 @@ import { Game } from './game.js';
 import * as UIManager from '../managers/uiManager.js';
 import { isMobileDevice, updateMobileControlsVisibility } from '../utils/deviceUtils.js';
 import { createLogger } from '../utils/logger.js';
+import { setupTreeValidator } from '../utils/treeValidator.js';
 
 const logger = createLogger('Main');
 
@@ -37,6 +38,17 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         logger.info("Creating game instance");
         const game = new Game(canvas);
+        
+        // Expose game instance globally for debugging
+        window.game = game;
+        
+        // Setup tree validator for debugging
+        try {
+            setupTreeValidator();
+            logger.info("Tree validator set up, validateTrees() available in console");
+        } catch (error) {
+            logger.error("Error setting up tree validator:", error);
+        }
 
         logger.info("Initializing game...");
         const initialized = await game.init();

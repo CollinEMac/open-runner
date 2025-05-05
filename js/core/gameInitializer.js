@@ -22,7 +22,10 @@ import * as AssetManager from '../managers/assetManager.js';
 import cameraManager from '../managers/cameraManager.js';
 import sceneTransitionManager from '../managers/sceneTransitionManager.js';
 import atmosphericManager from '../managers/atmosphericManager.js';
+import treeFixerManager from '../managers/treeFixerManager.js';
 import { createLogger } from '../utils/logger.js';
+import { validateSingleTree } from '../utils/treeValidator.js';
+import * as ModelFactory from '../rendering/modelFactory.js';
 
 const logger = createLogger('GameInitializer');
 
@@ -76,6 +79,9 @@ export async function initializeGame(canvasElement) {
         sceneTransitionManager.setPlayer(player); // Pass player object
         atmosphericManager.setPlayerReference(player); // Pass player object
         atmosphericManager.setTargetScene(scene); // Initial scene
+        
+        // Initialize the tree fixer manager
+        treeFixerManager.setScene(scene);
 
         const spatialGrid = new SpatialGrid(worldConfig.GRID_CELL_SIZE);
         const enemyManager = new EnemyManager(scene, spatialGrid);
@@ -124,6 +130,168 @@ export async function initializeGame(canvasElement) {
 
         // Set to title state
         gameStateManager.setGameState(GameStates.TITLE);
+        
+        // Create tree debugging helpers
+        createTreeDebugHelpers(scene);
+        
+        // Create global function to fix all trees
+        window.fixAllTrees = function() {
+            console.warn("Fixing all trees in scene...");
+            
+            import('../utils/treeReplacer.js').then(module => {
+                // This will replace ALL trees in a 100 unit radius around the player
+                const replacedCount = module.replaceTreesAroundPlayer(scene, 100);
+                console.warn(`Replaced ${replacedCount} trees around the player`);
+                return replacedCount;
+            }).catch(error => {
+                console.error("Error importing tree replacer:", error);
+                return -1;
+            });
+        };
+        
+        // Add a more powerful nuke option that rebuilds ALL trees
+        window.nukeAllTrees = function() {
+            console.warn("NUCLEAR OPTION: Replacing ALL trees in scene...");
+            
+            import('../utils/treeReplacer.js').then(module => {
+                // Find the center of the world
+                const worldCenter = new THREE.Vector3(0, 0, 0);
+                // Replace all trees within a massive radius
+                const replacedCount = module.replaceTreesInArea(scene, worldCenter, 1000);
+                console.warn(`Replaced ${replacedCount} trees in the entire scene`);
+                return replacedCount;
+            }).catch(error => {
+                console.error("Error importing tree replacer:", error);
+                return -1;
+            });
+        };
+        
+        // Define a global debug helper function
+        function createTreeDebugHelpers(gameScene) {
+            // Create a global function to debug trees
+            window.debugTrees = function() {
+                console.warn("Scanning for trees in scene...");
+                
+                // Safety check
+                if (!gameScene) {
+                    console.error("Scene is not available - can't debug trees");
+                    return { error: "No scene available" };
+                }
+                
+                // Find all trees in the scene
+                const treesFound = [];
+                gameScene.traverse(object => {
+                    if (object.userData && object.userData.objectType === 'tree_pine') {
+                        treesFound.push(object);
+                    }
+                });
+                
+                console.warn(`Found ${treesFound.length} trees in scene`);
+                
+                // Check completeness
+                let completeCount = 0;
+                let missingTopCount = 0;
+                let missingTrunkCount = 0;
+                
+                // Hardcode the names instead of using C_MODELS
+                const trunkName = 'treeTrunk';
+                const foliageName = 'treeFoliage';
+                
+                treesFound.forEach(tree => {
+                    let hasTrunk = false;
+                    let hasFoliage = false;
+                    
+                    // Check for trunk and foliage directly
+                    tree.traverse(child => {
+                        if (child.name === trunkName) hasTrunk = true;
+                        if (child.name === foliageName) hasFoliage = true;
+                    });
+                    
+                    if (hasTrunk && hasFoliage) {
+                        completeCount++;
+                    } else if (hasTrunk && !hasFoliage) {
+                        missingTopCount++;
+                        console.warn(`Tree missing top at position: (${tree.position.x.toFixed(2)}, ${tree.position.y.toFixed(2)}, ${tree.position.z.toFixed(2)})`);
+                    } else if (!hasTrunk && hasFoliage) {
+                        missingTrunkCount++;
+                        console.warn(`Tree missing trunk at position: (${tree.position.x.toFixed(2)}, ${tree.position.y.toFixed(2)}, ${tree.position.z.toFixed(2)})`);
+                    }
+                });
+                
+                console.warn(`Tree statistics: ${treesFound.length} total, ${completeCount} complete, ${missingTopCount} missing tops, ${missingTrunkCount} missing trunks`);
+                
+                return {
+                    total: treesFound.length,
+                    complete: completeCount,
+                    missingTop: missingTopCount,
+                    missingTrunk: missingTrunkCount,
+                    repair: function() {
+                        console.warn("Attempting to repair all broken trees...");
+                        let repaired = 0;
+                        
+                        treesFound.forEach(tree => {
+                            // Use validateSingleTree to check the tree
+                            const treeCheck = validateSingleTree(tree);
+                            
+                            if (!treeCheck.valid) {
+                                // The tree is incomplete - create a completely new one
+                                try {
+                                    // Use dynamic import for robustTree
+                                    import('../rendering/models/robustTree.js').then(robustTree => {
+                                        // Create a new robust tree at the same position
+                                        const newTree = robustTree.createTreeAtPosition(
+                                            tree.position.clone(),
+                                            {
+                                                rotation: tree.rotation.y,
+                                                scale: tree.scale.x,
+                                                userData: tree.userData
+                                            }
+                                        );
+                                        
+                                        // Replace the old tree with the new one
+                                        if (tree.parent) {
+                                            tree.parent.add(newTree);
+                                            tree.parent.remove(tree);
+                                            repaired++;
+                                        }
+                                    }).catch(error => {
+                                        console.error("Error importing robustTree:", error);
+                                        
+                                        // Fallback to old method if import fails
+                                        const newTree = ModelFactory.createTreeMesh();
+                                        newTree.position.copy(tree.position);
+                                        newTree.rotation.copy(tree.rotation);
+                                        newTree.scale.copy(tree.scale);
+                                        
+                                        // Copy over userData
+                                        Object.keys(tree.userData).forEach(key => {
+                                            if (key !== 'trunkMesh' && key !== 'foliageMesh') {
+                                                newTree.userData[key] = tree.userData[key];
+                                            }
+                                        });
+                                        
+                                        // Replace the old tree with the new one
+                                        if (tree.parent) {
+                                            tree.parent.add(newTree);
+                                            tree.parent.remove(tree);
+                                            repaired++;
+                                        }
+                                    });
+                                } catch (error) {
+                                    console.error("Error repairing tree:", error);
+                                }
+                            }
+                        });
+                        
+                        console.warn(`Repaired ${repaired} trees`);
+                        return repaired;
+                    }
+                };
+            };
+        }
+        
+        // Create debug functions with access to the current scene
+        createTreeDebugHelpers(scene);
         
         // Explicitly try to play theme music after a delay
         setTimeout(async () => {

@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { createLogger } from '../utils/logger.js';
 import Tumbleweed from '../entities/gameObjects/Tumbleweed.js';
 import * as AudioManager from './audioManager.js';
-// import * as AssetManager from './assetManager.js'; // Removed unused import
+import * as AssetManager from './assetManager.js'; // Needed for tree repair
 import * as ModelFactory from '../rendering/modelFactory.js'; // Needed for creating visuals
 import { createObjectVisual } from '../generators/objectGenerator.js'; // Removed unused disposeObjectVisual import
 import { gameplayConfig } from '../config/gameplay.js'; // Needed for collection/magnet logic
@@ -14,6 +14,7 @@ import { modelsConfig as C_MODELS } from '../config/models.js'; // Needed for tr
 import { noise2D } from '../rendering/terrainGenerator.js'; // Needed for terrain height calculation
 import { performanceManager } from '../config/config.js'; // For performance settings
 import performanceUtils from '../utils/performanceUtils.js'; // For frustum culling
+import * as TreeDebugger from '../utils/treeDebugger.js'; // For debugging tree issues
 
 const logger = createLogger('ChunkContentManager');
 
@@ -118,73 +119,102 @@ export class ChunkContentManager {
                 const poolName = objectData.collidable ? 'obstacles' : 'collectibles';
                 mesh = this.objectPoolManager.getFromPool(poolName, objectData.type);
 
-                if (objectData.type === 'tree_pine' && mesh) {
-                    let hasTrunk = false, hasFoliage = false;
-                    let trunkMesh = null, foliageMesh = null;
-
-                    mesh.traverse((child) => {
-                        if (child.name === 'treeTrunk') {
-                            hasTrunk = true;
-                            trunkMesh = child;
-                        }
-                        if (child.name === 'treeFoliage') {
-                            hasFoliage = true;
-                            foliageMesh = child;
-                        }
-                    });
-
-                    if (!hasTrunk || !hasFoliage) {
-                        logger.warn(`Pooled tree missing parts (trunk: ${hasTrunk}, foliage: ${hasFoliage}). Creating new tree.`);
-                        // Don't add back to pool - it's already incomplete
-                        if (mesh.parent) {
-                            mesh.parent.remove(mesh);
-                        }
-                        mesh = null;
-                    } else {
-                        // First reset the tree to its original state
-                        // Important: Reset scale to 1 before adjusting child positions
-                        mesh.scale.set(1, 1, 1);
-
-                        // Use the custom reset method if available, otherwise fall back to manual reset
-                        if (typeof mesh.resetTreeParts === 'function') {
-                            mesh.resetTreeParts();
-                        } else {
-                            // Manual reset as fallback
-                            if (mesh.userData.originalTrunkPosition && mesh.userData.originalFoliagePosition) {
-                                trunkMesh.position.copy(mesh.userData.originalTrunkPosition);
-                                foliageMesh.position.copy(mesh.userData.originalFoliagePosition);
-                            } else {
-                                // Use constants if original positions aren't stored
-                                const config = C_MODELS.TREE_PINE;
-                                trunkMesh.position.y = config.TRUNK_HEIGHT / 2;
-                                foliageMesh.position.y = config.TRUNK_HEIGHT + config.FOLIAGE_HEIGHT / 2;
-                            }
-                        }
-
-                        // Now set the position and rotation of the tree group
-                        if (objectData.position) mesh.position.copy(objectData.position);
-                        mesh.rotation.set(0, objectData.rotationY ?? 0, 0);
-
-                        // Apply the scale to the entire tree group
-                        mesh.scale.set(objectData.scale?.x ?? 1, objectData.scale?.y ?? 1, objectData.scale?.z ?? 1);
-
-                        // Make the tree visible
-                        mesh.visible = true;
-
-                        // Verify the tree is properly set up
-                        mesh.userData.isCompleteTree = true;
-
-                        // Skip the generic position/scale setting below since we've already done it
-                        objectData.positionSet = true;
+                // For tree_pine objects, NEVER use the object pool - always create new ones
+                // This ensures trees are always complete and correctly structured
+                if (objectData.type === 'tree_pine') {
+                    // Return the mesh to the pool if it was retrieved
+                    if (mesh) {
+                        this.objectPoolManager.addToPool(poolName, mesh);
                     }
+                    
+                    // Force creation of a fresh tree
+                    mesh = null;
                 }
 
+                // Process objects differently if object type is tree_pine to use promise-based approach
+                if (objectData.type === 'tree_pine') {
+                    // Just set mesh to null and skip adding it now
+                    // It will be added via promise resolution
+                    createObjectVisual(objectData, this.levelConfig)
+                        .then(result => {
+                            if (result) {
+                                // Process the result when it's ready
+                                const treeMesh = result;
+                                
+                                // Apply position/rotation/scale
+                                if (objectData.position) treeMesh.position.copy(objectData.position);
+                                treeMesh.rotation.set(0, objectData.rotationY ?? 0, 0);
+                                treeMesh.scale.set(objectData.scale?.x ?? 1, objectData.scale?.y ?? 1, objectData.scale?.z ?? 1);
+                                treeMesh.visible = true;
+                                
+                                // Add metadata
+                                treeMesh.userData.chunkKey = chunkKey;
+                                treeMesh.userData.objectIndex = objectData.objectIndex;
+                                treeMesh.userData.objectType = objectData.type;
+                                treeMesh.name = `${objectData.type}_${chunkKey}_${objectData.objectIndex}`;
+                                
+                                // Add to scene
+                                if (treeMesh.parent !== this.scene) this.scene.add(treeMesh);
+                                objectData.mesh = treeMesh;
+                                
+                                // Add to the right collection
+                                if (objectData.collidable) {
+                                    collidableMeshes.push(treeMesh);
+                                } else {
+                                    collectibleMeshes.push(treeMesh);
+                                }
+                                
+                                // Update spatial grid
+                                this.spatialGrid.add(treeMesh);
+                            }
+                        })
+                        .catch(error => {
+                            logger.error(`Error creating tree in promise: ${error}`);
+                        });
+                        
+                    // Set mesh to null to indicate we've handled this object through promises
+                    mesh = null;
+                }
+                
                 if (!mesh) {
-                    mesh = createObjectVisual(objectData, this.levelConfig);
+                    try {
+                        // Create the object visual based on its type
+                        if (objectData.type === 'tree_pine') {
+                            // Tree objects already handled by Promise-based approach
+                            // This case should not occur
+                            logger.warn("Tree object creation attempted in synchronous path - should be using async route");
+                        } else {
+                            // For non-tree objects, create synchronously using createObjectVisual
+                            const createdVisual = createObjectVisual(objectData, this.levelConfig);
+                            
+                            // Check if the result is a Promise (for tree objects)
+                            if (createdVisual && createdVisual instanceof Promise) {
+                                logger.warn(`Unexpected Promise returned for non-tree object: ${objectData.type}`);
+                            } 
+                            // Otherwise, use the directly returned mesh
+                            else if (createdVisual) {
+                                mesh = createdVisual;
+                                // Position/scale/rotation should already be set by createObjectVisual
+                            }
+                        }
+                    } catch (error) {
+                        logger.error(`Error creating visual for object type ${objectData.type}:`, error);
+                        mesh = null;
+                    }
                 } else if (!objectData.positionSet) {
                     // Only set position/rotation/scale if not already set (for trees)
                     if (objectData.position) mesh.position.copy(objectData.position);
-                    mesh.rotation.set(0, objectData.rotationY ?? 0, 0);
+                    
+                    // Special handling for logs to ensure they remain horizontal
+                    if (objectData.type === 'log_fallen') {
+                        mesh.rotation.set(Math.PI / 2, objectData.rotationY ?? 0, 0);
+                        // Add a flag to userData
+                        mesh.userData.isRotatedLog = true;
+                        mesh.userData.initialRotationX = Math.PI / 2;
+                    } else {
+                        mesh.rotation.set(0, objectData.rotationY ?? 0, 0);
+                    }
+                    
                     mesh.scale.set(objectData.scale?.x ?? 1, objectData.scale?.y ?? 1, objectData.scale?.z ?? 1);
                     mesh.visible = true;
                 }
@@ -194,6 +224,39 @@ export class ChunkContentManager {
                     mesh.userData.objectIndex = index;
                     mesh.userData.objectType = objectData.type;
                     mesh.name = `${objectData.type}_${chunkKey}_${index}`;
+                    
+                    // One final verification for trees before adding to scene
+                    if (objectData.type === 'tree_pine') {
+                        // Log tree analysis before adding to scene
+                        TreeDebugger.debugTree(mesh, `before_scene_add_${chunkKey}`);
+                        
+                        // Verify the tree is complete
+                        let hasTrunk = false, hasFoliage = false;
+                        const config = C_MODELS.TREE_PINE;
+                        
+                        mesh.traverse(child => {
+                            if (child.name === config.TRUNK_NAME) hasTrunk = true;
+                            if (child.name === config.FOLIAGE_NAME) hasFoliage = true;
+                        });
+                        
+                        if (!hasTrunk || !hasFoliage) {
+                            logger.error(`CRITICAL: Tree still incomplete before scene add. Creating new tree.`);
+                            TreeDebugger.recordTreeRepair(mesh, `before_scene_add_${chunkKey}`, true);
+                            
+                            // Create a completely new tree
+                            mesh = ModelFactory.createTreeMesh();
+                            mesh.position.copy(objectData.position);
+                            mesh.rotation.set(0, objectData.rotationY ?? 0, 0);
+                            mesh.scale.set(objectData.scale?.x ?? 1, objectData.scale?.y ?? 1, objectData.scale?.z ?? 1);
+                            mesh.userData.chunkKey = chunkKey;
+                            mesh.userData.objectIndex = index;
+                            mesh.userData.objectType = objectData.type;
+                            mesh.name = `${objectData.type}_${chunkKey}_${index}`;
+                            
+                            TreeDebugger.recordTreeRepair(mesh, `after_scene_add_${chunkKey}`, false);
+                        }
+                    }
+                    
                     if (mesh.parent !== this.scene) this.scene.add(mesh);
                     objectData.mesh = mesh;
 
@@ -243,8 +306,26 @@ export class ChunkContentManager {
                 if (!objectData.enemyInstance && objectData.mesh && objectData.type !== 'tumbleweed') {
                     this.scene.remove(objectData.mesh);
                     this.spatialGrid.remove(objectData.mesh);
-                    const poolName = objectData.collidable ? 'obstacles' : 'collectibles';
-                    this.objectPoolManager.addToPool(poolName, objectData.mesh);
+                    
+                    // For trees, completely dispose them instead of pooling
+                    if (objectData.type === 'tree_pine') {
+                        // Dispose of the tree meshes
+                        objectData.mesh.traverse(child => {
+                            if (child.geometry) child.geometry.dispose();
+                            if (child.material) {
+                                if (Array.isArray(child.material)) {
+                                    child.material.forEach(mat => mat.dispose());
+                                } else {
+                                    child.material.dispose();
+                                }
+                            }
+                        });
+                        logger.debug("Disposed tree completely instead of pooling");
+                    } else {
+                        // For other object types, use the object pool as normal
+                        const poolName = objectData.collidable ? 'obstacles' : 'collectibles';
+                        this.objectPoolManager.addToPool(poolName, objectData.mesh);
+                    }
                     objectData.mesh = null;
                 }
             });
@@ -492,10 +573,69 @@ export class ChunkContentManager {
     }
 
     /**
-     * Updates the position of a rock to stay aligned with the terrain.
-     * @param {THREE.Object3D} mesh - The rock mesh to update.
+     * Attempts to repair a tree mesh by creating missing parts
+     * @param {THREE.Group} treeMesh - The tree mesh to repair
+     * @param {boolean} hasTrunk - Whether the tree has a trunk
+     * @param {boolean} hasFoliage - Whether the tree has foliage
+     * @returns {boolean} - Whether the repair was successful
      * @private
      */
+    _repairTreeMesh(treeMesh, hasTrunk, hasFoliage) {
+        try {
+            const config = C_MODELS.TREE_PINE;
+            
+            // Rather than trying to repair parts of a tree, let's replace the entire tree
+            // This is simpler and more reliable
+            logger.debug("Creating a new tree to replace broken one");
+            
+            // Get original tree data so we can transfer it
+            const originalPosition = treeMesh.position.clone();
+            const originalRotation = treeMesh.rotation.clone();
+            const originalScale = treeMesh.scale.clone();
+            const originalUserData = { ...treeMesh.userData };
+            const originalParent = treeMesh.parent;
+            const originalName = treeMesh.name;
+            const originalChunkKey = treeMesh.userData.chunkKey;
+            const originalObjectIndex = treeMesh.userData.objectIndex;
+
+            // Remove the broken tree from the scene and spatial grid
+            if (this.spatialGrid && treeMesh.parent) {
+                this.spatialGrid.remove(treeMesh);
+                treeMesh.parent.remove(treeMesh);
+            }
+            
+            // Create a new complete tree
+            const newTree = ModelFactory.createTreeMesh(); 
+            
+            // Transfer identifying data
+            newTree.position.copy(originalPosition);
+            newTree.rotation.copy(originalRotation);
+            newTree.scale.copy(originalScale);
+            newTree.name = originalName || 'tree_pine_visual';
+            
+            // Transfer important userData
+            newTree.userData.objectType = 'tree_pine';
+            newTree.userData.collidable = originalUserData.collidable || true;
+            newTree.userData.chunkKey = originalChunkKey;
+            newTree.userData.objectIndex = originalObjectIndex;
+            
+            // Add to scene and spatial grid
+            if (originalParent) {
+                originalParent.add(newTree);
+                if (this.spatialGrid) {
+                    this.spatialGrid.add(newTree);
+                }
+            }
+            
+            logger.debug(`Replaced broken tree with new one at (${originalPosition.x.toFixed(2)}, ${originalPosition.y.toFixed(2)}, ${originalPosition.z.toFixed(2)})`);
+            
+            return true;
+        } catch (error) {
+            logger.error("Error replacing tree:", error);
+            return false;
+        }
+    }
+    
     _updateRockPosition(mesh) {
         if (!mesh || !this.levelConfig) return;
 
