@@ -147,7 +147,9 @@ export function setupEventHandlers(dependencies) {
         logger.info("Player Died event received.");
         const currentLevelId = levelManager.getCurrentLevelId();
         const currentScore = ScoreManager.getCurrentScore(); // Use imported module
-        const isNewHighScore = scoreManager.updateHighScore(currentScore, currentLevelId);
+        
+        // Pass true as the third parameter to emit the new high score event only at game over
+        const isNewHighScore = scoreManager.updateHighScore(currentScore, currentLevelId, true);
         const highScore = scoreManager.getLevelHighScore(currentLevelId);
 
         gameStateManager.setGameState(GameStates.GAME_OVER);

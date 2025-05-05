@@ -151,9 +151,10 @@ export function isNewLevelHighScore(score, levelId) {
  * Update the high score if the current score is higher
  * @param {number} score - The score to check against high scores
  * @param {string} levelId - The level ID (optional, for level-specific high score)
+ * @param {boolean} emitEvent - Whether to emit the newHighScore event (default: false)
  * @returns {boolean} Whether a new high score was set
  */
-export function updateHighScore(score, levelId = null) {
+export function updateHighScore(score, levelId = null, emitEvent = false) {
     let isNewHighScore = false;
 
     // Update global high score if needed
@@ -174,11 +175,13 @@ export function updateHighScore(score, levelId = null) {
     if (isNewHighScore) {
         saveHighScores();
 
-        // Emit event for new high score
-        eventBus.emit('newHighScore', {
-            score: score,
-            levelId: levelId // Pass levelId so listeners know context
-        });
+        // Only emit event if explicitly requested (will be used at game over)
+        if (emitEvent) {
+            eventBus.emit('newHighScore', {
+                score: score,
+                levelId: levelId // Pass levelId so listeners know context
+            });
+        }
     }
 
     return isNewHighScore;

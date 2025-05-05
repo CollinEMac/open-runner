@@ -549,6 +549,8 @@ function checkForLiveHighScore(data) {
             }, getConfig('ui.PULSE_ANIMATION_DURATION_MS', 1000));
         }
 
+        // Update the high score in ScoreManager but don't show notification during gameplay
+        // Notification will only be shown at game over
         if (levelId) {
             ScoreManager.updateHighScore(score, levelId);
         } else {
@@ -875,7 +877,7 @@ export function setupGameOverButtons(onRestart, onReturnToTitle) {
 }
 
 /**
- * Shows a notification for a new high score
+ * Shows a notification for a new high score. This is now only called at game over.
  * @param {Object|number} data - Either the high score value or an object with score property
  */
 export function showNewHighScoreNotification(data) {
@@ -898,6 +900,7 @@ export function showNewHighScoreNotification(data) {
 
     ScoreManager.updateHighScore(highScore, levelId);
 
+    // Show notification only once at game over
     showNotification(`New High Score: ${highScore}!`, 'high-score-notification');
 }
 
