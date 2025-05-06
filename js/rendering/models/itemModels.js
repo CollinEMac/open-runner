@@ -102,3 +102,114 @@ export function createDoublerModel(props = {}) {
   
   return group;
 }
+
+/**
+ * Creates a 3D model of an invisibility powerup
+ * @param {object} props - Properties for the invisibility model
+ * @param {number} props.size - Size of the invisibility model
+ * @param {number} props.color - Color of the invisibility model
+ * @returns {THREE.Group} The complete invisibility model
+ */
+
+export function createInvisibilityModel(props = {}) {
+  const group = new THREE.Group();
+  const config = C_MODELS.INVISIBILITY;
+  const size = props.size || config.DEFAULT_SIZE;
+  const color = props.color || config.DEFAULT_COLOR;
+  
+  // Create a material for the main sphere with transparency
+  const sphereMaterial = new THREE.MeshStandardMaterial({
+    color: color,
+    emissive: config.INVISIBILITY_EMISSIVE,
+    metalness: config.INVISIBILITY_METALNESS,
+    roughness: config.INVISIBILITY_ROUGHNESS,
+    transparent: true,
+    opacity: config.INVISIBILITY_OPACITY
+  });
+  
+  // Create the central sphere
+  const sphereGeometry = new THREE.SphereGeometry(size * 0.6, 24, 18);
+  const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+  group.add(sphere);
+  
+  // Create the outer aura/ring
+  const auraRadius = size * config.AURA_RADIUS_FACTOR;
+  const auraThickness = size * config.AURA_THICKNESS_FACTOR;
+  const auraGeometry = new THREE.TorusGeometry(
+    auraRadius, 
+    auraThickness, 
+    8, 
+    config.AURA_SEGMENTS
+  );
+  
+  const auraMaterial = new THREE.MeshStandardMaterial({
+    color: config.AURA_COLOR,
+    emissive: config.AURA_EMISSIVE,
+    transparent: true,
+    opacity: config.AURA_OPACITY
+  });
+  
+  // Create multiple aura rings at different orientations for spherical effect
+  const auraRingCount = 3;
+  for (let i = 0; i < auraRingCount; i++) {
+    const aura = new THREE.Mesh(auraGeometry, auraMaterial);
+    
+    // Set different rotations for each ring
+    if (i === 0) {
+      // First ring - XY plane
+      aura.rotation.x = Math.PI / 2;
+    } else if (i === 1) {
+      // Second ring - YZ plane
+      aura.rotation.y = Math.PI / 2;
+    }
+    // Third ring - XZ plane (default)
+    
+    group.add(aura);
+  }
+  
+  // Add floating particles around the sphere
+  for (let i = 0; i < config.PARTICLE_COUNT; i++) {
+    const particleSize = size * config.PARTICLE_SIZE_FACTOR;
+    const particleGeometry = new THREE.SphereGeometry(particleSize, 6, 6);
+    
+    const particleMaterial = new THREE.MeshStandardMaterial({
+      color: color,
+      emissive: config.INVISIBILITY_EMISSIVE,
+      transparent: true,
+      opacity: 0.6
+    });
+    
+    const particle = new THREE.Mesh(particleGeometry, particleMaterial);
+    
+    // Position particles in a spherical arrangement
+    const theta = Math.random() * Math.PI * 2; // Random angle around Y axis
+    const phi = Math.acos(2 * Math.random() - 1); // Random angle from top to bottom
+    const radius = size * config.PARTICLE_ORBIT_RADIUS;
+    
+    particle.position.x = radius * Math.sin(phi) * Math.cos(theta);
+    particle.position.y = radius * Math.sin(phi) * Math.sin(theta);
+    particle.position.z = radius * Math.cos(phi);
+    
+    group.add(particle);
+  }
+  
+  // Set shadows for all meshes
+  group.traverse(child => {
+    if (child.isMesh) {
+      child.castShadow = true;
+      child.receiveShadow = true;
+    }
+  });
+  
+  // IMPORTANT: Set a name for identification
+  group.name = "invisibility_powerup";
+  
+  // Add userData to help with collision detection
+  group.userData = {
+    objectType: 'invisibility',
+    collidable: false,
+    powerupType: 'invisibility'
+  };
+  
+  return group;
+}

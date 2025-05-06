@@ -87,11 +87,11 @@ export class Enemy {
         return null;
     }
 
-    update(playerPos, deltaTime, elapsedTime) {
+    update(playerPos, currentPowerup, deltaTime, elapsedTime) {
         if (!this.mesh || !this.chunkManager) return;
 
         this._updateGrounding();
-        this._updateState(playerPos, deltaTime);
+        this._updateState(playerPos, currentPowerup, deltaTime);
         const { isMoving, currentSpeed } = this._updateMovement(playerPos, deltaTime);
         this._updateAnimation(elapsedTime, isMoving, currentSpeed);
     }
@@ -116,7 +116,7 @@ export class Enemy {
         }
     }
 
-    _updateState(playerPos, deltaTime) {
+    _updateState(playerPos, currentPowerup, deltaTime) {
         const distanceToPlayer = this.mesh.position.distanceTo(playerPos);
         const distanceToOrigin = this.mesh.position.distanceTo(this.originalPosition);
 
@@ -126,7 +126,7 @@ export class Enemy {
                 this.pickNewRoamingTarget();
 
             case ENEMY_STATE.ROAMING:
-                 if (distanceToPlayer < this.aggroRadius) {
+                 if (distanceToPlayer < this.aggroRadius && currentPowerup !== 'invisibility') {
                     this.state = ENEMY_STATE.CHASING;
                     this.roamingTarget = null;
                     this.roamingWaitTimer = 0;
@@ -138,7 +138,7 @@ export class Enemy {
                  }
                 break;
             case ENEMY_STATE.CHASING:
-                if (distanceToPlayer > this.deaggroRadius) {
+                if (distanceToPlayer > this.deaggroRadius || currentPowerup === 'invisibility') {
                     this.state = ENEMY_STATE.RETURNING;
                 }
                 break;

@@ -113,6 +113,17 @@ export const level2Config = {
             scoreValue: 0,
             maxPlacementAttempts: 20,
         },
+        {
+            type: 'invisibility',
+            density: 0.00012,
+            minDistance: 25.0,
+            verticalOffset: 1.5,
+            scaleRange: [1.2, 1.5],
+            randomRotationY: true,
+            collidable: false,
+            scoreValue: 0,
+            maxPlacementAttempts: 20,
+        },
         // --- Atmospheric Elements ---
         {
             type: 'buzzard',
@@ -271,5 +282,11 @@ export const level2Config = {
     DOUBLER_VISUALS: {
         size: 0.5,
         color: 0x0088FF, // Blue color
+    },
+
+    // --- Invisibility ---
+    INVISIBILITY_VISUALS: {
+        size: 1.0,
+        color: 0x7C00FF, // Purple color
     },
 };

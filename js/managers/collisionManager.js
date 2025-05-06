@@ -281,6 +281,51 @@ export function checkCollisions(player) {
                 }
             }
         }
+
+        // handle invisibility powerup
+        if (mesh && mesh.userData && mesh.userData.objectType === 'invisibility' && !mesh.userData.collidable) {
+            // Verify this is actually an invisibility powerup by checking its structure
+            if (!(mesh instanceof THREE.Group) && !mesh.name?.includes('invisibility')) {
+                // If it's a cylinder, it's probably a coin with incorrect type
+                if (mesh.geometry && mesh.geometry.type === 'CylinderGeometry') {
+                    logger.debug(`Correcting object type from 'invisibility' to 'coin' for mesh ${mesh.id}`);
+                    mesh.userData.objectType = 'coin';
+                    continue; // Skip to next iteration so it's processed as a coin
+                }
+            }
+
+            // Ensure mesh has a valid position
+            if (!mesh.position) {
+                logger.warn(`Invisibility mesh ${mesh.id || 'unknown'} has no position property`);
+                continue;
+            }
+
+            const dx = playerPosition.x - mesh.position.x;
+            const dz = playerPosition.z - mesh.position.z;
+            const distanceSq = dx * dx + dz * dz;
+
+            // Use collision radius from config, similar to magnet
+            const invisibilityCollisionRadius = modelsConfig.INVISIBILITY?.COLLISION_RADIUS || 1.0; // Default if not in config
+            const collisionThresholdSq = (playerCollisionRadius + invisibilityCollisionRadius) ** 2;
+
+            if (distanceSq < collisionThresholdSq) {
+                // Ensure mesh has the required userData properties
+                if (!mesh.userData.chunkKey || mesh.userData.objectIndex === undefined) {
+                    logger.warn(`Invisibility mesh ${mesh.id || 'unknown'} missing required userData properties`);
+                    continue;
+                }
+
+                const { chunkKey, objectIndex } = mesh.userData;
+                const collected = _chunkManager.collectObject(chunkKey, objectIndex);
+
+                if (collected) {
+                    const powerupType = modelsConfig.INVISIBILITY?.POWERUP_TYPE || 'invisibility'; // Use constant if defined
+                    eventBus.emit('powerupActivated', powerupType);
+                    nearbyArray.splice(i, 1); // Remove from local array for this check
+                    logger.debug(`Collected invisibility powerup of type ${powerupType}`);
+                }
+            }
+        }
     }
 
     // Now check remaining nearby objects for obstacles and enemies

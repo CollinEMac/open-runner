@@ -103,6 +103,18 @@ export const level1Config = {
             scoreValue: 0,
             maxPlacementAttempts: 25,
         },
+        {
+            // same as magnet for now 
+            type: 'invisibility',
+            density: 0.00013,
+            minDistance: 15.0,
+            verticalOffset: 1.5,
+            scaleRange: [1.2, 1.5],
+            randomRotationY: true,
+            collidable: false,
+            scoreValue: 0,
+            maxPlacementAttempts: 25,
+        },
         // --- Obstacles ---
         {
             type: 'rock_small',
@@ -179,5 +191,11 @@ export const level1Config = {
     DOUBLER_VISUALS: {
         size: 0.5,
         color: 0x0088FF, // Blue color
+    },
+
+    // --- Invisibility ---
+    INVISIBILITY_VISUALS: {
+        size: 1.0,
+        color: 0x7C00FF, // Purple color
     },
 };

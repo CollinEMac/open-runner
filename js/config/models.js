@@ -414,4 +414,26 @@ export const modelsConfig = {
         COLLISION_RADIUS: 1.0,
         POWERUP_TYPE: 'doubler'
     },
+
+    // --- Invisibility ---
+    INVISIBILITY: {
+        OBJECT_TYPE: 'invisibility',
+        DEFAULT_SIZE: 1.0,
+        DEFAULT_COLOR: 0x7C00FF, // Purple color
+        INVISIBILITY_EMISSIVE: 0x330066,
+        INVISIBILITY_METALNESS: 0.2,
+        INVISIBILITY_ROUGHNESS: 0.3,
+        INVISIBILITY_OPACITY: 0.7,
+        AURA_RADIUS_FACTOR: 1.2,
+        AURA_THICKNESS_FACTOR: 0.05,
+        AURA_SEGMENTS: 24,
+        AURA_COLOR: 0xB980FF,
+        AURA_EMISSIVE: 0x330066,
+        AURA_OPACITY: 0.4,
+        PARTICLE_COUNT: 8,
+        PARTICLE_SIZE_FACTOR: 0.1,
+        PARTICLE_ORBIT_RADIUS: 0.9,
+        COLLISION_RADIUS: 1.0,
+        POWERUP_TYPE: 'invisibility'
+    },
 };

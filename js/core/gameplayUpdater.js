@@ -54,7 +54,9 @@ export function updateGameplay(dependencies, deltaTime, elapsedTime) {
         chunkManager.updateTumbleweeds(deltaTime, elapsedTime, player.model.position);
     }
     if (enemyManager && player.model) {
-        enemyManager.update(player.model.position, deltaTime, elapsedTime);
+        const playerManager = getPlayerManager();
+        const currentPowerup = playerManager ? playerManager.getCurrentPowerup() : player.powerup;
+        enemyManager.update(player.model.position, currentPowerup, deltaTime, elapsedTime);
     }
     if (particleManager && player.model) {
         particleManager.update(deltaTime, player.model.position);

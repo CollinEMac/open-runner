@@ -164,10 +164,10 @@ export class EnemyManager {
      * @param {number} deltaTime - Time elapsed since the last frame.
      * @param {number} elapsedTime - Total time elapsed.
      */
-    update(playerPos, deltaTime, elapsedTime) {
+    update(playerPos, currentPowerup, deltaTime, elapsedTime) {
         if (!playerPos) return;
         for (const enemy of this.activeEnemies.values()) {
-            enemy.update(playerPos, deltaTime, elapsedTime);
+            enemy.update(playerPos, currentPowerup, deltaTime, elapsedTime);
             if (enemy.mesh) {
                 this.spatialGrid.update(enemy.mesh);
             }
