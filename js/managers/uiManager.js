@@ -43,24 +43,14 @@ let notificationTimeout = null; // For clearing notification timeouts
  * @param {string} eventData.newState - The new game state (from GameStates).
  * @param {string} eventData.oldState - The previous game state.
  */
-let clickToStartScreenElement;
-
 function handleGameStateChange(eventData) {
     const newState = eventData.newState;
     logger.info(`Handling state change: ${newState}`);
-    
-    // Get a reference to the Click to Start screen if we don't have it yet
-    if (!clickToStartScreenElement) {
-        clickToStartScreenElement = document.getElementById('clickToStartScreen');
-        logger.debug(`Click to Start screen reference ${clickToStartScreenElement ? 'found' : 'not found'}`);
-    }
-    
     // Hide all major screen overlays by default, then show the correct one
     if (titleScreenElement) titleScreenElement.style.display = 'none';
     if (gameOverElement) gameOverElement.style.display = 'none';
     if (loadingScreenElement) loadingScreenElement.style.display = 'none';
     if (levelSelectScreenElement) levelSelectScreenElement.style.display = 'none';
-    if (clickToStartScreenElement) clickToStartScreenElement.style.display = 'none';
 
     // Always hide score display by default, we'll show it only during gameplay
     if (scoreElement) scoreElement.style.display = 'none';
@@ -81,17 +71,7 @@ function handleGameStateChange(eventData) {
             break;
         case GameStates.TITLE:
         case GameStates.TRANSITIONING_TO_TITLE:
-            // Log the state of our audio unlock variables
-            logger.info(`Audio unlock state: needsAudioUnlock=${window.needsAudioUnlock}, audioUnlocked=${window.audioUnlocked}`);
-            
-            // Check if we should show the Click to Start screen instead of title screen
-            if (window.needsAudioUnlock === true && window.audioUnlocked !== true) {
-                logger.info("Showing Click to Start screen instead of title screen");
-                showClickToStartScreen();
-            } else {
-                logger.info("Showing regular title screen");
-                showTitleScreen();
-            }
+            showTitleScreen();
             if (scoreElement) scoreElement.style.display = 'none';
             break;
         case GameStates.LEVEL_SELECT:
@@ -234,53 +214,6 @@ function showGameOverScreenWithScore(scoreData) {
  * Initializes the UI Manager by getting references and setting up event listeners.
  * @returns {boolean} True if all essential elements were found, false otherwise.
  */
-/** Shows the Click to Start screen overlay. */
-export function showClickToStartScreen() {
-    // First ensure we have the reference
-    if (!clickToStartScreenElement) {
-        clickToStartScreenElement = document.getElementById('clickToStartScreen');
-        if (!clickToStartScreenElement) {
-            logger.error("Click to Start screen element not found");
-            // If we can't find it, try to show the title screen instead
-            showTitleScreen();
-            return;
-        }
-    }
-    
-    if (clickToStartScreenElement) {
-        // Ensure the element is visible
-        clickToStartScreenElement.style.display = 'flex';
-        
-        // Set up handler if not already set
-        if (!clickToStartScreenElement.hasClickHandler) {
-            clickToStartScreenElement.hasClickHandler = true;
-            clickToStartScreenElement.addEventListener('click', () => {
-                logger.info("Click to Start screen clicked");
-                
-                // Mark that user has interacted
-                window.audioUnlocked = true;
-                
-                // Initialize audio if needed
-                if (typeof window.initializeAudioAfterInteraction === 'function') {
-                    logger.info("Calling initializeAudioAfterInteraction");
-                    window.initializeAudioAfterInteraction();
-                }
-                
-                // Hide this screen
-                clickToStartScreenElement.style.display = 'none';
-                
-                // Show title screen
-                showTitleScreen();
-                
-                // Let the audio system know we clicked
-                eventBus.emit('uiButtonClicked');
-                
-                logger.info("Click to Start screen processing complete");
-            });
-        }
-    }
-}
-
 export function initUIManager() {
     setDeviceClass();
 
@@ -300,9 +233,6 @@ export function initUIManager() {
     resumeButtonElement = document.getElementById('resumeButton');
     restartButtonElement = document.getElementById('restartButton');
     returnToTitleButtonElement = document.getElementById('returnToTitleButton');
-    
-    // Add our new Click to Start screen
-    clickToStartScreenElement = document.getElementById('clickToStartScreen');
 
     highScoreElement = document.getElementById('highScoreDisplay');
     if (!highScoreElement) {
@@ -610,46 +540,9 @@ export function setupStartButton(startGameCallback) {
         startButtonElement.replaceWith(startButtonElement.cloneNode(true));
         startButtonElement = document.getElementById('startButton');
         if (startButtonElement) { // Check if element exists after replace
-            startButtonElement.addEventListener('click', async () => {
+            startButtonElement.addEventListener('click', () => {
                 logger.debug("Start button clicked!"); // Log click event
-                
-                // First emit button click sound
-                eventBus.emit('uiButtonClicked');
-                
-                // Ensure audio context is resumed and theme music is started
-                try {
-                    // Import AudioManager dynamically
-                    const AudioManager = await import('../managers/audioManager.js');
-                    
-                    // Signal that user interaction has occurred (useful for audio unlock)
-                    window.audioUnlocked = true;
-                    
-                    // Play theme music once to make sure it's loaded for later
-                    // This can help debug title screen music issues
-                    if (!AudioManager.isMusicActive() || AudioManager.getCurrentMusicId() !== 'theme') {
-                        logger.debug("Playing theme music from start button click to ensure it's loaded");
-                        const audioContext = AudioManager.getAudioContext();
-                        
-                        // Resume audio context if needed
-                        if (audioContext && audioContext.state === 'suspended') {
-                            logger.debug("Resuming suspended AudioContext from start button");
-                            await audioContext.resume();
-                        }
-                        
-                        // Force stop any potentially playing music
-                        await AudioManager.forceResetMusicState();
-                    }
-                    
-                    // Pause to ensure audio operations are complete before starting game
-                    await new Promise(resolve => setTimeout(resolve, 150));
-                    
-                    // Now safely start the game
-                    startGameCallback();
-                } catch (error) {
-                    logger.error("Error in start button click handler:", error);
-                    // Start the game even if audio ops fail
-                    startGameCallback();
-                }
+                startGameCallback();
             });
             logger.debug("Start button listener attached."); // Log success
         } else {
