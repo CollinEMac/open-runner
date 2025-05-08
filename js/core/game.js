@@ -527,46 +527,15 @@ class Game {
     async startGame(levelId) {
         logger.info(`Starting level: ${levelId}`);
 
-        // STEP 1: Force stop any currently playing music
+        // Stop any currently playing music FIRST, before anything else
         if (this.audioManager) {
-            logger.info(`Stopping music before starting level: ${levelId}`);
-            try {
-                // First attempt to stop music
-                await this.audioManager.stopAllMusic();
-                
-                // Force a complete audio reset to ensure clean state
-                await this.audioManager.forceResetMusicState();
-                
-                // Slightly longer delay to ensure audio processing completes
-                await new Promise(resolve => setTimeout(resolve, 300));
-                
-                // Verify music has stopped
-                const currentMusic = this.audioManager.getCurrentMusicId();
-                logger.info(`Audio stopped before level start: currentMusic=${currentMusic}`);
-                
-                // Double-check that music is actually stopped
-                if (currentMusic) {
-                    logger.warn(`Music still playing (${currentMusic}) after stop, forcing another reset`);
-                    await this.audioManager.stopAllMusic();
-                    await new Promise(resolve => setTimeout(resolve, 200));
-                    
-                    // Final verification
-                    const musicStillPlaying = this.audioManager.isMusicActive();
-                    if (musicStillPlaying) {
-                        logger.warn(`[Critical] Music still active after multiple stop attempts`);
-                        // Attempt one last manual cleanup
-                        try {
-                            this.audioManager.forceResetMusicState();
-                        } catch (err) {
-                            logger.error("Final music cleanup failed:", err);
-                        }
-                    }
-                }
-            } catch (e) {
-                logger.error("Error stopping music:", e);
-            }
+            logger.info(`Stopping current music before starting level: ${levelId}`);
+            this.audioManager.stopMusic();
+
+            // Add a short delay to ensure audio operations complete
+            await new Promise(resolve => setTimeout(resolve, 100));
         } else {
-            logger.warn("Audio manager not available");
+            logger.warn("Audio manager not available, cannot stop music");
         }
 
         resetInputStates();
@@ -618,10 +587,6 @@ class Game {
 
         // Wait a small amount of time for state change events to be processed
         await new Promise(resolve => setTimeout(resolve, 100));
-
-        // Music is handled entirely by the gameStateChanged event handler in audioManager.js
-        // We don't need to do anything with audio here
-        logger.info(`Music for level ${levelId} will be handled by state change to PLAYING`);
     }
 
 
@@ -635,21 +600,6 @@ class Game {
         try {
             this.gameStateManager.setGameState(GameStates.LOADING_LEVEL);
             logger.info(`Loading level ${levelId}...`);
-            
-            // Ensure any music is properly stopped before loading level
-            if (this.audioManager) {
-                logger.info("Making sure music is stopped before loading level");
-                await this.audioManager.stopAllMusic();
-                await this.audioManager.forceResetMusicState();
-                
-                // Add additional delay and verification
-                await new Promise(resolve => setTimeout(resolve, 200));
-                if (this.audioManager.isMusicActive()) {
-                    logger.warn("Music still active after stop in _loadLevel, forcing cleanup");
-                    await this.audioManager.stopAllMusic();
-                    await this.audioManager.forceResetMusicState();
-                }
-            }
 
             const playerCurrentParent = this.player.model?.parent;
 
