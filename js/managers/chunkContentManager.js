@@ -388,6 +388,7 @@ export class ChunkContentManager {
         const spinSpeed = this.levelConfig.COIN_VISUALS.spinSpeed || 1.0;
         const magnetActive = playerPowerup === gameplayConfig.POWERUP_TYPE_MAGNET;
         const doublerActive = playerPowerup === gameplayConfig.POWERUP_TYPE_DOUBLER;
+        const invisibilityActive = playerPowerup === gameplayConfig.POWERUP_TYPE_INVISIBILITY;
         const magnetRadius = gameplayConfig.MAGNET_POWERUP_RADIUS;
         const magnetForce = gameplayConfig.MAGNET_POWERUP_FORCE;
 
@@ -409,6 +410,8 @@ export class ChunkContentManager {
                              collectibleMesh.userData.objectType = 'doubler';
                          } else if (collectibleMesh.name?.includes('magnet')) {
                              collectibleMesh.userData.objectType = 'magnet';
+                         } else if (collectibleMesh.name?.includes('invisbility')) {
+                             collectibleMesh.userData.objectType = 'invisibility';
                          } else {
                              collectibleMesh.userData.objectType = 'unknown_collectible';
                          }
@@ -417,7 +420,8 @@ export class ChunkContentManager {
                     // Spin collectibles for visual effect
                     if (collectibleMesh.userData.objectType === 'coin' || 
                         collectibleMesh.userData.objectType === 'magnet' ||
-                        collectibleMesh.userData.objectType === 'doubler') {
+                        collectibleMesh.userData.objectType === 'doubler' ||
+                        collectibleMesh.userData.objectType === 'invisibility') {
                         collectibleMesh.rotation.y += spinSpeed * deltaTime;
                     }
 

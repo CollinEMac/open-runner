@@ -80,6 +80,28 @@ export function initLevelAssets(levelConfig) {
       UIManager.displayError(new Error("[AssetManager] Error creating doubler model."));
     }
 
+    // --- Invisibility ---
+    const invisibilityVis = levelConfig.INVISIBILITY_VISUALS || {};
+    const invisibilityProps = {
+      size: invisibilityVis.size ?? modelsConfig.INVISIBILITY.DEFAULT_SIZE,
+      color: invisibilityVis.color ?? modelsConfig.INVISIBILITY.DEFAULT_COLOR
+    };
+    try {
+      levelAssets.invisibilityGroup = ModelFactory.createInvisibilityModel(invisibilityProps);
+      // Define invisibility material
+      levelAssets.invisibilityMaterial = new THREE.MeshStandardMaterial({
+        color: invisibilityProps.color,
+        emissive: modelsConfig.INVISIBILITY.INVISIBILITY_EMISSIVE,
+        metalness: modelsConfig.INVISIBILITY.INVISIBILITY_METALNESS,
+        roughness: modelsConfig.INVISIBILITY.INVISIBILITY_ROUGHNESS,
+        transparent: true,
+        opacity: 0.7 // Make it semi-transparent to suggest invisibility
+      });
+    } catch (error) {
+      logger.error("Error creating invisibility model:", error);
+      UIManager.displayError(new Error("[AssetManager] Error creating invisibility model."));
+    }
+
     // --- Obstacles Materials ---
     levelAssets.rockMaterial = new THREE.MeshStandardMaterial({ color: materialsConfig.ROCK_COLOR, roughness: materialsConfig.ROCK_ROUGHNESS });
     levelAssets.logMaterial = new THREE.MeshStandardMaterial({ color: materialsConfig.LOG_COLOR, roughness: materialsConfig.LOG_ROUGHNESS });

@@ -274,6 +274,29 @@ class Game {
                     // Add to player model so it moves with the player
                     player.model.add(player.doublerIndicator);
                 }
+            } else if (type === gameplayConfig.POWERUP_TYPE_INVISIBILITY && player && player.model) {
+                logger.info(`Applying ${type} powerup visual effect to player`);
+                
+                // Create a new material for the invisibility powerup effect
+                const invisibilityMaterial = new THREE.MeshStandardMaterial({
+                    color: gameplayConfig.INVISIBILITY_EFFECT_COLOR,
+                    emissive: gameplayConfig.INVISIBILITY_EFFECT_EMISSIVE,
+                    metalness: gameplayConfig.INVISIBILITY_EFFECT_METALNESS,
+                    roughness: gameplayConfig.INVISIBILITY_EFFECT_ROUGHNESS,
+                    transparent: true,
+                    opacity: gameplayConfig.INVISIBILITY_EFFECT_OPACITY
+                });
+                
+                // Apply the material to all meshes in the player model
+                player.model.traverse(child => {
+                    if (child instanceof THREE.Mesh) {
+                        // Store the original material if not already stored
+                        if (!child.userData.originalMaterial) {
+                            child.userData.originalMaterial = child.material;
+                        }
+                        child.material = invisibilityMaterial;
+                    }
+                });
             }
         });
 
@@ -320,6 +343,65 @@ class Game {
                     });
                     
                     player.doublerIndicator = null;
+                }
+            } else if (type === gameplayConfig.POWERUP_TYPE_INVISIBILITY && player && player.model) {
+                logger.info(`Removing ${type} powerup visual effect from player`);
+                
+                // Restore original materials
+                player.model.traverse(child => {
+                    if (child instanceof THREE.Mesh && child.userData.originalMaterial) {
+                        child.material = child.userData.originalMaterial;
+                        // Clear the stored material reference
+                        delete child.userData.originalMaterial;
+                    }
+                });
+                
+                // Remove the invisibility indicator
+                if (player.invisibilityIndicator) {
+                    player.model.remove(player.invisibilityIndicator);
+                    
+                    // Dispose geometries and materials
+                    player.invisibilityIndicator.traverse(child => {
+                        if (child instanceof THREE.Mesh) {
+                            if (child.geometry) child.geometry.dispose();
+                            if (child.material) {
+                                if (Array.isArray(child.material)) {
+                                    child.material.forEach(m => m.dispose());
+                                } else {
+                                    child.material.dispose();
+                                }
+                            }
+                        }
+                    });
+                    
+                    player.invisibilityIndicator = null;
+                }
+                
+                // Remove particle effect
+                if (player.invisibilityEffect) {
+                    player.model.remove(player.invisibilityEffect);
+                    
+                    // Dispose geometries and materials
+                    player.invisibilityEffect.traverse(child => {
+                        if (child instanceof THREE.Mesh) {
+                            if (child.geometry) child.geometry.dispose();
+                            if (child.material) {
+                                if (Array.isArray(child.material)) {
+                                    child.material.forEach(m => m.dispose());
+                                } else {
+                                    child.material.dispose();
+                                }
+                            }
+                        }
+                    });
+                    
+                    player.invisibilityEffect = null;
+                    
+                    // Unsubscribe from update event
+                    if (player.invisibilityEffectUpdateHandler) {
+                        eventBus.unsubscribe('gameLoopUpdate', player.invisibilityEffectUpdateHandler);
+                        player.invisibilityEffectUpdateHandler = null;
+                    }
                 }
             }
         });

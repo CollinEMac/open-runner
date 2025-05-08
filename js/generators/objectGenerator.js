@@ -275,6 +275,10 @@ export function createObjectVisual(objectData, levelConfig) {
                 mesh = ModelFactory.createDoublerModel(objectData); // Use factory
                 geometry = null; material = null;
                 break;
+            case 'invisibility':
+                mesh = ModelFactory.createInvisibilityModel(objectData); // Use factory
+                geometry = null; material = null;
+                break;
             case 'rock_small':
                 geometry = AssetManager.getAsset('rockSmallGeo');
                 material = AssetManager.getAsset('rockMaterial');
