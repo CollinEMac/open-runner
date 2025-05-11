@@ -174,13 +174,22 @@ export function setupEventHandlers(dependencies) {
      eventBus.subscribe('requestRestart', () => {
         logger.info("Received requestRestart event");
         const currentLevelId = levelManager.getCurrentLevelId();
-        if (currentLevelId && !sceneTransitionManager.getIsTransitioning() && !cameraManager.getIsTransitioning()) {
+        if (currentLevelId) {
+            // Force reset any stuck transitions
+            if (sceneTransitionManager.getIsTransitioning() || cameraManager.getIsTransitioning()) {
+                logger.warn("Forcing reset of stuck transitions before restarting");
+                if (cameraManager.getIsTransitioning()) {
+                    cameraManager.resetTransitionState();
+                }
+                if (sceneTransitionManager.getIsTransitioning()) {
+                    sceneTransitionManager.forceEndTransition();
+                }
+            }
+
             resetInputStates();
             updateMobileControlsVisibility();
             eventBus.emit('uiButtonClicked');
             startGameCallback(currentLevelId);
-        } else if (sceneTransitionManager.getIsTransitioning() || cameraManager.getIsTransitioning()) {
-            logger.warn("Cannot restart: Transition in progress.");
         } else {
             logger.error("Cannot restart: Current level ID not found.");
         }
@@ -188,10 +197,18 @@ export function setupEventHandlers(dependencies) {
 
      eventBus.subscribe('requestReturnToTitle', () => {
         logger.info("Received requestReturnToTitle event");
+
+        // Force reset any stuck transitions
         if (sceneTransitionManager.getIsTransitioning() || cameraManager.getIsTransitioning()) {
-            logger.warn("Cannot return to title: Transition in progress.");
-            return;
+            logger.warn("Forcing reset of stuck transitions before returning to title");
+            if (cameraManager.getIsTransitioning()) {
+                cameraManager.resetTransitionState();
+            }
+            if (sceneTransitionManager.getIsTransitioning()) {
+                sceneTransitionManager.forceEndTransition();
+            }
         }
+
         eventBus.emit('uiButtonClicked');
         updateMobileControlsVisibility(false, true); // Force hide
         atmosphericManager.clearElements();

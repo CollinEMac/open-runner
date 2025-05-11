@@ -114,6 +114,14 @@ class CameraManager {
         return this.isTransitioning;
     }
 
+    resetTransitionState() {
+        logger.info("Resetting camera transition state");
+        this.isTransitioning = false;
+        this.transitionType = null;
+        this.transitionTimeElapsed = 0;
+        this._justCompletedTransition = false;
+        return true;
+    }
 
 
     /**
