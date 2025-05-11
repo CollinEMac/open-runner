@@ -127,11 +127,6 @@ class AtmosphericManager {
                         profile.lighting.directional.position.z
                     ).normalize(); // Normalizing is good practice for directional lights
                 }
-                // Optional: Add shadow properties if defined in config
-                // if (profile.lighting.directional.castShadow) {
-                //     directionalLight.castShadow = true;
-                //     // Configure shadow map size, bias, etc. from profile
-                // }
                 logger.info("Directional light updated from profile:", profile.lighting.directional);
             }
         } else {

@@ -38,8 +38,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         logger.info("Creating game instance");
         const game = new Game(canvas);
         
-        // Expose game instance globally for debugging
-        window.game = game;
+        // Conditionally expose game instance globally for debugging
+        import { debugConfig } from '../config/debug.js';
+        if (debugConfig.LOG_LEVEL === 'DEBUG') {
+            window.game = game;
+            logger.debug("Game instance exposed to window.game for debugging");
+        }
 
         logger.info("Initializing game...");
         const initialized = await game.init();

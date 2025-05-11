@@ -619,10 +619,6 @@ class Game {
         if (this.renderer) {
             this.renderer.dispose();
             logger.debug("Renderer disposed.");
-            // Attempt to remove canvas from DOM if renderer owned it, or clear it
-            if (this.renderer.domElement.parentElement) {
-                 // this.renderer.domElement.parentElement.removeChild(this.renderer.domElement);
-            }
             this.renderer = null;
         }
         
@@ -838,8 +834,6 @@ class Game {
             } else {
                 logger.error("Cannot setup atmosphere in _loadLevel: Missing currentLevelConfig or gameplayScene.");
             }
-            // Removed: this.atmosphericManager.addElementsForLevel(levelId, this.gameplayScene);
-            // Removed: this._updateSceneAppearance(this.currentLevelConfig, this.gameplayScene);
             this.chunkManager.setLevelConfig(this.currentLevelConfig);
             if (this.player.model) {
                 if (playerCurrentParent && playerCurrentParent !== this.gameplayScene) {
@@ -892,33 +886,6 @@ class Game {
         }
     }
 
-    /**
-     * Updates the visual appearance (background, fog, lighting) of a given scene based on level config.
-     * @param {object} levelConfig - The configuration object for the level.
-     * @param {THREE.Scene} sceneToUpdate - The scene object to apply changes to.
-     * @private
-     */
-     _updateSceneAppearance(levelConfig, sceneToUpdate) {
-         if (sceneToUpdate && levelConfig) {
-             sceneToUpdate.background = new THREE.Color(levelConfig.SCENE_BACKGROUND_COLOR);
-             sceneToUpdate.fog = new THREE.Fog(levelConfig.SCENE_FOG_COLOR, levelConfig.SCENE_FOG_NEAR, levelConfig.SCENE_FOG_FAR);
-             const ambient = sceneToUpdate.getObjectByProperty('isAmbientLight', true);
-             if (ambient) {
-                 ambient.color.setHex(levelConfig.AMBIENT_LIGHT_COLOR);
-                 ambient.intensity = levelConfig.AMBIENT_LIGHT_INTENSITY;
-             }
-             const directional = sceneToUpdate.getObjectByProperty('isDirectionalLight', true);
-             if (directional) {
-                 directional.color.setHex(levelConfig.DIRECTIONAL_LIGHT_COLOR);
-                 directional.intensity = levelConfig.DIRECTIONAL_LIGHT_INTENSITY;
-                 directional.position.set(
-                      levelConfig.DIRECTIONAL_LIGHT_POS_X,
-                      levelConfig.DIRECTIONAL_LIGHT_POS_Y,
-                      levelConfig.DIRECTIONAL_LIGHT_POS_Z
-                 ).normalize();
-             }
-         }
-     }
 
 
      // --- Input Handling ---
