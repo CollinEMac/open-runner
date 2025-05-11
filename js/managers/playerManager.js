@@ -50,6 +50,12 @@ class PlayerManager {
         
         if (this.powerupTimeout) clearTimeout(this.powerupTimeout);
         
+        let duration = gameplayConfig.POWERUP_DURATION * 1000; // Default duration
+        if (powerupType === gameplayConfig.POWERUP_TYPE_INVISIBILITY) {
+            duration = gameplayConfig.invisibilityConfig.durationMs;
+            logger.debug(`Using invisibility specific duration: ${duration}ms`);
+        }
+
         this.powerupTimeout = setTimeout(() => {
             if (this.player.powerup === powerupType) {
                 this.player.powerup = '';
@@ -57,7 +63,7 @@ class PlayerManager {
                 eventBus.emit('removePowerupEffect', { type: powerupType, player: this.player });
             }
             this.powerupTimeout = null;
-        }, gameplayConfig.POWERUP_DURATION * 1000);
+        }, duration);
     }
     
     /**

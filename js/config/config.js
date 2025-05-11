@@ -74,6 +74,9 @@ configManager.registerConfig(SECTIONS.DEBUG, debugConfig);
 
 logger.debug('Game configuration sections registered');
 
+// Signal that all core configurations have been registered
+configManager.setInitializationComplete(true);
+logger.info('ConfigManager initialization marked as complete.');
 
 const logLevelString = debugConfig.LOG_LEVEL || 'INFO';
 if (LogLevel.hasOwnProperty(logLevelString)) {
