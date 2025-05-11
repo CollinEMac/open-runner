@@ -185,6 +185,12 @@ class Game {
             if (type === gameplayConfig.POWERUP_TYPE_MAGNET && player && player.model) {
                 logger.info(`Applying ${type} powerup visual effect to player`);
 
+                // Ensure userData exists
+                if (!player.userData) {
+                    player.userData = {};
+                    logger.debug("Created userData object for player");
+                }
+
                 // Create a new material for the magnet powerup effect
                 const magnetMaterial = new THREE.MeshStandardMaterial({
                     color: gameplayConfig.MAGNET_EFFECT_COLOR,
@@ -197,6 +203,10 @@ class Game {
                 // Apply the material to all meshes in the player model
                 player.model.traverse(child => {
                     if (child instanceof THREE.Mesh) {
+                        // Ensure child userData exists
+                        if (!child.userData) {
+                            child.userData = {};
+                        }
                         // Store the original material if not already stored
                         if (!child.userData.originalMaterial) {
                             child.userData.originalMaterial = child.material;
@@ -206,6 +216,12 @@ class Game {
                 });
             } else if (type === gameplayConfig.POWERUP_TYPE_DOUBLER && player && player.model) {
                 logger.info(`Applying ${type} powerup visual effect to player`);
+
+                // Ensure userData exists
+                if (!player.userData) {
+                    player.userData = {};
+                    logger.debug("Created userData object for player");
+                }
 
                 // Create a new material for the doubler powerup effect (applied to player model)
                 const doublerPlayerEffectMaterial = new THREE.MeshStandardMaterial({
@@ -219,6 +235,10 @@ class Game {
                 // Apply the material to all meshes in the player model
                 player.model.traverse(child => {
                     if (child instanceof THREE.Mesh) {
+                        // Ensure child userData exists
+                        if (!child.userData) {
+                            child.userData = {};
+                        }
                         // Store the original material if not already stored
                         if (!child.userData.originalMaterial) {
                             child.userData.originalMaterial = child.material;
@@ -278,7 +298,13 @@ class Game {
                 }
             } else if (type === gameplayConfig.POWERUP_TYPE_INVISIBILITY && player && player.model) {
                 logger.info(`Applying ${type} powerup visual effect to player`);
-                
+
+                // Ensure userData exists
+                if (!player.userData) {
+                    player.userData = {};
+                    logger.debug("Created userData object for player");
+                }
+
                 // Create a new material for the invisibility powerup effect
                 const invisibilityMaterial = new THREE.MeshStandardMaterial({
                     color: gameplayConfig.INVISIBILITY_EFFECT_COLOR,
@@ -289,10 +315,14 @@ class Game {
                     opacity: gameplayConfig.INVISIBILITY_EFFECT_OPACITY
                 });
                 player.userData.effectMaterial_invisibility = invisibilityMaterial; // Store for disposal
-                
+
                 // Apply the material to all meshes in the player model
                 player.model.traverse(child => {
                     if (child instanceof THREE.Mesh) {
+                        // Ensure child userData exists
+                        if (!child.userData) {
+                            child.userData = {};
+                        }
                         // Store the original material if not already stored
                         if (!child.userData.originalMaterial) {
                             child.userData.originalMaterial = child.material;
@@ -309,14 +339,15 @@ class Game {
 
                 // Restore original materials
                 player.model.traverse(child => {
-                    if (child instanceof THREE.Mesh && child.userData.originalMaterial) {
+                    if (child instanceof THREE.Mesh && child.userData && child.userData.originalMaterial) {
                         child.material = child.userData.originalMaterial;
                         // Clear the stored material reference
                         delete child.userData.originalMaterial;
                     }
                 });
+
                 // Dispose of the effect material
-                if (player.userData.effectMaterial_magnet) {
+                if (player.userData && player.userData.effectMaterial_magnet) {
                     logger.debug("Disposing magnet effect material from player.");
                     player.userData.effectMaterial_magnet.dispose();
                     delete player.userData.effectMaterial_magnet;
@@ -326,14 +357,15 @@ class Game {
 
                 // Restore original materials on the player model
                 player.model.traverse(child => {
-                    if (child instanceof THREE.Mesh && child.userData.originalMaterial) {
+                    if (child instanceof THREE.Mesh && child.userData && child.userData.originalMaterial) {
                         child.material = child.userData.originalMaterial;
                         // Clear the stored material reference
                         delete child.userData.originalMaterial;
                     }
                 });
+
                 // Dispose of the player effect material for doubler
-                if (player.userData.effectMaterial_doubler_player) {
+                if (player.userData && player.userData.effectMaterial_doubler_player) {
                     logger.debug("Disposing doubler player effect material.");
                     player.userData.effectMaterial_doubler_player.dispose();
                     delete player.userData.effectMaterial_doubler_player;
@@ -361,17 +393,18 @@ class Game {
                 }
             } else if (type === gameplayConfig.POWERUP_TYPE_INVISIBILITY && player && player.model) {
                 logger.info(`Removing ${type} powerup visual effect from player`);
-                
+
                 // Restore original materials
                 player.model.traverse(child => {
-                    if (child instanceof THREE.Mesh && child.userData.originalMaterial) {
+                    if (child instanceof THREE.Mesh && child.userData && child.userData.originalMaterial) {
                         child.material = child.userData.originalMaterial;
                         // Clear the stored material reference
                         delete child.userData.originalMaterial;
                     }
                 });
+
                 // Dispose of the effect material
-                if (player.userData.effectMaterial_invisibility) {
+                if (player.userData && player.userData.effectMaterial_invisibility) {
                     logger.debug("Disposing invisibility effect material from player.");
                     player.userData.effectMaterial_invisibility.dispose();
                     delete player.userData.effectMaterial_invisibility;
