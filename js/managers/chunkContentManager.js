@@ -429,6 +429,12 @@ export class ChunkContentManager {
         const magnetRadius = gameplayConfig.MAGNET_POWERUP_RADIUS;
         const magnetForce = gameplayConfig.MAGNET_POWERUP_FORCE;
 
+        // Log magnet-related states for debugging
+        if (playerPowerup === gameplayConfig.POWERUP_TYPE_MAGNET || magnetActive) { // Log if magnet is supposed to be active or is detected as active
+            logger.debug(`[ChunkContentManager] updateCollectibles: playerPowerup: "${playerPowerup}", gameplayConfig.POWERUP_TYPE_MAGNET: "${gameplayConfig.POWERUP_TYPE_MAGNET}"`);
+            logger.debug(`[ChunkContentManager] updateCollectibles: magnetActive: ${magnetActive}, magnetRadius: ${magnetRadius}, magnetForce: ${magnetForce}`);
+        }
+
         for (const [key, chunkData] of loadedChunks.entries()) {
             // Use the contentManagerData references for iteration
             const collectibles = chunkData.contentManagerData?.collectibles;
@@ -520,7 +526,7 @@ export class ChunkContentManager {
                                         const coinValue = scoreValue || gameplayConfig.DEFAULT_COIN_SCORE;
                                         const finalValue = doublerActive ? coinValue * gameplayConfig.DOUBLER_MULTIPLIER : coinValue;
                                         eventBus.emit('scoreChanged', finalValue);
-                                        logger.debug(`Collected coin with final value ${finalValue} (doubler active: ${doublerActive})`);
+                                        logger.debug(`Collected coin (magnet pull) with final value ${finalValue} (doubler active: ${doublerActive})`);
                                     }
                                 }
                             } else if (newDistanceSq > minSafeDistanceSq) {

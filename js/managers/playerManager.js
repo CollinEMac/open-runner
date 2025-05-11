@@ -35,8 +35,10 @@ class PlayerManager {
      * @param {string} powerupType - Type of powerup activated
      */
     handlePowerupActivated(powerupType) {
+        logger.debug(`[PlayerManager] handlePowerupActivated called with type: ${powerupType}`);
         const wasActive = this.player.powerup === powerupType;
         this.player.powerup = powerupType;
+        logger.debug(`[PlayerManager] this.player.powerup set to: ${this.player.powerup}`);
         playWaveFile(effectAudioMap['powerup']);
         
         if (wasActive) {
@@ -45,6 +47,7 @@ class PlayerManager {
         } else {
             logger.info(`${powerupType} powerup started!`);
             // Emit event for visual effect
+            logger.debug(`[PlayerManager] Emitting applyPowerupEffect for type: ${powerupType}`);
             eventBus.emit('applyPowerupEffect', { type: powerupType, player: this.player });
         }
         

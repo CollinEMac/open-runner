@@ -182,8 +182,11 @@ class Game {
 
         // Event listeners for powerup effects
         eventBus.subscribe('applyPowerupEffect', ({ type, player }) => {
+            logger.debug(`[Game.js] applyPowerupEffect event received. Type: ${type}, Player ID: ${player?.id}`);
             if (type === gameplayConfig.POWERUP_TYPE_MAGNET && player && player.model) {
                 logger.info(`Applying ${type} powerup visual effect to player`);
+                logger.debug(`[Game.js] gameplayConfig.POWERUP_TYPE_MAGNET: ${gameplayConfig.POWERUP_TYPE_MAGNET}`);
+                logger.debug(`[Game.js] gameplayConfig.MAGNET_EFFECT_COLOR: ${gameplayConfig.MAGNET_EFFECT_COLOR?.toString(16)}`);
 
                 // Ensure userData exists
                 if (!player.userData) {
@@ -198,22 +201,38 @@ class Game {
                     metalness: gameplayConfig.MAGNET_EFFECT_METALNESS,
                     roughness: gameplayConfig.MAGNET_EFFECT_ROUGHNESS
                 });
-                player.userData.effectMaterial_magnet = magnetMaterial; // Store for disposal
+                if (!player.model.userData) player.model.userData = {}; // Ensure userData exists
+                player.model.userData.effectMaterial_magnet = magnetMaterial; // Store for disposal on the model's userData
+                logger.debug(`[Game.js] Stored magnetMaterial on player.model.userData.effectMaterial_magnet`);
 
                 // Apply the material to all meshes in the player model
+                let meshFound = false;
                 player.model.traverse(child => {
                     if (child instanceof THREE.Mesh) {
-                        // Ensure child userData exists
+                        meshFound = true; // Keep this from my commit
+                        // Ensure child userData exists (from HEAD)
                         if (!child.userData) {
                             child.userData = {};
                         }
+                        logger.debug(`[Game.js] Applying magnet material to mesh: ${child.name || child.id}. Original material: ${child.material?.uuid}`); // Keep this from my commit
                         // Store the original material if not already stored
+                        // if (!child.userData) child.userData = {}; // This line is redundant now due to the check above
                         if (!child.userData.originalMaterial) {
                             child.userData.originalMaterial = child.material;
+                            logger.debug(`[Game.js] Stored original material ${child.userData.originalMaterial?.uuid} for mesh ${child.name || child.id}`);
                         }
-                        child.material = player.userData.effectMaterial_magnet;
+                        // Retrieve from player.model.userData
+                        if (player.model.userData && player.model.userData.effectMaterial_magnet) {
+                            child.material = player.model.userData.effectMaterial_magnet;
+                            logger.debug(`[Game.js] New material ${child.material?.uuid} applied to mesh ${child.name || child.id}`);
+                        } else {
+                            logger.error(`[Game.js] Magnet material missing on player.model.userData when trying to apply to mesh ${child.name || child.id}`);
+                        }
                     }
                 });
+                if (!meshFound) {
+                    logger.warn(`[Game.js] No THREE.Mesh found in player model to apply magnet material.`);
+                }
             } else if (type === gameplayConfig.POWERUP_TYPE_DOUBLER && player && player.model) {
                 logger.info(`Applying ${type} powerup visual effect to player`);
 
@@ -230,7 +249,8 @@ class Game {
                     metalness: gameplayConfig.DOUBLER_EFFECT_METALNESS,
                     roughness: gameplayConfig.DOUBLER_EFFECT_ROUGHNESS
                 });
-                player.userData.effectMaterial_doubler_player = doublerPlayerEffectMaterial; // Store for disposal
+                if (!player.model.userData) player.model.userData = {}; // Ensure userData exists
+                player.model.userData.effectMaterial_doubler_player = doublerPlayerEffectMaterial; // Store for disposal
 
                 // Apply the material to all meshes in the player model
                 player.model.traverse(child => {
@@ -240,10 +260,16 @@ class Game {
                             child.userData = {};
                         }
                         // Store the original material if not already stored
+                        if (!child.userData) child.userData = {}; // Ensure child's own userData exists
                         if (!child.userData.originalMaterial) {
                             child.userData.originalMaterial = child.material;
                         }
-                        child.material = player.userData.effectMaterial_doubler_player;
+                        // Retrieve from player.model.userData
+                        if (player.model.userData && player.model.userData.effectMaterial_doubler_player) {
+                            child.material = player.model.userData.effectMaterial_doubler_player;
+                        } else {
+                            logger.error(`[Game.js] Doubler material missing on player.model.userData when trying to apply to mesh ${child.name || child.id}`);
+                        }
                     }
                 });
                 
@@ -314,8 +340,10 @@ class Game {
                     transparent: true,
                     opacity: gameplayConfig.INVISIBILITY_EFFECT_OPACITY
                 });
-                player.userData.effectMaterial_invisibility = invisibilityMaterial; // Store for disposal
-
+                // Use player.model.userData for consistency (my commit's logic)
+                if (!player.model.userData) player.model.userData = {};
+                player.model.userData.effectMaterial_invisibility = invisibilityMaterial;
+                
                 // Apply the material to all meshes in the player model
                 player.model.traverse(child => {
                     if (child instanceof THREE.Mesh) {
@@ -324,10 +352,16 @@ class Game {
                             child.userData = {};
                         }
                         // Store the original material if not already stored
+                        if (!child.userData) child.userData = {}; // Ensure child's own userData exists
                         if (!child.userData.originalMaterial) {
                             child.userData.originalMaterial = child.material;
                         }
-                        child.material = player.userData.effectMaterial_invisibility;
+                        // Retrieve from player.model.userData
+                        if (player.model.userData && player.model.userData.effectMaterial_invisibility) {
+                            child.material = player.model.userData.effectMaterial_invisibility;
+                        } else {
+                            logger.error(`[Game.js] Invisibility material missing on player.model.userData when trying to apply to mesh ${child.name || child.id}`);
+                        }
                     }
                 });
             }
@@ -347,16 +381,18 @@ class Game {
                 });
 
                 // Dispose of the effect material
-                if (player.userData && player.userData.effectMaterial_magnet) {
-                    logger.debug("Disposing magnet effect material from player.");
-                    player.userData.effectMaterial_magnet.dispose();
-                    delete player.userData.effectMaterial_magnet;
+                // Use player.model.userData for consistency (my commit's logic)
+                if (player.model.userData && player.model.userData.effectMaterial_magnet) {
+                    logger.debug("Disposing magnet effect material from player model.");
+                    player.model.userData.effectMaterial_magnet.dispose();
+                    delete player.model.userData.effectMaterial_magnet;
                 }
             } else if (type === gameplayConfig.POWERUP_TYPE_DOUBLER && player && player.model) {
                 logger.info(`Removing ${type} powerup visual effect from player`);
 
                 // Restore original materials on the player model
                 player.model.traverse(child => {
+                    // Code is identical, keep one version
                     if (child instanceof THREE.Mesh && child.userData && child.userData.originalMaterial) {
                         child.material = child.userData.originalMaterial;
                         // Clear the stored material reference
@@ -365,10 +401,11 @@ class Game {
                 });
 
                 // Dispose of the player effect material for doubler
-                if (player.userData && player.userData.effectMaterial_doubler_player) {
+                // Use player.model.userData for consistency (my commit's logic)
+                if (player.model.userData && player.model.userData.effectMaterial_doubler_player) {
                     logger.debug("Disposing doubler player effect material.");
-                    player.userData.effectMaterial_doubler_player.dispose();
-                    delete player.userData.effectMaterial_doubler_player;
+                    player.model.userData.effectMaterial_doubler_player.dispose();
+                    delete player.model.userData.effectMaterial_doubler_player;
                 }
                 
                 // Remove the doubler indicator
@@ -404,10 +441,11 @@ class Game {
                 });
 
                 // Dispose of the effect material
-                if (player.userData && player.userData.effectMaterial_invisibility) {
+                // Use player.model.userData for consistency (my commit's logic)
+                if (player.model.userData && player.model.userData.effectMaterial_invisibility) {
                     logger.debug("Disposing invisibility effect material from player.");
-                    player.userData.effectMaterial_invisibility.dispose();
-                    delete player.userData.effectMaterial_invisibility;
+                    player.model.userData.effectMaterial_invisibility.dispose();
+                    delete player.model.userData.effectMaterial_invisibility;
                 }
                 
                 // Remove the invisibility indicator

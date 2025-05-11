@@ -37,6 +37,12 @@ export const level2Config = {
         ]
     },
 
+    // --- Coin Visuals ---
+    COIN_VISUALS: {
+        spinSpeed: 2.0, // Example spin speed, adjust as needed
+        // Add other coin visual properties here if any in the future
+    },
+
     // --- Enemies ---
     ENEMY_DEFAULT_SPEED: 5.0, // Keep defaults for now
     ENEMY_DEFAULT_AGGRO_RADIUS: 30.0,
